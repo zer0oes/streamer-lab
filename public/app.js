@@ -49,6 +49,7 @@ const elements = {
   editorHighlight: document.querySelector("#widget-code-highlight"),
   editorHighlightCode: document.querySelector("#widget-code-highlight code"),
   editorTabs: document.querySelectorAll("[data-editor-file]"),
+  editorCopyButton: document.querySelector("#editor-copy-button"),
   editorStatus: document.querySelector("#editor-status"),
   editorFilename: document.querySelector("#editor-filename"),
   eventFab: document.querySelector("#event-fab"),
@@ -78,6 +79,7 @@ const editorSources = {};
 const editorSaveTimers = new Map();
 const editorSaveRevisions = new Map();
 const editorFileStates = new Map();
+let editorCopyResetTimer;
 const editorFiles = {
   html: { filename: "widget.html", property: "html", label: "Code HTML du widget" },
   css: { filename: "widget.css", property: "css", label: "Code CSS du widget" },
@@ -204,6 +206,32 @@ function syncEditorScroll() {
   elements.editorHighlight.scrollLeft = elements.editor.scrollLeft;
 }
 
+function initializeEditorCopyButton() {
+  if (!elements.editorCopyButton) return;
+  elements.editorCopyButton.addEventListener("click", () => void copyActiveEditorFile());
+}
+
+async function copyActiveEditorFile() {
+  const file = activeEditorFile;
+  const content = editorSources[file] ?? "";
+  const button = elements.editorCopyButton;
+  const icon = button.querySelector(".material-symbols-rounded");
+
+  try {
+    await navigator.clipboard.writeText(content);
+    showToast(`${editorFiles[file].filename} copié`);
+    button.classList.add("is-copied");
+    icon.textContent = "check";
+    clearTimeout(editorCopyResetTimer);
+    editorCopyResetTimer = setTimeout(() => {
+      button.classList.remove("is-copied");
+      icon.textContent = "content_copy";
+    }, 1200);
+  } catch (error) {
+    showToast(`Copie impossible : ${error.message}`);
+  }
+}
+
 initializePreviewPlatform();
 initializeExportMenu();
 initializePreviewControls();
@@ -211,6 +239,7 @@ initializePreviewTheme();
 initializeSidebarSections();
 initializeWidgetSettings();
 initializeWidgetLibraryMenu();
+initializeEditorCopyButton();
 await initialize();
 
 function loadPreviewSize() {

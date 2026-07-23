@@ -15,15 +15,10 @@
 
 * { box-sizing: border-box; }
 
-html {
-  scrollbar-width: thin;
-  scrollbar-color: #3a3f4a transparent;
-}
-
-*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar { width: 4px; height: 4px; }
 *::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background: #3a3f4a; border-radius: 8px; }
-*::-webkit-scrollbar-thumb:hover { background: #4a505d; }
+*::-webkit-scrollbar-thumb { background: rgb(159 117 255 / 55%); border-radius: 8px; }
+*::-webkit-scrollbar-thumb:hover { background: rgb(159 117 255 / 85%); }
 *::-webkit-scrollbar-corner { background: transparent; }
 
 html,
@@ -964,6 +959,7 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
 
 .editor-tabs {
   display: flex;
+  align-items: center;
   gap: 2px;
   padding: 7px 8px 0;
   border-bottom: 1px solid var(--line);
@@ -1042,6 +1038,7 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
 }
 
 .widget-code-highlight {
+  z-index: 1;
   color: #d7dbe4;
   background:
     linear-gradient(90deg, rgb(159 117 255 / 5%), transparent 26px),
@@ -1055,6 +1052,7 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
 }
 
 .widget-code-editor {
+  z-index: 2;
   outline: none;
   resize: none;
   color: transparent;
@@ -1062,6 +1060,31 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
   caret-color: #d7dbe4;
   box-shadow: none;
 }
+
+.editor-copy-button {
+  position: absolute;
+  z-index: 3;
+  top: 10px;
+  right: 30px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  background: rgb(23 26 32 / 85%);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 140ms, color 140ms, border-color 140ms, background 140ms;
+}
+
+.editor-copy-button .material-symbols-rounded { font-size: 15px; }
+.editor-copy-button:hover { opacity: 1; color: #fff; border-color: rgb(159 117 255 / 52%); }
+.editor-copy-button:focus-visible { opacity: 1; outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+.editor-copy-button.is-copied { opacity: 1; color: var(--green); border-color: rgb(57 217 138 / 45%); }
 
 .tok-comment { color: #6a7180; font-style: italic; }
 .tok-string { color: #e0af68; }
