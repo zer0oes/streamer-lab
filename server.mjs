@@ -1,5 +1,5 @@
 import { createReadStream, existsSync, readFileSync, watch } from "node:fs";
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -100,38 +100,53 @@ const server = createServer(async (request, response) => {
       return sendJson(response, 200, { saved: true, widgetId: widgetInfo.id, file: body.file, at: Date.now() });
     }
 
+    if (request.method === "POST" && url.pathname === "/api/widgets") {
+      const body = await readRequestJson(request);
+      let metadata;
+      try {
+        metadata = parseWidgetMetadataInput(body);
+      } catch (error) {
+        return sendJson(response, 400, { error: error.message });
+      }
+
+      const widgets = await listWidgets();
+      const widgetId = uniqueWidgetId(slugify(metadata.name), new Set(widgets.map((entry) => entry.id)));
+      const order = widgets.reduce((max, entry) => Math.max(max, entry.order), 0) + 10;
+      const manifest = { id: widgetId, ...metadata, order };
+
+      await createWidgetFiles(join(WIDGETS_ROOT, widgetId));
+      await writeFile(join(WIDGETS_ROOT, widgetId, "widget.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      return sendJson(response, 201, { widget: widgetFromManifest(widgetId, manifest) });
+    }
+
     if (request.method === "PUT" && url.pathname === "/api/widget/metadata") {
       const body = await readRequestJson(request);
       const widgetInfo = await getWidgetInfo(body.widgetId);
       if (!widgetInfo) return sendJson(response, 404, { error: "Widget introuvable" });
 
-      const name = typeof body.name === "string" ? body.name.trim() : "";
-      const description = typeof body.description === "string" ? body.description.trim() : "";
-      const icon = typeof body.icon === "string" ? body.icon.trim() : "";
-      if (!name || name.length > 60) {
-        return sendJson(response, 400, { error: "Le nom doit contenir entre 1 et 60 caracteres" });
-      }
-      if (description.length > 140) {
-        return sendJson(response, 400, { error: "La description est limitee a 140 caracteres" });
-      }
-      if (!/^[a-z0-9_]{1,40}$/.test(icon)) {
-        return sendJson(response, 400, { error: "Icone Material invalide" });
+      let metadata;
+      try {
+        metadata = parseWidgetMetadataInput(body);
+      } catch (error) {
+        return sendJson(response, 400, { error: error.message });
       }
 
       const manifestPath = join(widgetInfo.directory, "widget.json");
       const manifest = await readJson(manifestPath);
-      const updatedManifest = { ...manifest, name, description, icon };
+      const updatedManifest = { ...manifest, ...metadata };
       await writeFile(manifestPath, `${JSON.stringify(updatedManifest, null, 2)}\n`, "utf8");
-      return sendJson(response, 200, {
-        widget: {
-          id: widgetInfo.id,
-          name,
-          description,
-          icon,
-          archived: Boolean(updatedManifest.archived),
-          order: Number(updatedManifest.order) || 100
-        }
-      });
+      return sendJson(response, 200, { widget: widgetFromManifest(widgetInfo.id, updatedManifest) });
+    }
+
+    if (request.method === "DELETE" && url.pathname === "/api/widget") {
+      const widgetInfo = await getWidgetInfo(url.searchParams.get("id"));
+      if (!widgetInfo) return sendJson(response, 404, { error: "Widget introuvable" });
+      if ((await listWidgets()).length <= 1) {
+        return sendJson(response, 400, { error: "Impossible de supprimer le dernier widget" });
+      }
+      await rm(widgetInfo.directory, { recursive: true, force: true });
+      return sendJson(response, 200, { deleted: true, widgetId: widgetInfo.id });
     }
 
     if (request.method === "GET" && url.pathname === "/api/state") {
@@ -197,6 +212,105 @@ server.listen(port, "127.0.0.1", () => {
 
 if (config.channelId && config.token) connectAstro();
 
+const WIDGET_TEMPLATE_FIELDS = [
+  { name: "message", type: "textfield", label: "Message", value: "Nouveau widget" },
+  { name: "textColor", type: "colorpicker", label: "Couleur du texte", value: "#FFFFFF" },
+  { name: "fontSize", type: "number", label: "Taille du texte (px)", value: "28" }
+];
+
+const WIDGET_TEMPLATE_FILES = {
+  "widget.html": '<div id="widget-message" class="widget-message">{{message}}</div>\n',
+  "widget.css": [
+    ".widget-message {",
+    "  display: flex;",
+    "  align-items: center;",
+    "  justify-content: center;",
+    "  height: 100%;",
+    "  margin: 0;",
+    "  color: {{textColor}};",
+    '  font-family: "Inter", sans-serif;',
+    "  font-size: {{fontSize}}px;",
+    "  font-weight: 600;",
+    "  text-align: center;",
+    "}",
+    ""
+  ].join("\n"),
+  "widget.streamelements.js": [
+    'window.addEventListener("onWidgetLoad", (obj) => {',
+    '  console.log("Widget charge", obj.detail.fieldData);',
+    "});",
+    "",
+    'window.addEventListener("onEventReceived", (obj) => {',
+    '  console.log("Evenement recu", obj.detail.listener, obj.detail.event);',
+    "});",
+    ""
+  ].join("\n"),
+  "fields.streamelements.json": `${JSON.stringify(WIDGET_TEMPLATE_FIELDS, null, 2)}\n`,
+  "widget.streamlabs.js": [
+    'document.addEventListener("onLoad", (obj) => {',
+    '  console.log("Widget charge", obj.detail.fieldData);',
+    "});",
+    "",
+    'document.addEventListener("onEventReceived", (obj) => {',
+    '  console.log("Evenement recu", obj.detail);',
+    "});",
+    ""
+  ].join("\n"),
+  "fields.streamlabs.json": `${JSON.stringify(
+    Object.fromEntries(WIDGET_TEMPLATE_FIELDS.map(({ name, ...definition }) => [name, definition])),
+    null,
+    2
+  )}\n`
+};
+
+function parseWidgetMetadataInput(body) {
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const description = typeof body.description === "string" ? body.description.trim() : "";
+  const icon = typeof body.icon === "string" ? body.icon.trim() : "";
+  if (!name || name.length > 60) throw new Error("Le nom doit contenir entre 1 et 60 caracteres");
+  if (description.length > 140) throw new Error("La description est limitee a 140 caracteres");
+  if (!/^[a-z0-9_]{1,40}$/.test(icon)) throw new Error("Icone Material invalide");
+  return { name, description, icon };
+}
+
+function slugify(value) {
+  const slug = value
+    .normalize("NFD")
+    .replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "widget";
+}
+
+function uniqueWidgetId(base, existingIds) {
+  let candidate = base;
+  let suffix = 2;
+  while (existingIds.has(candidate)) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+async function createWidgetFiles(directory) {
+  await mkdir(directory);
+  await Promise.all(
+    Object.entries(WIDGET_TEMPLATE_FILES).map(([file, content]) => writeFile(join(directory, file), content, "utf8"))
+  );
+}
+
+function widgetFromManifest(id, manifest) {
+  return {
+    id,
+    name: manifest.name || id,
+    description: manifest.description || "",
+    icon: manifest.icon || "widgets",
+    archived: Boolean(manifest.archived),
+    order: Number(manifest.order) || 100
+  };
+}
+
 async function listWidgets() {
   const directories = await readdir(WIDGETS_ROOT, { withFileTypes: true });
   const widgets = [];
@@ -206,14 +320,7 @@ async function listWidgets() {
     const manifestPath = join(WIDGETS_ROOT, directory.name, "widget.json");
     if (!existsSync(manifestPath)) continue;
     const manifest = await readJson(manifestPath);
-    widgets.push({
-      id: directory.name,
-      name: manifest.name || directory.name,
-      description: manifest.description || "",
-      icon: manifest.icon || "widgets",
-      archived: Boolean(manifest.archived),
-      order: Number(manifest.order) || 100
-    });
+    widgets.push(widgetFromManifest(directory.name, manifest));
   }
 
   return widgets.sort((left, right) =>
@@ -223,8 +330,11 @@ async function listWidgets() {
 
 async function getWidgetInfo(widgetId) {
   if (typeof widgetId !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(widgetId)) return null;
-  const widget = (await listWidgets()).find(entry => entry.id === widgetId);
-  return widget ? { ...widget, directory: join(WIDGETS_ROOT, widget.id) } : null;
+  const directory = join(WIDGETS_ROOT, widgetId);
+  const manifestPath = join(directory, "widget.json");
+  if (!existsSync(manifestPath)) return null;
+  const manifest = await readJson(manifestPath);
+  return { ...widgetFromManifest(widgetId, manifest), directory };
 }
 
 async function loadWidget(widgetInfo, platform = "streamelements") {

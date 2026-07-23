@@ -12,9 +12,11 @@ const elements = {
   fields: document.querySelector("#fields-form"),
   widgetList: document.querySelector("#widget-list"),
   widgetCount: document.querySelector("#widget-count"),
+  addWidgetButton: document.querySelector("#add-widget"),
   sidebarSections: document.querySelectorAll("[data-sidebar-section]"),
   widgetSettingsDialog: document.querySelector("#widget-settings-dialog"),
   widgetSettingsForm: document.querySelector("#widget-settings-form"),
+  widgetSettingsTitle: document.querySelector("#widget-settings-title"),
   widgetSettingsId: document.querySelector("#widget-settings-id"),
   widgetSettingsName: document.querySelector("#widget-settings-name"),
   widgetSettingsDescription: document.querySelector("#widget-settings-description"),
@@ -44,6 +46,8 @@ const elements = {
   exportMenuItems: document.querySelectorAll("[data-export-action]"),
   exportConvertLabel: document.querySelector("#export-convert-label"),
   editor: document.querySelector("#widget-code-editor"),
+  editorHighlight: document.querySelector("#widget-code-highlight"),
+  editorHighlightCode: document.querySelector("#widget-code-highlight code"),
   editorTabs: document.querySelectorAll("[data-editor-file]"),
   editorStatus: document.querySelector("#editor-status"),
   editorFilename: document.querySelector("#editor-filename"),
@@ -57,6 +61,7 @@ let widgetCatalog = [];
 let activeWidgetId = "";
 let widgetSwitching = false;
 let selectedWidgetIcon = "widgets";
+let widgetSettingsMode = "edit";
 let fieldData = {};
 let session = {};
 let channel = { id: "local-channel", username: "MaChaine" };
@@ -133,12 +138,79 @@ let previewSize = loadPreviewSize();
 let previewTheme = loadPreviewTheme();
 let previewPlatform = normalizePlatform(localStorage.getItem(previewPlatformStorageKey));
 
+function buildTokenizer(rules) {
+  const pattern = rules.map(([, source], index) => `(?<t${index}>${source})`).join("|");
+  const regex = new RegExp(pattern, "g");
+  return function highlight(source) {
+    let output = "";
+    let lastIndex = 0;
+    let match;
+    regex.lastIndex = 0;
+    while ((match = regex.exec(source))) {
+      if (match.index > lastIndex) output += escapeHtml(source.slice(lastIndex, match.index));
+      const typeIndex = rules.findIndex((_, index) => match.groups[`t${index}`] !== undefined);
+      output += `<span class="tok-${rules[typeIndex][0]}">${escapeHtml(match[0])}</span>`;
+      lastIndex = match.index + match[0].length;
+      if (match[0].length === 0) regex.lastIndex += 1;
+    }
+    output += escapeHtml(source.slice(lastIndex));
+    return output;
+  };
+}
+
+const TEMPLATE_TOKEN = ["template", String.raw`\{\{\s*[\w.-]+\s*\}\}`];
+
+const EDITOR_HIGHLIGHTERS = {
+  html: buildTokenizer([
+    ["comment", String.raw`<!--[\s\S]*?-->`],
+    TEMPLATE_TOKEN,
+    ["string", String.raw`"[^"]*"|'[^']*'`],
+    ["tag", String.raw`</?[a-zA-Z][\w:-]*`],
+    ["attr", String.raw`[a-zA-Z_:][\w:-]*(?=\s*=)`]
+  ]),
+  css: buildTokenizer([
+    ["comment", String.raw`/\*[\s\S]*?\*/`],
+    TEMPLATE_TOKEN,
+    ["string", String.raw`"[^"]*"|'[^']*'`],
+    ["keyword", String.raw`@[a-zA-Z-]+`],
+    ["number", String.raw`#[0-9a-fA-F]{3,8}\b|-?\b\d+\.?\d*(px|em|rem|%|deg|ms|s|vh|vw|fr)?\b`],
+    ["attr", String.raw`[a-zA-Z-]+(?=\s*:)`]
+  ]),
+  js: buildTokenizer([
+    ["comment", String.raw`//[^\n]*|/\*[\s\S]*?\*/`],
+    TEMPLATE_TOKEN,
+    ["string", String.raw`\`(?:\\.|[^\`\\])*\`|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'`],
+    ["bool", String.raw`\b(?:true|false|null|undefined)\b`],
+    ["keyword", String.raw`\b(?:const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|class|extends|super|this|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|default|from|delete|void|static|get|set)\b`],
+    ["number", String.raw`\b\d+\.?\d*(?:[eE][+-]?\d+)?\b`]
+  ]),
+  fields: buildTokenizer([
+    ["key", String.raw`"(?:\\.|[^"\\])*"(?=\s*:)`],
+    ["string", String.raw`"(?:\\.|[^"\\])*"`],
+    ["bool", String.raw`\btrue\b|\bfalse\b|\bnull\b`],
+    ["number", String.raw`-?\b\d+\.?\d*(?:[eE][+-]?\d+)?\b`]
+  ])
+};
+
+function renderEditorHighlight() {
+  if (!elements.editorHighlightCode) return;
+  const highlight = EDITOR_HIGHLIGHTERS[activeEditorFile] || EDITOR_HIGHLIGHTERS.js;
+  elements.editorHighlightCode.innerHTML = highlight(elements.editor.value);
+}
+
+function syncEditorScroll() {
+  if (!elements.editorHighlight) return;
+  elements.editorHighlight.scrollTop = elements.editor.scrollTop;
+  elements.editorHighlight.scrollLeft = elements.editor.scrollLeft;
+}
+
 initializePreviewPlatform();
 initializeExportMenu();
 initializePreviewControls();
 initializePreviewTheme();
 initializeSidebarSections();
 initializeWidgetSettings();
+initializeWidgetLibraryMenu();
 await initialize();
 
 function loadPreviewSize() {
@@ -378,17 +450,34 @@ function initializeWidgetSettings() {
     event.preventDefault();
     void saveWidgetMetadata();
   });
+  elements.addWidgetButton.addEventListener("click", () => openWidgetCreation());
 }
 
 function openWidgetSettings(entry) {
+  widgetSettingsMode = "edit";
   elements.widgetSettingsId.value = entry.id;
   elements.widgetSettingsName.value = entry.name;
   elements.widgetSettingsDescription.value = entry.description || "";
   setWidgetSettingsMessage("");
   selectWidgetIcon(entry.icon || "widgets");
+  elements.widgetSettingsTitle.textContent = "Modifier le widget";
+  elements.saveWidgetSettings.textContent = "Enregistrer";
   elements.widgetSettingsDialog.showModal();
   elements.widgetSettingsName.focus();
   elements.widgetSettingsName.select();
+}
+
+function openWidgetCreation() {
+  widgetSettingsMode = "create";
+  elements.widgetSettingsId.value = "";
+  elements.widgetSettingsName.value = "";
+  elements.widgetSettingsDescription.value = "";
+  setWidgetSettingsMessage("");
+  selectWidgetIcon("widgets");
+  elements.widgetSettingsTitle.textContent = "Nouveau widget";
+  elements.saveWidgetSettings.textContent = "Créer";
+  elements.widgetSettingsDialog.showModal();
+  elements.widgetSettingsName.focus();
 }
 
 function selectWidgetIcon(iconName) {
@@ -406,6 +495,7 @@ function setWidgetSettingsMessage(message, state = "") {
 }
 
 async function saveWidgetMetadata() {
+  const isCreating = widgetSettingsMode === "create";
   const widgetId = elements.widgetSettingsId.value;
   const name = elements.widgetSettingsName.value.trim();
   const description = elements.widgetSettingsDescription.value.trim();
@@ -415,23 +505,39 @@ async function saveWidgetMetadata() {
   }
 
   elements.saveWidgetSettings.disabled = true;
-  elements.saveWidgetSettings.textContent = "Enregistrement…";
-  setWidgetSettingsMessage("Enregistrement en cours…");
+  elements.saveWidgetSettings.textContent = isCreating ? "Création…" : "Enregistrement…";
+  setWidgetSettingsMessage(isCreating ? "Création en cours…" : "Enregistrement en cours…");
   try {
-    const response = await fetch("/api/widget/metadata", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ widgetId, name, description, icon: selectedWidgetIcon })
-    });
+    const response = isCreating
+      ? await fetch("/api/widgets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, description, icon: selectedWidgetIcon })
+        })
+      : await fetch("/api/widget/metadata", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ widgetId, name, description, icon: selectedWidgetIcon })
+        });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       const message = response.status === 405
-        ? "Le serveur local doit être redémarré pour activer l’enregistrement des informations."
+        ? "Le serveur local doit être redémarré pour activer cette fonctionnalité."
         : body.error || `Erreur HTTP ${response.status}`;
       throw new Error(message);
     }
 
     const { widget: updatedWidget } = await response.json();
+
+    if (isCreating) {
+      widgetCatalog = [...widgetCatalog, updatedWidget];
+      renderWidgetLibrary();
+      elements.widgetSettingsDialog.close();
+      showToast(`${updatedWidget.name} créé`);
+      await switchWidget(updatedWidget.id);
+      return;
+    }
+
     widgetCatalog = widgetCatalog.map(entry =>
       entry.id === updatedWidget.id ? { ...entry, ...updatedWidget } : entry
     );
@@ -447,7 +553,7 @@ async function saveWidgetMetadata() {
     setWidgetSettingsMessage(error.message, "error");
   } finally {
     elements.saveWidgetSettings.disabled = false;
-    elements.saveWidgetSettings.textContent = "Enregistrer";
+    elements.saveWidgetSettings.textContent = isCreating ? "Créer" : "Enregistrer";
   }
 }
 
@@ -533,17 +639,99 @@ function renderWidgetLibrary() {
     button.append(icon, copy, status);
     button.addEventListener("click", () => void switchWidget(entry.id));
 
-    const editButton = document.createElement("button");
-    editButton.type = "button";
-    editButton.className = "widget-library__edit";
-    editButton.disabled = widgetSwitching || platformSwitching;
-    editButton.title = `Modifier ${entry.name}`;
-    editButton.setAttribute("aria-label", `Modifier ${entry.name}`);
-    editButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">edit</span>';
-    editButton.addEventListener("click", () => openWidgetSettings(entry));
+    const menu = document.createElement("div");
+    menu.className = "widget-library__menu";
 
-    row.append(button, editButton);
+    const menuTrigger = document.createElement("button");
+    menuTrigger.type = "button";
+    menuTrigger.className = "widget-library__options";
+    menuTrigger.disabled = widgetSwitching || platformSwitching;
+    menuTrigger.title = `Options de ${entry.name}`;
+    menuTrigger.setAttribute("aria-label", `Options de ${entry.name}`);
+    menuTrigger.setAttribute("aria-haspopup", "menu");
+    menuTrigger.setAttribute("aria-expanded", "false");
+    menuTrigger.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">more_vert</span>';
+
+    const menuPanel = document.createElement("div");
+    menuPanel.className = "widget-library__options-panel";
+    menuPanel.setAttribute("role", "menu");
+    menuPanel.hidden = true;
+
+    const editItem = document.createElement("button");
+    editItem.type = "button";
+    editItem.className = "widget-library__options-item";
+    editItem.setAttribute("role", "menuitem");
+    editItem.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">edit</span><span>Modifier</span>';
+    editItem.addEventListener("click", () => {
+      closeWidgetMenus();
+      openWidgetSettings(entry);
+    });
+
+    const deleteItem = document.createElement("button");
+    deleteItem.type = "button";
+    deleteItem.className = "widget-library__options-item is-danger";
+    deleteItem.setAttribute("role", "menuitem");
+    deleteItem.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">delete</span><span>Supprimer</span>';
+    deleteItem.addEventListener("click", () => {
+      closeWidgetMenus();
+      void deleteWidgetEntry(entry);
+    });
+
+    menuPanel.append(editItem, deleteItem);
+    menuTrigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const wasOpen = menuTrigger.getAttribute("aria-expanded") === "true";
+      closeWidgetMenus();
+      if (!wasOpen) {
+        menuPanel.hidden = false;
+        menuTrigger.setAttribute("aria-expanded", "true");
+      }
+    });
+    menu.append(menuTrigger, menuPanel);
+
+    row.append(button, menu);
     elements.widgetList.append(row);
+  }
+}
+
+function closeWidgetMenus() {
+  for (const trigger of elements.widgetList.querySelectorAll(".widget-library__options[aria-expanded='true']")) {
+    trigger.setAttribute("aria-expanded", "false");
+    trigger.nextElementSibling.hidden = true;
+  }
+}
+
+function initializeWidgetLibraryMenu() {
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".widget-library__menu")) closeWidgetMenus();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeWidgetMenus();
+  });
+}
+
+async function deleteWidgetEntry(entry) {
+  if (widgetCatalog.length <= 1) {
+    showToast("Impossible de supprimer le dernier widget.");
+    return;
+  }
+  if (!window.confirm(`Supprimer définitivement « ${entry.name} » ? Cette action est irréversible.`)) return;
+
+  try {
+    const response = await fetch(`/api/widget?id=${encodeURIComponent(entry.id)}`, { method: "DELETE" });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `Erreur HTTP ${response.status}`);
+    }
+    widgetCatalog = widgetCatalog.filter(item => item.id !== entry.id);
+    renderWidgetLibrary();
+    showToast(`${entry.name} supprimé`);
+    if (activeWidgetId === entry.id) {
+      const nextId = widgetCatalog[0]?.id;
+      if (nextId) await switchWidget(nextId);
+    }
+  } catch (error) {
+    showToast(`Suppression impossible : ${error.message}`);
   }
 }
 
@@ -596,11 +784,14 @@ function initializeWidgetEditor() {
     tab.addEventListener("click", () => selectEditorFile(tab.dataset.editorFile));
   }
 
+  elements.editor.addEventListener("scroll", syncEditorScroll);
+
   elements.editor.addEventListener("input", () => {
     const file = activeEditorFile;
     const content = elements.editor.value;
     editorSources[file] = content;
     setEditorFileState(file, "dirty", "Modifié");
+    renderEditorHighlight();
 
     clearTimeout(editorApplyTimer);
     editorApplyTimer = setTimeout(() => {
@@ -646,6 +837,7 @@ function selectEditorFile(file) {
   elements.editor.setAttribute("aria-label", editorFiles[file].label);
   elements.editorFilename.textContent = editorFiles[file].filename;
   renderEditorFileState(file);
+  renderEditorHighlight();
   elements.editor.focus();
 }
 
@@ -673,6 +865,7 @@ function syncWidgetEditorSources({ force = false } = {}) {
   elements.editorFilename.textContent = editorFiles[activeEditorFile].filename;
   elements.editor.setAttribute("aria-label", editorFiles[activeEditorFile].label);
   renderEditorFileState(activeEditorFile);
+  renderEditorHighlight();
 }
 
 function configureEditorFiles(widgetData) {

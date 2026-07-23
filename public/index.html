@@ -112,6 +112,10 @@
           </summary>
           <div class="sidebar-section__body">
             <div class="widget-library" id="widget-list" aria-label="Bibliothèque de widgets"></div>
+            <button class="button button--wide widget-library__add" id="add-widget" type="button">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              <span>Ajouter un widget</span>
+            </button>
           </div>
         </details>
         <details class="sidebar-section" data-sidebar-section="fields" open>
@@ -201,6 +205,7 @@
             <button class="editor-tab" type="button" role="tab" aria-selected="false" data-editor-file="fields">Fields</button>
           </div>
           <div class="widget-editor__body">
+            <pre class="widget-code-highlight" id="widget-code-highlight" aria-hidden="true"><code></code></pre>
             <textarea
               id="widget-code-editor"
               class="widget-code-editor"
