@@ -48,7 +48,7 @@ test("démarre avec un payload StreamElements et réconcilie un follow", async (
   const source = await readFile(new URL("../widget/zer0oes-goal-bar/widget.streamelements.js", import.meta.url), "utf8");
   const listeners = {};
   const cssVariables = {};
-  const makeElement = () => ({ style: {}, textContent: "", clientWidth: 260 });
+  const makeElement = () => ({ style: {}, dataset: {}, textContent: "", clientWidth: 260 });
   const elements = Object.fromEntries([
     "googleFontLink",
     "fill",
