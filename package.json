@@ -1,0 +1,19 @@
+{
+  "name": "stream-widget-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bac a sable local pour developper des Custom Widgets StreamElements et StreamLabs sans modifier les overlays publies.",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "jquery": "^3.7.1",
+    "ws": "^8.18.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

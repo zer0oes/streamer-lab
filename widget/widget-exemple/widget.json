@@ -1,0 +1,7 @@
+{
+  "id": "widget-exemple",
+  "name": "Widget Exemple",
+  "description": "Exemple de widget",
+  "icon": "bolt",
+  "order": 20
+}

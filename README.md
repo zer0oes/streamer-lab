@@ -1,0 +1,114 @@
+# Local Widget Lab
+
+Un environnement local pour développer et tester des **Custom Widgets StreamElements et Streamlabs** sans modifier un overlay déjà publié.
+
+Le widget s’exécute dans une iframe isolée et reçoit les mêmes événements navigateur que sur StreamElements :
+
+- `onWidgetLoad` avec `fieldData`, `session`, `recents`, `currency` et `channel` ;
+- `onEventReceived` pour les follows, abonnements, dons, cheers, raids, messages et boutons ;
+- `onSessionUpdate` après une modification de session ;
+- une émulation locale des fonctions courantes de `SE_API`, notamment le store persistant.
+
+Le serveur peut également relayer les événements réels du canal via le gateway WebSocket Astro. Le jeton reste dans le processus Node local : il n’est ni envoyé à l’iframe, ni enregistré dans le navigateur.
+
+## Démarrage
+
+Prérequis : Node.js 18 ou plus récent.
+
+```powershell
+npm install
+npm run dev
+```
+
+Ouvrir ensuite [http://localhost:4173](http://localhost:4173).
+
+Le mode simulation fonctionne immédiatement. La bibliothèque située dans `widget/` rassemble tous les widgets dans des sous-dossiers. Les changements apportés au widget actif déclenchent automatiquement un rechargement de l’aperçu, sans dépendre du mode `node --watch` de Node.
+
+L’éditeur intégré, placé entre l’aperçu et la console, permet aussi de modifier directement les quatre fichiers utilisés par la plateforme active. L’aperçu est actualisé pendant la saisie et les changements sont enregistrés automatiquement dans `widget/`. `Ctrl + S` force l’enregistrement immédiat. L’onglet **Fields** vérifie que le JSON est valide avant toute sauvegarde.
+
+## Choisir la plateforme simulée
+
+Le sélecteur placé dans l’en-tête permet de passer d’un environnement à l’autre :
+
+- **StreamElements** : événements `onWidgetLoad`, `onEventReceived` et `onSessionUpdate` sur `window`, payload `{ listener, event }` et émulation de `SE_API` ;
+- **Streamlabs** : événement `onLoad` avec `detail.custom_json`, puis `onEventReceived` sur `document` avec l’événement directement dans `detail`.
+
+Le choix est mémorisé dans le navigateur. Il sélectionne également la version locale de **JS** et de **Fields** correspondante. Les simulations Follow, Sub, Tip, Bits, Raid et Chat utilisent le format de la plateforme sélectionnée.
+
+Le menu d’export génère une archive ZIP prête à copier dans l’éditeur de la plateforme active, ou permet de la convertir directement pour l’autre plateforme. Elle contient les quatre onglets, les valeurs de champs actuellement réglées et un fichier d’instructions. Lorsque le code utilise uniquement les événements de l’autre plateforme, un pont de compatibilité est automatiquement ajouté au début du JavaScript exporté.
+
+## Développer un widget
+
+Chaque widget possède son propre dossier, accompagné d’un fichier `widget.json` qui définit son nom, sa description et son icône. La bibliothèque dans le panneau de gauche permet de passer de l’un à l’autre sans déplacer de fichiers. Le crayon placé sur chaque entrée permet de modifier ces informations et de choisir visuellement une icône Material. Les sections **Mes widgets** et **Champs** peuvent être repliées ; leur état est mémorisé dans le navigateur.
+
+Par exemple, le dossier `widget/zer0oes-goal-bar/` contient :
+
+| Fichier local | Plateforme | Onglet |
+|---|---|---|
+| `widget.html` | Commun | HTML |
+| `widget.css` | Commun | CSS |
+| `widget.streamelements.js` | StreamElements | JS |
+| `fields.streamelements.json` | StreamElements | FIELDS |
+| `widget.streamlabs.js` | Streamlabs | JS |
+| `fields.streamlabs.json` | Streamlabs | FIELDS |
+
+Le widget d’exemple affiche le dernier événement avec une animation. Il peut être remplacé sans modifier le code du laboratoire.
+
+Les valeurs de champs sont disponibles via `event.detail.fieldData` et les formes `{{nomDuChamp}}` / `{nomDuChamp}` sont remplacées dans le HTML, le CSS et le JavaScript. Les valeurs modifiées dans l’interface locale sont conservées dans le stockage du navigateur.
+
+Les données initiales de session se trouvent dans `mocks/session.json`. Le panneau **Événement JSON personnalisé** permet d’envoyer directement le contenu de `detail` attendu par `onEventReceived`.
+
+## Recevoir les événements réels
+
+1. Copier le fichier d’exemple :
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+2. Dans le dashboard StreamElements, sélectionner le bon compte/canal puis copier son JWT ou son Overlay Token.
+
+3. Renseigner au minimum :
+
+   ```dotenv
+   SE_CHANNEL_ID=identifiant_interne_du_canal
+   SE_CHANNEL_NAME=NomDeLaChaine
+   SE_TOKEN=le_jeton
+   SE_TOKEN_TYPE=jwt
+   ```
+
+4. Redémarrer `npm run dev`.
+
+Le statut en haut à droite devient `connected`. Les sujets configurés par défaut sont :
+
+- `channel.activities` ;
+- `channel.session.update` ;
+- `channel.session.reset` ;
+- `channel.chat.message`.
+
+Ils sont modifiables avec `SE_TOPICS`. Le jeton doit disposer des scopes correspondant aux sujets demandés (`activities:read`, `session:read`, `overlays:read`, etc.). Si un abonnement est refusé, le détail apparaît dans le statut de l’interface.
+
+> Ne jamais versionner `.env` ni exposer le JWT/Overlay Token. `.env` est déjà ignoré par Git.
+
+## Compatibilité et limites
+
+- jQuery est chargé avant le code du widget, comme dans l’environnement StreamElements.
+- `SE_API.store.get/set`, `getOverlayStatus`, `setField`, `resumeQueue`, `sanitize`, `cheerFilter` et `counters.get` possèdent une émulation locale. Les compteurs renvoient actuellement `0`, et la reprise de queue est simulée.
+- Les payloads chat Astro Twitch, YouTube et Kick sont normalisés vers la forme historique `obj.detail.event.data`. Le payload original reste disponible dans `_raw`.
+- Le laboratoire ne publie rien sur StreamElements. La mise en production reste volontaire : copier les quatre fichiers dans un nouveau Custom Widget, valider, puis seulement remplacer le widget utilisé par l’overlay.
+
+## Vérification
+
+```powershell
+npm test
+```
+
+Les tests couvrent la conversion des activités, des mises à jour de session et des messages chat Astro.
+
+## Références officielles
+
+- [Événements des Custom Widgets](https://docs.streamelements.com/overlays/events)
+- [Structure et champs personnalisés](https://docs.streamelements.com/overlays/widget-structure)
+- [WebSockets Astro](https://docs.streamelements.com/websockets)
+- [Sujets WebSocket disponibles](https://docs.streamelements.com/websockets/topics)
+- [Custom Widgets Streamlabs](https://support.streamlabs.com/hc/en-us/articles/46771000147739-How-to-Get-Started-with-Streamlabs-Custom-Widgets)

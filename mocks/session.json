@@ -1,0 +1,16 @@
+{
+  "follower-latest": { "name": "Camille" },
+  "follower-session": { "count": 42 },
+  "follower-total": { "count": 942 },
+  "subscriber-latest": { "name": "Alex", "amount": 1 },
+  "subscriber-session": { "count": 8 },
+  "subscriber-total": { "count": 32 },
+  "tip-latest": { "name": "Morgan", "amount": 12.5, "message": "Super stream !" },
+  "tip-session": { "amount": 86.4 },
+  "tip-total": { "amount": 1286.4 },
+  "tip-session-top-donator": { "name": "Morgan", "amount": 50 },
+  "cheer-latest": { "name": "Sacha", "amount": 250 },
+  "cheer-session": { "amount": 1750 },
+  "cheer-total": { "amount": 8250 },
+  "raid-latest": { "name": "Charlie", "amount": 37 }
+}

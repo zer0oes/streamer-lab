@@ -1,0 +1,205 @@
+{
+  "widgetName": {
+    "type": "hidden",
+    "value": "Nova Goal Bar"
+  },
+  "font_family": {
+    "type": "dropdown",
+    "label": "Typo (Google Fonts)",
+    "value": "Poppins",
+    "options": {
+      "Poppins": "Poppins",
+      "Inter": "Inter",
+      "Montserrat": "Montserrat",
+      "Roboto": "Roboto"
+    },
+    "group": "Apparence"
+  },
+  "font_weight": {
+    "type": "dropdown",
+    "label": "Poids du titre",
+    "value": "500",
+    "options": {
+      "400": "Regular (400)",
+      "500": "Medium (500)",
+      "600": "SemiBold (600)",
+      "700": "Bold (700)",
+      "800": "ExtraBold (800)"
+    },
+    "group": "Apparence"
+  },
+  "title_size": {
+    "type": "number",
+    "label": "Taille du titre (px)",
+    "value": 16,
+    "min": 10,
+    "max": 40,
+    "step": 1,
+    "group": "Apparence",
+    "steps": 1
+  },
+  "value_size": {
+    "type": "number",
+    "label": "Taille des valeurs (px)",
+    "value": 18,
+    "min": 10,
+    "max": 50,
+    "step": 1,
+    "group": "Apparence",
+    "steps": 1
+  },
+  "width": {
+    "type": "number",
+    "label": "Largeur de la barre (px)",
+    "value": 402,
+    "min": 200,
+    "max": 1920,
+    "step": 10,
+    "group": "Apparence",
+    "steps": 10
+  },
+  "height": {
+    "type": "number",
+    "label": "Hauteur de la barre (px)",
+    "value": 38,
+    "min": 24,
+    "max": 80,
+    "step": 2,
+    "group": "Apparence",
+    "steps": 2
+  },
+  "right_width": {
+    "type": "number",
+    "label": "Largeur bloc objectif (px)",
+    "value": 140,
+    "min": 100,
+    "max": 400,
+    "step": 10,
+    "group": "Apparence",
+    "steps": 10
+  },
+  "goal_type": {
+    "type": "dropdown",
+    "label": "Type de goal",
+    "value": "tips",
+    "options": {
+      "follows": "Follows",
+      "subs": "Subs",
+      "cheers": "Cheer (bits)",
+      "tips": "Tip (donations)"
+    },
+    "group": "Réglages"
+  },
+  "title": {
+    "type": "textfield",
+    "label": "Titre de la barre",
+    "value": "Donation goal",
+    "group": "Réglages"
+  },
+  "goal_total": {
+    "type": "number",
+    "label": "Objectif total",
+    "value": 500,
+    "min": 1,
+    "max": 999999,
+    "step": 1,
+    "group": "Réglages",
+    "steps": 1
+  },
+  "follows_source": {
+    "type": "dropdown",
+    "label": "Followers : source du compteur",
+    "value": "auto",
+    "options": {
+      "auto": "Auto (StreamElements)",
+      "manual": "Manuel"
+    },
+    "group": "Followers"
+  },
+  "follows_manual_base": {
+    "type": "number",
+    "label": "Followers actuels (base manuelle)",
+    "value": 900,
+    "min": 0,
+    "max": 999999,
+    "step": 1,
+    "group": "Followers",
+    "steps": 1
+  },
+  "persist_follows_live": {
+    "type": "dropdown",
+    "label": "Followers : incrémenter en live via events",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Followers"
+  },
+  "subs_source": {
+    "type": "dropdown",
+    "label": "Subs : source du compteur",
+    "value": "auto",
+    "options": {
+      "auto": "Auto (StreamElements)",
+      "manual": "Manuel (Twitch)"
+    },
+    "group": "Sub"
+  },
+  "subs_manual_base": {
+    "type": "number",
+    "label": "Subs actuels (base manuelle)",
+    "value": 24,
+    "min": 0,
+    "max": 999999,
+    "step": 1,
+    "group": "Sub",
+    "steps": 1
+  },
+  "persist_subs_live": {
+    "type": "dropdown",
+    "label": "Subs : incrémenter en live via events",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Sub"
+  },
+  "monthly_reset": {
+    "type": "dropdown",
+    "label": "Reset mensuel auto (Tips)",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Tips"
+  },
+  "tips_carry_until_goal": {
+    "type": "dropdown",
+    "label": "Tips : conserver le montant tant que l’objectif n’est pas atteint",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Tips"
+  },
+  "tips_start_date": {
+    "type": "textfield",
+    "label": "Date de départ (YYYY-MM-DD)",
+    "value": "2025-12-01",
+    "group": "Tips"
+  },
+  "tips_start": {
+    "type": "number",
+    "label": "Montant de départ à cette date (€)",
+    "value": 0,
+    "min": 0,
+    "max": 999999,
+    "step": 1,
+    "group": "Tips",
+    "steps": 1
+  }
+}

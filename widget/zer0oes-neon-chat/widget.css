@@ -1,0 +1,331 @@
+@import url("https://fonts.googleapis.com/css2?family={fontFamily}:wght@300;400;500;600&display=swap");
+
+:root {
+  --font-family: "{fontFamily}", sans-serif;
+  --font-size: {fontSize}px;
+  --font-weight: {fontWeight};
+  --text-color: {textColor};
+  --bubble-background: {bubbleBackground};
+  --bubble-background-2: {bubbleBackground2};
+  --bubble-background-alpha: var(--bubble-background);
+  --bubble-background-2-alpha: var(--bubble-background-2);
+  --bubble-border-alpha: var(--bubble-border);
+  --bubble-border: {bubbleBorder};
+  --message-spacing: {messageSpacing}px;
+  --pointer-gap: {pointerGap}px;
+  --animation-duration: {animationDuration}ms;
+  --entry-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --padding-y: 0.48rem;
+  --padding-x: 0.8rem;
+  --radius: 11px;
+  --pointer-width: 8px;
+  --row-gap: calc(var(--pointer-width) + var(--pointer-gap));
+  --line-height: 1.2;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  color: var(--text-color);
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  font-weight: var(--font-weight);
+}
+
+#chat {
+  position: absolute;
+  inset: 18px 24px 18px 18px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--message-spacing);
+
+  overflow: visible;
+}
+
+.chat-row {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  align-self: flex-start;
+  gap: var(--row-gap);
+  max-width: 100%;
+
+}
+
+.chat-row.is-broadcaster {
+  width: 100%;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  align-self: stretch;
+}
+
+.identity,
+.message-bubble {
+  min-width: 0;
+  padding: var(--padding-y) var(--padding-x);
+
+  color: var(--text-color);
+  font: inherit;
+  line-height: var(--line-height);
+  border: 1px solid;
+  border-radius: var(--radius);
+}
+
+.identity {
+  position: relative;
+
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.3em;
+
+  overflow: hidden;
+  white-space: nowrap;
+  background:
+    linear-gradient(105deg, var(--role-start-soft), var(--role-end-soft));
+  border-color: var(--role-border);
+  box-shadow:
+    0 0 10px var(--role-start-glow),
+    0 0 16px var(--role-end-glow),
+    inset 0 0 8px rgba(89, 0, 255, 0.1);
+  backdrop-filter: blur(3px);
+
+  animation:
+    identity-in var(--animation-duration) var(--entry-easing) both,
+    fade-in var(--animation-duration) linear both;
+}
+
+.chat-row.is-broadcaster .identity {
+  animation-name: identity-in-broadcaster, fade-in;
+}
+
+.username {
+  overflow: hidden;
+  max-width: 145px;
+  text-overflow: ellipsis;
+}
+
+.badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22em;
+  line-height: 1;
+}
+
+.badge {
+  display: block;
+  flex: 0 0 auto;
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+}
+
+.message-bubble {
+  position: relative;
+
+  flex: 0 1 auto;
+  overflow-wrap: anywhere;
+  background: linear-gradient(105deg, var(--bubble-background-alpha), var(--bubble-background-2-alpha));
+  border-color: var(--bubble-border);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.14),
+    0 0 10px rgba(89, 0, 255, 0.08);
+  backdrop-filter: blur(3px);
+
+  animation:
+    bubble-in var(--animation-duration) var(--entry-easing) max(0ms, calc(var(--animation-duration) - 140ms)) both,
+    fade-in var(--animation-duration) linear max(0ms, calc(var(--animation-duration) - 140ms)) both;
+}
+
+.chat-row.is-broadcaster .message-bubble {
+  animation-name: bubble-in-broadcaster, fade-in;
+}
+
+.message-bubble::before,
+.message-bubble::after {
+  position: absolute;
+  top: calc(var(--padding-y) + 0.6em);
+
+  border: 0;
+  transform: translateY(-50%);
+
+  content: "";
+}
+
+.message-bubble::before {
+  left: calc(-1 * var(--pointer-width));
+  width: var(--pointer-width);
+  height: 14px;
+  background: var(--bubble-background-alpha);
+  clip-path: polygon(100% 0, 0 50%, 100% 100%);
+  filter: drop-shadow(0 0 0.6px var(--bubble-border-alpha));
+  backdrop-filter: blur(3px);
+}
+
+.message-bubble::after {
+  display: none;
+}
+
+.chat-row.is-broadcaster .message-bubble::before {
+  right: calc(-1 * var(--pointer-width));
+  left: auto;
+  background: var(--bubble-background-2-alpha);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.message-content {
+  white-space: pre-wrap;
+}
+
+.emote {
+  display: inline-block;
+  width: auto;
+  height: 1.25em;
+  margin: -0.15em 0.08em;
+  vertical-align: middle;
+  object-fit: contain;
+}
+
+.message-content.is-emote-only .emote {
+  height: 2.4em;
+  margin-block: -0.55em;
+}
+
+.tone {
+  position: absolute;
+  z-index: 2;
+  top: -0.55em;
+  right: -0.8em;
+
+  display: block;
+  width: 1.45em;
+  height: 1.45em;
+
+  pointer-events: none;
+  object-fit: contain;
+
+  transform-origin: center;
+  animation:
+    tone-in calc(var(--animation-duration) + 180ms) cubic-bezier(0.18, 1.45, 0.35, 1) calc(var(--animation-duration) + 120ms) both,
+    tone-idle 1.8s ease-in-out calc(var(--animation-duration) + var(--animation-duration) + 300ms) infinite alternate;
+}
+
+.chat-row.is-broadcaster .tone {
+  right: auto;
+  left: -0.8em;
+}
+
+.chat-row.is-leaving {
+  pointer-events: none;
+  animation: message-out var(--animation-duration) ease-in both;
+}
+
+@keyframes identity-in {
+  from {
+    transform: translateX(-24px);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes identity-in-broadcaster {
+  from {
+    transform: translateX(24px);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes bubble-in {
+  from {
+    transform: translateX(-24px);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes bubble-in-broadcaster {
+  from {
+    transform: translateX(24px);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tone-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-9px) rotate(-24deg) scale(0.15);
+  }
+
+  68% {
+    opacity: 1;
+    transform: translateY(1px) rotate(9deg) scale(1.28);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(-3deg) scale(1);
+  }
+}
+
+@keyframes tone-idle {
+  from {
+    transform: translateY(0) rotate(-4deg);
+  }
+
+  to {
+    transform: translateY(-2px) rotate(5deg);
+  }
+}
+
+@keyframes message-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-row,
+  .identity,
+  .message-bubble,
+  .tone {
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+  }
+}
