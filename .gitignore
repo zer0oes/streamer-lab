@@ -3,7 +3,4 @@ node_modules/
 .env
 npm-debug.log*
 .DS_Store
-widget/zer0oes-animated-labels
-widget/zer0oes-goal-bar
-widget/zer0oes-in-game-labels
-widget/zer0oes-neon-chat
+widget/zer0oes-*
