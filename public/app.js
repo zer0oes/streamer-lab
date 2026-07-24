@@ -84,7 +84,8 @@ const editorFiles = {
   html: { filename: "widget.html", property: "html", label: "Code HTML du widget" },
   css: { filename: "widget.css", property: "css", label: "Code CSS du widget" },
   js: { filename: "widget.streamelements.js", property: "js", label: "Code JavaScript du widget" },
-  fields: { filename: "fields.streamelements.json", property: "fieldsSource", label: "Champs JSON du widget" }
+  fields: { filename: "fields.streamelements.json", property: "fieldsSource", label: "Champs JSON du widget" },
+  data: { filename: "data.streamelements.json", property: "dataSource", label: "Données brutes simulées (fieldData)" }
 };
 const pendingApiCalls = new Map();
 const demoTwitchBadges = [
@@ -193,6 +194,7 @@ const EDITOR_HIGHLIGHTERS = {
     ["number", String.raw`-?\b\d+\.?\d*(?:[eE][+-]?\d+)?\b`]
   ])
 };
+EDITOR_HIGHLIGHTERS.data = EDITOR_HIGHLIGHTERS.fields;
 
 function renderEditorHighlight() {
   if (!elements.editorHighlightCode) return;
@@ -876,7 +878,8 @@ function syncWidgetEditorSources({ force = false } = {}) {
     html: widget.html,
     css: widget.css,
     js: widget.js,
-    fields: widget.fieldsSource || `${JSON.stringify(widget.fields, null, 2)}\n`
+    fields: widget.fieldsSource || `${JSON.stringify(widget.fields, null, 2)}\n`,
+    data: widget.dataSource || "{}\n"
   };
 
   for (const [file, content] of Object.entries(nextSources)) {
@@ -904,6 +907,8 @@ function configureEditorFiles(widgetData) {
     (previewPlatform === PLATFORM_STREAMLABS ? "widget.streamlabs.js" : "widget.streamelements.js");
   editorFiles.fields.filename = widgetData.files?.fields ||
     (previewPlatform === PLATFORM_STREAMLABS ? "fields.streamlabs.json" : "fields.streamelements.json");
+  editorFiles.data.filename = widgetData.files?.data ||
+    (previewPlatform === PLATFORM_STREAMLABS ? "data.streamlabs.json" : "data.streamelements.json");
 }
 
 function applyEditorSource(file, content) {
@@ -924,6 +929,9 @@ function applyEditorSource(file, content) {
       fieldData = { ...defaults, ...retainedValues };
       localStorage.setItem(fieldStorageKey(), JSON.stringify(fieldData));
       renderFields();
+    } else if (file === "data") {
+      JSON.parse(content);
+      widget.dataSource = content;
     } else {
       widget[editorFiles[file].property] = content;
     }
@@ -1163,11 +1171,21 @@ function updateField(key, value, shouldReload = true) {
   }
 }
 
+function parseDataOverrides() {
+  try {
+    const parsed = JSON.parse(widget?.dataSource || "{}");
+    return (parsed && typeof parsed === "object" && !Array.isArray(parsed)) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function renderWidget() {
   if (!widget) return;
   const html = substituteFields(widget.html, fieldData);
   const css = substituteFields(widget.css, fieldData);
   const js = substituteFields(widget.js, fieldData);
+  const effectiveFieldData = { ...parseDataOverrides(), ...fieldData };
   const executableJs = JSON.stringify(js).replaceAll("<", "\\u003c");
   const checkerClass = elements.previewShell.classList.contains("is-checker") ? " se-lab-checker" : "";
   const themeClass = previewTheme === "light" ? " se-lab-light" : "";
@@ -1176,7 +1194,7 @@ function renderWidget() {
     if (previewPlatform === PLATFORM_STREAMLABS) {
       dispatchToWidget(
         "onLoad",
-        buildStreamlabsLoadDetail(widget.fields, fieldData, structuredClone(session)),
+        buildStreamlabsLoadDetail(widget.fields, effectiveFieldData, structuredClone(session)),
         "document"
       );
       addConsole("event", "onLoad · Streamlabs");
@@ -1186,7 +1204,7 @@ function renderWidget() {
         recents: buildRecents(session),
         currency: { code: "EUR", name: "Euro", symbol: "€" },
         channel: { ...channel, apiToken: "" },
-        fieldData: structuredClone(fieldData)
+        fieldData: structuredClone(effectiveFieldData)
       });
       addConsole("event", "onWidgetLoad · StreamElements");
     }

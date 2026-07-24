@@ -1,4 +1,4 @@
-# Local Widget Lab
+# Sandbox Widget Lab
 
 Un environnement local pour développer et tester des **Custom Widgets StreamElements et Streamlabs** sans modifier un overlay déjà publié.
 
@@ -51,10 +51,14 @@ Par exemple, le dossier `widget/zer0oes-goal-bar/` contient :
 | `fields.streamelements.json` | StreamElements | FIELDS |
 | `widget.streamlabs.js` | Streamlabs | JS |
 | `fields.streamlabs.json` | Streamlabs | FIELDS |
+| `data.streamelements.json` | StreamElements | DATA |
+| `data.streamlabs.json` | Streamlabs | DATA |
 
 Le widget d’exemple affiche le dernier événement avec une animation. Il peut être remplacé sans modifier le code du laboratoire.
 
 Les valeurs de champs sont disponibles via `event.detail.fieldData` et les formes `{{nomDuChamp}}` / `{nomDuChamp}` sont remplacées dans le HTML, le CSS et le JavaScript. Les valeurs modifiées dans l’interface locale sont conservées dans le stockage du navigateur.
+
+L’onglet **DATA** contient un objet JSON libre (`{}` par défaut) fusionné sous les valeurs de Fields avant chaque envoi de `fieldData` à l’aperçu. Il sert à rejouer fidèlement un payload brut récupéré manuellement depuis la vraie plateforme (par exemple des clés parasites laissées par un ancien widget dans le même emplacement d’overlay), sans polluer le schéma de Fields. StreamElements n’exposant aucune API publique pour récupérer ces valeurs, ce contenu doit être collé à la main depuis le tableau de bord de la plateforme.
 
 Les données initiales de session se trouvent dans `mocks/session.json`. Le panneau **Événement JSON personnalisé** permet d’envoyer directement le contenu de `detail` attendu par `onEventReceived`.
 

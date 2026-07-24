@@ -15,11 +15,13 @@ const ENV_PATH = join(ROOT, ".env");
 const widgetPlatformFiles = {
   streamelements: {
     js: "widget.streamelements.js",
-    fields: "fields.streamelements.json"
+    fields: "fields.streamelements.json",
+    data: "data.streamelements.json"
   },
   streamlabs: {
     js: "widget.streamlabs.js",
-    fields: "fields.streamlabs.json"
+    fields: "fields.streamlabs.json",
+    data: "data.streamlabs.json"
   }
 };
 const editableWidgetFiles = new Set([
@@ -28,7 +30,9 @@ const editableWidgetFiles = new Set([
   "widget.streamelements.js",
   "fields.streamelements.json",
   "widget.streamlabs.js",
-  "fields.streamlabs.json"
+  "fields.streamlabs.json",
+  "data.streamelements.json",
+  "data.streamlabs.json"
 ]);
 
 if (existsSync(ENV_PATH)) Object.assign(process.env, parseEnv(readFileSync(ENV_PATH, "utf8")));
@@ -88,11 +92,16 @@ const server = createServer(async (request, response) => {
       }
       if (typeof body.content !== "string") return sendJson(response, 400, { error: "Contenu invalide" });
       if (body.content.length > 2_000_000) return sendJson(response, 413, { error: "Fichier trop volumineux" });
-      if (body.file === "fields.streamelements.json" || body.file === "fields.streamlabs.json") {
+      if (
+        body.file === "fields.streamelements.json" ||
+        body.file === "fields.streamlabs.json" ||
+        body.file === "data.streamelements.json" ||
+        body.file === "data.streamlabs.json"
+      ) {
         try {
           JSON.parse(body.content);
         } catch (error) {
-          return sendJson(response, 400, { error: `Fields JSON invalide : ${error.message}` });
+          return sendJson(response, 400, { error: `JSON invalide : ${error.message}` });
         }
       }
       const path = join(widgetInfo.directory, body.file);
@@ -260,7 +269,9 @@ const WIDGET_TEMPLATE_FILES = {
     Object.fromEntries(WIDGET_TEMPLATE_FIELDS.map(({ name, ...definition }) => [name, definition])),
     null,
     2
-  )}\n`
+  )}\n`,
+  "data.streamelements.json": "{}\n",
+  "data.streamlabs.json": "{}\n"
 };
 
 function parseWidgetMetadataInput(body) {
@@ -339,11 +350,12 @@ async function getWidgetInfo(widgetId) {
 
 async function loadWidget(widgetInfo, platform = "streamelements") {
   const platformFiles = widgetPlatformFiles[platform] || widgetPlatformFiles.streamelements;
-  const [html, css, js, fieldsSource] = await Promise.all([
+  const [html, css, js, fieldsSource, dataSource] = await Promise.all([
     readFile(join(widgetInfo.directory, "widget.html"), "utf8"),
     readFile(join(widgetInfo.directory, "widget.css"), "utf8"),
     readFile(join(widgetInfo.directory, platformFiles.js), "utf8"),
-    readFile(join(widgetInfo.directory, platformFiles.fields), "utf8")
+    readFile(join(widgetInfo.directory, platformFiles.fields), "utf8"),
+    readOptionalFile(join(widgetInfo.directory, platformFiles.data), "{}\n")
   ]);
   return {
     html,
@@ -351,6 +363,7 @@ async function loadWidget(widgetInfo, platform = "streamelements") {
     js,
     fields: JSON.parse(fieldsSource),
     fieldsSource,
+    dataSource,
     platform,
     widgetId: widgetInfo.id,
     widgetMeta: {
@@ -363,9 +376,19 @@ async function loadWidget(widgetInfo, platform = "streamelements") {
       html: "widget.html",
       css: "widget.css",
       js: platformFiles.js,
-      fields: platformFiles.fields
+      fields: platformFiles.fields,
+      data: platformFiles.data
     }
   };
+}
+
+async function readOptionalFile(path, fallback) {
+  try {
+    return await readFile(path, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return fallback;
+    throw error;
+  }
 }
 
 async function readJson(path) {

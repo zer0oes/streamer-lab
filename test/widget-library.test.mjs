@@ -10,7 +10,9 @@ const requiredFiles = [
   "widget.streamelements.js",
   "fields.streamelements.json",
   "widget.streamlabs.js",
-  "fields.streamlabs.json"
+  "fields.streamlabs.json",
+  "data.streamelements.json",
+  "data.streamlabs.json"
 ];
 
 test("la bibliothèque contient tous les widgets avec leurs deux variantes", async () => {

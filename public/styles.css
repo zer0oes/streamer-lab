@@ -997,6 +997,7 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
 .editor-tab[data-editor-file="css"] { --tab-accent: #4da3ff; }
 .editor-tab[data-editor-file="js"] { --tab-accent: #f4d03f; }
 .editor-tab[data-editor-file="fields"] { --tab-accent: #4bd08b; }
+.editor-tab[data-editor-file="data"] { --tab-accent: #b98bff; }
 
 .editor-tab:hover { color: var(--text); background: #171a20; }
 .editor-tab:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
