@@ -140,6 +140,7 @@ const widgetIconChoices = [
 let previewSize = loadPreviewSize();
 let previewTheme = loadPreviewTheme();
 let previewPlatform = normalizePlatform(localStorage.getItem(previewPlatformStorageKey));
+let liveStatuses = { streamelements: "disabled", streamlabs: "disabled" };
 
 function buildTokenizer(rules) {
   const pattern = rules.map(([, source], index) => `(?<t${index}>${source})`).join("|");
@@ -317,6 +318,7 @@ function applyPreviewPlatform() {
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
   }
+  renderLiveStatusIndicator();
   const conversionTarget = previewPlatform === PLATFORM_STREAMLABS ? "StreamElements" : "Streamlabs";
   elements.fieldsFilenameHint.textContent = previewPlatform === PLATFORM_STREAMLABS
     ? "fields.streamlabs.json"
@@ -621,7 +623,7 @@ async function initialize() {
     renderFields();
     renderWidget();
     initializeWidgetEditor();
-    updateLiveStatus(state.live.status);
+    updateLiveStatus(state.live);
     connectEventStream();
   } catch (error) {
     addConsole("error", error.message);
@@ -1369,7 +1371,7 @@ function sendPresetEvent() {
   if (listener === "message") {
     dispatchChatMessage({ name, message });
   } else {
-    event = { name, amount, message, gifted: false };
+    event = { name, amount, message, gifted: false, id: crypto.randomUUID() };
     session[listener] = event;
     updateSimulatedSessionTotal(listener, amount);
     dispatchPlatformEvent({ listener, event });
@@ -1426,7 +1428,7 @@ function connectEventStream() {
       void refreshWidgetPreview(change);
     }, 100);
   });
-  stream.addEventListener("status", ({ data }) => updateLiveStatus(JSON.parse(data).status));
+  stream.addEventListener("status", ({ data }) => updateLiveStatus(JSON.parse(data)));
   stream.addEventListener("widget-event", ({ data }) => {
     const payload = JSON.parse(data);
     if (payload.type === "onSessionUpdate") session = payload.detail.session;
@@ -1438,7 +1440,7 @@ function connectEventStream() {
     addConsole("event", `[LIVE · ${previewPlatform === PLATFORM_STREAMLABS ? "SL" : "SE"}] ${payload.type} · ${payload.detail.listener || "session"}`);
   });
   stream.addEventListener("astro", ({ data }) => addConsole("info", `[ASTRO] ${JSON.parse(data).topic}`));
-  stream.onerror = () => updateLiveStatus("reconnecting");
+  stream.onerror = () => updateLiveStatus({ streamelements: "reconnecting", streamlabs: "reconnecting" });
 }
 
 async function refreshWidgetPreview(change = {}, showSuccessToast = true, options = {}) {
@@ -1502,8 +1504,15 @@ async function refreshWidgetPreview(change = {}, showSuccessToast = true, option
   return false;
 }
 
-function updateLiveStatus(status) {
+function updateLiveStatus(statuses) {
+  liveStatuses = { ...liveStatuses, ...statuses };
+  renderLiveStatusIndicator();
+}
+
+function renderLiveStatusIndicator() {
   if (!elements.liveStatus) return;
+  const key = previewPlatform === PLATFORM_STREAMLABS ? "streamlabs" : "streamelements";
+  const status = liveStatuses[key] || "disabled";
   const label = elements.liveStatus.querySelector("span");
   elements.liveStatus.classList.toggle("is-live", status === "connected");
   elements.liveStatus.classList.toggle("is-error", status.startsWith("error"));

@@ -5,6 +5,7 @@ import { extname, join, normalize, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { astroToLabEvents, parseEnv } from "./lib/streamelements.mjs";
+import { streamlabsEventToLabEvents } from "./lib/streamlabs.mjs";
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 const PUBLIC_ROOT = join(ROOT, "public");
@@ -45,11 +46,13 @@ const config = {
   topics: (process.env.SE_TOPICS || "channel.activities,channel.session.update,channel.session.reset,channel.chat.message")
     .split(",")
     .map((topic) => topic.trim())
-    .filter(Boolean)
+    .filter(Boolean),
+  streamlabsToken: process.env.SL_SOCKET_TOKEN?.trim() ?? ""
 };
 
 let session = await readJson(MOCK_SESSION_PATH);
 let liveStatus = config.channelId && config.token ? "connecting" : "disabled";
+let liveStatusStreamlabs = config.streamlabsToken ? "connecting" : "disabled";
 const sseClients = new Set();
 const changedWidgetFiles = new Set();
 let widgetReloadTimer;
@@ -162,7 +165,7 @@ const server = createServer(async (request, response) => {
       return sendJson(response, 200, {
         session,
         channel: { id: config.channelId || "local-channel", username: config.channelName },
-        live: { status: liveStatus, configured: Boolean(config.channelId && config.token), topics: config.topics }
+        live: { streamelements: liveStatus, streamlabs: liveStatusStreamlabs }
       });
     }
 
@@ -220,6 +223,7 @@ server.listen(port, "127.0.0.1", () => {
 });
 
 if (config.channelId && config.token) connectAstro();
+if (config.streamlabsToken) connectStreamlabs();
 
 const WIDGET_TEMPLATE_FIELDS = [
   { name: "message", type: "textfield", label: "Message", value: "Nouveau widget" },
@@ -444,7 +448,7 @@ async function connectAstro(reconnectToken = "") {
     ({ default: WebSocket } = await import("ws"));
   } catch {
     liveStatus = "error: dependance ws absente (npm install)";
-    broadcast("status", { status: liveStatus });
+    broadcast("status", { streamelements: liveStatus, streamlabs: liveStatusStreamlabs });
     return;
   }
 
@@ -455,7 +459,7 @@ async function connectAstro(reconnectToken = "") {
 
   socket.on("open", () => {
     liveStatus = "connected";
-    broadcast("status", { status: liveStatus });
+    broadcast("status", { streamelements: liveStatus, streamlabs: liveStatusStreamlabs });
   });
 
   socket.on("message", (raw) => {
@@ -485,7 +489,7 @@ async function connectAstro(reconnectToken = "") {
     if (message.type === "response") {
       if (message.error) {
         liveStatus = `error: ${message.error} - ${message.data?.message ?? "abonnement refuse"}`;
-        broadcast("status", { status: liveStatus });
+        broadcast("status", { streamelements: liveStatus, streamlabs: liveStatusStreamlabs });
       }
       return;
     }
@@ -507,13 +511,50 @@ async function connectAstro(reconnectToken = "") {
 
   socket.on("error", (error) => {
     liveStatus = `error: ${error.message}`;
-    broadcast("status", { status: liveStatus });
+    broadcast("status", { streamelements: liveStatus, streamlabs: liveStatusStreamlabs });
   });
 
   socket.on("close", () => {
     if (liveStatus.startsWith("error")) return;
     liveStatus = "reconnecting";
-    broadcast("status", { status: liveStatus });
+    broadcast("status", { streamelements: liveStatus, streamlabs: liveStatusStreamlabs });
     setTimeout(() => connectAstro(), 2_000).unref();
+  });
+}
+
+async function connectStreamlabs() {
+  let io;
+  try {
+    ({ default: io } = await import("socket.io-client"));
+  } catch {
+    liveStatusStreamlabs = "error: dependance socket.io-client absente (npm install)";
+    broadcast("status", { streamelements: liveStatus, streamlabs: liveStatusStreamlabs });
+    return;
+  }
+
+  const socket = io(`https://sockets.streamlabs.com?token=${encodeURIComponent(config.streamlabsToken)}`, {
+    transports: ["websocket"]
+  });
+
+  socket.on("connect", () => {
+    liveStatusStreamlabs = "connected";
+    broadcast("status", { streamelements: liveStatus, streamlabs: liveStatusStreamlabs });
+  });
+
+  socket.on("event", (eventData) => {
+    for (const event of streamlabsEventToLabEvents(eventData)) {
+      broadcast("widget-event", { type: event.type, detail: event.detail, source: "live-streamlabs" });
+    }
+  });
+
+  socket.on("connect_error", (error) => {
+    liveStatusStreamlabs = `error: ${error.message}`;
+    broadcast("status", { streamelements: liveStatus, streamlabs: liveStatusStreamlabs });
+  });
+
+  socket.on("disconnect", () => {
+    if (liveStatusStreamlabs.startsWith("error")) return;
+    liveStatusStreamlabs = "reconnecting";
+    broadcast("status", { streamelements: liveStatus, streamlabs: liveStatusStreamlabs });
   });
 }

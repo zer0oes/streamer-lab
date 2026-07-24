@@ -94,6 +94,21 @@ Ils sont modifiables avec `SE_TOPICS`. Le jeton doit disposer des scopes corresp
 
 > Ne jamais versionner `.env` ni exposer le JWT/Overlay Token. `.env` est déjà ignoré par Git.
 
+### Streamlabs
+
+1. Dans le dashboard Streamlabs, aller dans **Réglages > API Settings** et copier le **Socket API Token**.
+2. Renseigner dans `.env` :
+
+   ```dotenv
+   SL_SOCKET_TOKEN=le_jeton
+   ```
+
+3. Redémarrer `npm run dev`.
+
+Le statut passe à `connected` dès que la plateforme simulée sélectionnée en haut de la page est **Streamlabs**. Les deux connexions (StreamElements et Streamlabs) peuvent tourner en parallèle indépendamment ; l’indicateur affiche toujours le statut de la plateforme actuellement sélectionnée dans l’outil. Les événements réels reçus (follow, subscription, donation, host, bits) sont convertis vers la forme interne du laboratoire puis retraduits au format natif de la plateforme simulée avant d’être envoyés au widget.
+
+> Le Socket API Streamlabs utilise le protocole socket.io v2 ; ne pas mettre à jour la dépendance `socket.io-client` vers une version majeure supérieure sans vérifier la compatibilité.
+
 ## Compatibilité et limites
 
 - jQuery est chargé avant le code du widget, comme dans l’environnement StreamElements.
