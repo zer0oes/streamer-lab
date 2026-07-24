@@ -19,7 +19,7 @@ const supportedFieldTypes = new Set([
 ]);
 
 test("utilise le format Fields officiel de StreamElements", async () => {
-  const source = await readFile(new URL("../widget/zer0oes-goal-bar/fields.streamelements.json", import.meta.url), "utf8");
+  const source = await readFile(new URL("../library/widgets/zer0oes-goal-bar/fields.streamelements.json", import.meta.url), "utf8");
   const fields = JSON.parse(source);
 
   assert.equal(Array.isArray(fields), false);
@@ -33,7 +33,7 @@ test("utilise le format Fields officiel de StreamElements", async () => {
 });
 
 test("écoute les trois événements natifs utiles au goal StreamElements", async () => {
-  const source = await readFile(new URL("../widget/zer0oes-goal-bar/widget.streamelements.js", import.meta.url), "utf8");
+  const source = await readFile(new URL("../library/widgets/zer0oes-goal-bar/widget.streamelements.js", import.meta.url), "utf8");
 
   assert.match(source, /addEventListener\(["']onWidgetLoad["']/);
   assert.match(source, /addEventListener\(["']onEventReceived["']/);
@@ -43,7 +43,7 @@ test("écoute les trois événements natifs utiles au goal StreamElements", asyn
 });
 
 test("démarre avec un payload StreamElements et réconcilie un follow", async () => {
-  const source = await readFile(new URL("../widget/zer0oes-goal-bar/widget.streamelements.js", import.meta.url), "utf8");
+  const source = await readFile(new URL("../library/widgets/zer0oes-goal-bar/widget.streamelements.js", import.meta.url), "utf8");
   const listeners = {};
   const cssVariables = {};
   const makeElement = () => ({

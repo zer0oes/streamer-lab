@@ -10,9 +10,13 @@ import { buildPlatformExport, createZip } from "/widget-export.js";
 const elements = {
   frame: document.querySelector("#widget-frame"),
   fields: document.querySelector("#fields-form"),
+  libraryTabs: document.querySelectorAll("[data-library-tab]"),
   widgetList: document.querySelector("#widget-list"),
   widgetCount: document.querySelector("#widget-count"),
   addWidgetButton: document.querySelector("#add-widget"),
+  alertList: document.querySelector("#alert-list"),
+  alertCount: document.querySelector("#alert-count"),
+  addAlertButton: document.querySelector("#add-alert"),
   sidebarSections: document.querySelectorAll("[data-sidebar-section]"),
   widgetSettingsDialog: document.querySelector("#widget-settings-dialog"),
   widgetSettingsForm: document.querySelector("#widget-settings-form"),
@@ -20,6 +24,7 @@ const elements = {
   widgetSettingsId: document.querySelector("#widget-settings-id"),
   widgetSettingsName: document.querySelector("#widget-settings-name"),
   widgetSettingsDescription: document.querySelector("#widget-settings-description"),
+  widgetTypeChoices: document.querySelectorAll("[data-widget-type]"),
   widgetIconChoices: document.querySelector("#widget-icon-choices"),
   widgetSettingsMessage: document.querySelector("#widget-settings-message"),
   saveWidgetSettings: document.querySelector("#save-widget-settings"),
@@ -62,6 +67,8 @@ let widgetCatalog = [];
 let activeWidgetId = "";
 let widgetSwitching = false;
 let selectedWidgetIcon = "widgets";
+let selectedWidgetType = "widget";
+let activeLibraryTab = "widgets";
 let widgetSettingsMode = "edit";
 let fieldData = {};
 let session = {};
@@ -121,6 +128,7 @@ const previewThemeStorageKey = "se-lab-preview-theme";
 const previewPlatformStorageKey = "widget-lab-platform";
 const activeWidgetStorageKey = "widget-lab-active-widget";
 const sidebarStateStorageKey = "widget-lab-sidebar-sections";
+const libraryTabStorageKey = "widget-lab-library-tab";
 const widgetIconChoices = [
   ["widgets", "Widgets"],
   ["animation", "Animation"],
@@ -240,6 +248,7 @@ initializeExportMenu();
 initializePreviewControls();
 initializePreviewTheme();
 initializeSidebarSections();
+initializeLibraryTabs();
 initializeWidgetSettings();
 initializeWidgetLibraryMenu();
 initializeEditorCopyButton();
@@ -460,6 +469,37 @@ function initializeSidebarSections() {
   }
 }
 
+function initializeLibraryTabs() {
+  const saved = localStorage.getItem(libraryTabStorageKey);
+  selectLibraryTab(saved === "alerts" ? "alerts" : "widgets");
+
+  for (const button of elements.libraryTabs) {
+    button.addEventListener("click", () => selectLibraryTab(button.dataset.libraryTab));
+  }
+}
+
+function syncLibraryTabToWidget(widgetId) {
+  const entry = widgetCatalog.find((item) => item.id === widgetId);
+  if (entry) selectLibraryTab(entry.type === "alert" ? "alerts" : "widgets");
+}
+
+function selectLibraryTab(tab) {
+  activeLibraryTab = tab === "alerts" ? "alerts" : "widgets";
+  localStorage.setItem(libraryTabStorageKey, activeLibraryTab);
+
+  for (const button of elements.libraryTabs) {
+    const selected = button.dataset.libraryTab === activeLibraryTab;
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-selected", String(selected));
+  }
+
+  const showWidgets = activeLibraryTab === "widgets";
+  elements.widgetList.hidden = !showWidgets;
+  elements.addWidgetButton.hidden = !showWidgets;
+  elements.alertList.hidden = showWidgets;
+  elements.addAlertButton.hidden = showWidgets;
+}
+
 function initializeWidgetSettings() {
   for (const [iconName, label] of widgetIconChoices) {
     const button = document.createElement("button");
@@ -473,6 +513,10 @@ function initializeWidgetSettings() {
     elements.widgetIconChoices.append(button);
   }
 
+  for (const button of elements.widgetTypeChoices) {
+    button.addEventListener("click", () => selectWidgetType(button.dataset.widgetType));
+  }
+
   const close = () => elements.widgetSettingsDialog.close();
   document.querySelector("#close-widget-settings").addEventListener("click", close);
   document.querySelector("#cancel-widget-settings").addEventListener("click", close);
@@ -483,7 +527,8 @@ function initializeWidgetSettings() {
     event.preventDefault();
     void saveWidgetMetadata();
   });
-  elements.addWidgetButton.addEventListener("click", () => openWidgetCreation());
+  elements.addWidgetButton.addEventListener("click", () => openWidgetCreation("widget"));
+  elements.addAlertButton.addEventListener("click", () => openWidgetCreation("alert"));
 }
 
 function openWidgetSettings(entry) {
@@ -493,6 +538,7 @@ function openWidgetSettings(entry) {
   elements.widgetSettingsDescription.value = entry.description || "";
   setWidgetSettingsMessage("");
   selectWidgetIcon(entry.icon || "widgets");
+  selectWidgetType(entry.type || "widget");
   elements.widgetSettingsTitle.textContent = "Modifier le widget";
   elements.saveWidgetSettings.textContent = "Enregistrer";
   elements.widgetSettingsDialog.showModal();
@@ -500,14 +546,15 @@ function openWidgetSettings(entry) {
   elements.widgetSettingsName.select();
 }
 
-function openWidgetCreation() {
+function openWidgetCreation(defaultType = "widget") {
   widgetSettingsMode = "create";
   elements.widgetSettingsId.value = "";
   elements.widgetSettingsName.value = "";
   elements.widgetSettingsDescription.value = "";
   setWidgetSettingsMessage("");
-  selectWidgetIcon("widgets");
-  elements.widgetSettingsTitle.textContent = "Nouveau widget";
+  selectWidgetIcon(defaultType === "alert" ? "celebration" : "widgets");
+  selectWidgetType(defaultType);
+  elements.widgetSettingsTitle.textContent = defaultType === "alert" ? "Nouvelle alerte" : "Nouveau widget";
   elements.saveWidgetSettings.textContent = "Créer";
   elements.widgetSettingsDialog.showModal();
   elements.widgetSettingsName.focus();
@@ -518,6 +565,15 @@ function selectWidgetIcon(iconName) {
   for (const button of elements.widgetIconChoices.querySelectorAll("[data-widget-icon]")) {
     const selected = button.dataset.widgetIcon === selectedWidgetIcon;
     button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
+}
+
+function selectWidgetType(type) {
+  selectedWidgetType = type === "alert" ? "alert" : "widget";
+  for (const button of elements.widgetTypeChoices) {
+    const selected = button.dataset.widgetType === selectedWidgetType;
+    button.classList.toggle("is-active", selected);
     button.setAttribute("aria-pressed", String(selected));
   }
 }
@@ -545,12 +601,12 @@ async function saveWidgetMetadata() {
       ? await fetch("/api/widgets", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, description, icon: selectedWidgetIcon })
+          body: JSON.stringify({ name, description, icon: selectedWidgetIcon, type: selectedWidgetType })
         })
       : await fetch("/api/widget/metadata", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ widgetId, name, description, icon: selectedWidgetIcon })
+          body: JSON.stringify({ widgetId, name, description, icon: selectedWidgetIcon, type: selectedWidgetType })
         });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
@@ -578,6 +634,7 @@ async function saveWidgetMetadata() {
       widget.widgetMeta = { ...widget.widgetMeta, ...updatedWidget };
       applyWidgetMeta();
     }
+    selectLibraryTab(updatedWidget.type === "alert" ? "alerts" : "widgets");
     renderWidgetLibrary();
     setWidgetSettingsMessage("Informations enregistrées.", "success");
     elements.widgetSettingsDialog.close();
@@ -618,6 +675,7 @@ async function initialize() {
     session = state.session;
     channel = state.channel;
     fieldData = loadFieldData(widget.fields);
+    syncLibraryTabToWidget(activeWidgetId);
     renderWidgetLibrary();
     applyWidgetMeta();
     renderFields();
@@ -632,99 +690,122 @@ async function initialize() {
 }
 
 function renderWidgetLibrary() {
+  const widgets = widgetCatalog.filter((entry) => entry.type !== "alert");
+  const alerts = widgetCatalog.filter((entry) => entry.type === "alert");
+
   elements.widgetList.replaceChildren();
-  elements.widgetCount.textContent = `${widgetCatalog.length} widget${widgetCatalog.length > 1 ? "s" : ""}`;
-
-  for (const entry of widgetCatalog) {
-    const row = document.createElement("div");
-    row.className = "widget-library__row";
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "widget-library__item";
-    button.classList.toggle("is-active", entry.id === activeWidgetId);
-    button.disabled = widgetSwitching || platformSwitching;
-    button.dataset.widgetId = entry.id;
-    button.setAttribute("aria-pressed", String(entry.id === activeWidgetId));
-
-    const icon = document.createElement("span");
-    icon.className = "widget-library__icon";
-    icon.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${escapeHtml(entry.icon || "widgets")}</span>`;
-
-    const copy = document.createElement("span");
-    copy.className = "widget-library__copy";
-    const name = document.createElement("strong");
-    name.textContent = entry.name;
-    const description = document.createElement("small");
-    description.textContent = entry.description;
-    copy.append(name, description);
-
-    const status = document.createElement("span");
-    if (entry.id === activeWidgetId) {
-      status.className = "material-symbols-rounded widget-library__active-mark";
-      status.textContent = "check_circle";
-      status.setAttribute("aria-hidden", "true");
-    } else if (entry.archived) {
-      status.className = "widget-library__badge";
-      status.textContent = "Archive";
-    }
-
-    button.append(icon, copy, status);
-    button.addEventListener("click", () => void switchWidget(entry.id));
-
-    const menu = document.createElement("div");
-    menu.className = "widget-library__menu";
-
-    const menuTrigger = document.createElement("button");
-    menuTrigger.type = "button";
-    menuTrigger.className = "widget-library__options";
-    menuTrigger.disabled = widgetSwitching || platformSwitching;
-    menuTrigger.title = `Options de ${entry.name}`;
-    menuTrigger.setAttribute("aria-label", `Options de ${entry.name}`);
-    menuTrigger.setAttribute("aria-haspopup", "menu");
-    menuTrigger.setAttribute("aria-expanded", "false");
-    menuTrigger.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">more_vert</span>';
-
-    const menuPanel = document.createElement("div");
-    menuPanel.className = "widget-library__options-panel";
-    menuPanel.setAttribute("role", "menu");
-    menuPanel.hidden = true;
-
-    const editItem = document.createElement("button");
-    editItem.type = "button";
-    editItem.className = "widget-library__options-item";
-    editItem.setAttribute("role", "menuitem");
-    editItem.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">edit</span><span>Modifier</span>';
-    editItem.addEventListener("click", () => {
-      closeWidgetMenus();
-      openWidgetSettings(entry);
-    });
-
-    const deleteItem = document.createElement("button");
-    deleteItem.type = "button";
-    deleteItem.className = "widget-library__options-item is-danger";
-    deleteItem.setAttribute("role", "menuitem");
-    deleteItem.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">delete</span><span>Supprimer</span>';
-    deleteItem.addEventListener("click", () => {
-      closeWidgetMenus();
-      void deleteWidgetEntry(entry);
-    });
-
-    menuPanel.append(editItem, deleteItem);
-    menuTrigger.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const wasOpen = menuTrigger.getAttribute("aria-expanded") === "true";
-      closeWidgetMenus();
-      if (!wasOpen) {
-        menuPanel.hidden = false;
-        menuTrigger.setAttribute("aria-expanded", "true");
-      }
-    });
-    menu.append(menuTrigger, menuPanel);
-
-    row.append(button, menu);
-    elements.widgetList.append(row);
+  elements.widgetCount.textContent = String(widgets.length);
+  if (widgets.length) {
+    for (const entry of widgets) elements.widgetList.append(buildWidgetLibraryRow(entry));
+  } else {
+    elements.widgetList.append(buildLibraryEmptyState("Aucun widget pour l’instant."));
   }
+
+  elements.alertList.replaceChildren();
+  elements.alertCount.textContent = String(alerts.length);
+  if (alerts.length) {
+    for (const entry of alerts) elements.alertList.append(buildWidgetLibraryRow(entry));
+  } else {
+    elements.alertList.append(buildLibraryEmptyState("Aucune alerte pour l’instant."));
+  }
+}
+
+function buildLibraryEmptyState(message) {
+  const empty = document.createElement("p");
+  empty.className = "widget-library__empty";
+  empty.textContent = message;
+  return empty;
+}
+
+function buildWidgetLibraryRow(entry) {
+  const row = document.createElement("div");
+  row.className = "widget-library__row";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "widget-library__item";
+  button.classList.toggle("is-active", entry.id === activeWidgetId);
+  button.disabled = widgetSwitching || platformSwitching;
+  button.dataset.widgetId = entry.id;
+  button.setAttribute("aria-pressed", String(entry.id === activeWidgetId));
+
+  const icon = document.createElement("span");
+  icon.className = "widget-library__icon";
+  icon.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${escapeHtml(entry.icon || "widgets")}</span>`;
+
+  const copy = document.createElement("span");
+  copy.className = "widget-library__copy";
+  const name = document.createElement("strong");
+  name.textContent = entry.name;
+  const description = document.createElement("small");
+  description.textContent = entry.description;
+  copy.append(name, description);
+
+  const status = document.createElement("span");
+  if (entry.id === activeWidgetId) {
+    status.className = "material-symbols-rounded widget-library__active-mark";
+    status.textContent = "check_circle";
+    status.setAttribute("aria-hidden", "true");
+  } else if (entry.archived) {
+    status.className = "widget-library__badge";
+    status.textContent = "Archive";
+  }
+
+  button.append(icon, copy, status);
+  button.addEventListener("click", () => void switchWidget(entry.id));
+
+  const menu = document.createElement("div");
+  menu.className = "widget-library__menu";
+
+  const menuTrigger = document.createElement("button");
+  menuTrigger.type = "button";
+  menuTrigger.className = "widget-library__options";
+  menuTrigger.disabled = widgetSwitching || platformSwitching;
+  menuTrigger.title = `Options de ${entry.name}`;
+  menuTrigger.setAttribute("aria-label", `Options de ${entry.name}`);
+  menuTrigger.setAttribute("aria-haspopup", "menu");
+  menuTrigger.setAttribute("aria-expanded", "false");
+  menuTrigger.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">more_vert</span>';
+
+  const menuPanel = document.createElement("div");
+  menuPanel.className = "widget-library__options-panel";
+  menuPanel.setAttribute("role", "menu");
+  menuPanel.hidden = true;
+
+  const editItem = document.createElement("button");
+  editItem.type = "button";
+  editItem.className = "widget-library__options-item";
+  editItem.setAttribute("role", "menuitem");
+  editItem.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">edit</span><span>Modifier</span>';
+  editItem.addEventListener("click", () => {
+    closeWidgetMenus();
+    openWidgetSettings(entry);
+  });
+
+  const deleteItem = document.createElement("button");
+  deleteItem.type = "button";
+  deleteItem.className = "widget-library__options-item is-danger";
+  deleteItem.setAttribute("role", "menuitem");
+  deleteItem.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">delete</span><span>Supprimer</span>';
+  deleteItem.addEventListener("click", () => {
+    closeWidgetMenus();
+    void deleteWidgetEntry(entry);
+  });
+
+  menuPanel.append(editItem, deleteItem);
+  menuTrigger.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const wasOpen = menuTrigger.getAttribute("aria-expanded") === "true";
+    closeWidgetMenus();
+    if (!wasOpen) {
+      menuPanel.hidden = false;
+      menuTrigger.setAttribute("aria-expanded", "true");
+    }
+  });
+  menu.append(menuTrigger, menuPanel);
+
+  row.append(button, menu);
+  return row;
 }
 
 function closeWidgetMenus() {
@@ -784,6 +865,7 @@ async function switchWidget(nextWidgetId) {
   activeWidgetId = nextWidgetId;
   widgetSwitching = true;
   for (const platformButton of elements.platformButtons) platformButton.disabled = true;
+  syncLibraryTabToWidget(activeWidgetId);
   renderWidgetLibrary();
 
   const loaded = await refreshWidgetPreview(
@@ -1408,7 +1490,7 @@ function connectEventStream() {
       if (Array.isArray(payload.changes)) {
         const relevantChanges = payload.changes
           .map(change => String(change).replaceAll("\\", "/"))
-          .filter(change => change.startsWith(`${activeWidgetId}/`));
+          .filter(change => change.split("/").at(-2) === activeWidgetId);
         if (!relevantChanges.length) return;
         pendingWidgetChange = {
           widgetId: activeWidgetId,

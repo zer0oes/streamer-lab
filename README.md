@@ -22,9 +22,9 @@ npm run dev
 
 Ouvrir ensuite [http://localhost:4173](http://localhost:4173).
 
-Le mode simulation fonctionne immédiatement. La bibliothèque située dans `widget/` rassemble tous les widgets dans des sous-dossiers. Les changements apportés au widget actif déclenchent automatiquement un rechargement de l’aperçu, sans dépendre du mode `node --watch` de Node.
+Le mode simulation fonctionne immédiatement. La bibliothèque située dans `library/` rassemble tous les widgets dans des sous-dossiers, eux-mêmes répartis entre `library/widgets/` (widgets classiques) et `library/alerts/` (alertes). Les changements apportés au widget actif déclenchent automatiquement un rechargement de l’aperçu, sans dépendre du mode `node --watch` de Node.
 
-L’éditeur intégré, placé entre l’aperçu et la console, permet aussi de modifier directement les quatre fichiers utilisés par la plateforme active. L’aperçu est actualisé pendant la saisie et les changements sont enregistrés automatiquement dans `widget/`. `Ctrl + S` force l’enregistrement immédiat. L’onglet **Fields** vérifie que le JSON est valide avant toute sauvegarde.
+L’éditeur intégré, placé entre l’aperçu et la console, permet aussi de modifier directement les quatre fichiers utilisés par la plateforme active. L’aperçu est actualisé pendant la saisie et les changements sont enregistrés automatiquement dans `library/`. `Ctrl + S` force l’enregistrement immédiat. L’onglet **Fields** vérifie que le JSON est valide avant toute sauvegarde.
 
 ## Choisir la plateforme simulée
 
@@ -39,9 +39,9 @@ Le menu d’export génère une archive ZIP prête à copier dans l’éditeur d
 
 ## Développer un widget
 
-Chaque widget possède son propre dossier, accompagné d’un fichier `widget.json` qui définit son nom, sa description et son icône. La bibliothèque dans le panneau de gauche permet de passer de l’un à l’autre sans déplacer de fichiers. Le crayon placé sur chaque entrée permet de modifier ces informations et de choisir visuellement une icône Material. Les sections **Mes widgets** et **Champs** peuvent être repliées ; leur état est mémorisé dans le navigateur.
+Chaque widget possède son propre dossier, accompagné d’un fichier `widget.json` qui définit son nom, sa description et son icône. La bibliothèque dans le panneau de gauche (« Ma bibliothèque ») propose deux onglets, **Widgets** et **Alertes**, pour passer de l’un à l’autre sans déplacer de fichiers ; l’onglet actif détermine dans quel sous-dossier (`library/widgets/` ou `library/alerts/`) un nouveau widget est créé. Le crayon placé sur chaque entrée permet de modifier ces informations, de choisir visuellement une icône Material, et de basculer un widget entre les deux catégories (ce qui déplace son dossier). Les sections **Ma bibliothèque** et **Champs** peuvent être repliées ; leur état est mémorisé dans le navigateur.
 
-Par exemple, le dossier `widget/zer0oes-goal-bar/` contient :
+Par exemple, le dossier `library/widgets/zer0oes-goal-bar/` contient :
 
 | Fichier local | Plateforme | Onglet |
 |---|---|---|

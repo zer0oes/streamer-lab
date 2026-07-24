@@ -1,7 +1,7 @@
 import { createReadStream, existsSync, readFileSync, watch } from "node:fs";
-import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { extname, join, normalize, resolve } from "node:path";
+import { dirname, extname, join, normalize, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { astroToLabEvents, parseEnv } from "./lib/streamelements.mjs";
@@ -9,7 +9,11 @@ import { streamlabsEventToLabEvents } from "./lib/streamlabs.mjs";
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 const PUBLIC_ROOT = join(ROOT, "public");
-const WIDGETS_ROOT = join(ROOT, "widget");
+const LIBRARY_ROOT = join(ROOT, "library");
+const LIBRARY_CATEGORY_DIRS = {
+  widget: join(LIBRARY_ROOT, "widgets"),
+  alert: join(LIBRARY_ROOT, "alerts")
+};
 const DEFAULT_WIDGET_ID = "zer0oes-goal-bar";
 const MOCK_SESSION_PATH = join(ROOT, "mocks", "session.json");
 const ENV_PATH = join(ROOT, ".env");
@@ -120,16 +124,18 @@ const server = createServer(async (request, response) => {
       } catch (error) {
         return sendJson(response, 400, { error: error.message });
       }
+      const type = body.type === "alert" ? "alert" : "widget";
 
       const widgets = await listWidgets();
       const widgetId = uniqueWidgetId(slugify(metadata.name), new Set(widgets.map((entry) => entry.id)));
       const order = widgets.reduce((max, entry) => Math.max(max, entry.order), 0) + 10;
       const manifest = { id: widgetId, ...metadata, order };
+      const directory = join(categoryDirectory(type), widgetId);
 
-      await createWidgetFiles(join(WIDGETS_ROOT, widgetId));
-      await writeFile(join(WIDGETS_ROOT, widgetId, "widget.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+      await createWidgetFiles(directory);
+      await writeFile(join(directory, "widget.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
-      return sendJson(response, 201, { widget: widgetFromManifest(widgetId, manifest) });
+      return sendJson(response, 201, { widget: widgetFromManifest(widgetId, manifest, type) });
     }
 
     if (request.method === "PUT" && url.pathname === "/api/widget/metadata") {
@@ -143,12 +149,21 @@ const server = createServer(async (request, response) => {
       } catch (error) {
         return sendJson(response, 400, { error: error.message });
       }
+      const type = body.type === "alert" ? "alert" : "widget";
 
       const manifestPath = join(widgetInfo.directory, "widget.json");
       const manifest = await readJson(manifestPath);
       const updatedManifest = { ...manifest, ...metadata };
-      await writeFile(manifestPath, `${JSON.stringify(updatedManifest, null, 2)}\n`, "utf8");
-      return sendJson(response, 200, { widget: widgetFromManifest(widgetInfo.id, updatedManifest) });
+
+      let targetDirectory = widgetInfo.directory;
+      if (type !== widgetInfo.type) {
+        targetDirectory = join(categoryDirectory(type), widgetInfo.id);
+        await mkdir(dirname(targetDirectory), { recursive: true });
+        await rename(widgetInfo.directory, targetDirectory);
+      }
+
+      await writeFile(join(targetDirectory, "widget.json"), `${JSON.stringify(updatedManifest, null, 2)}\n`, "utf8");
+      return sendJson(response, 200, { widget: widgetFromManifest(widgetInfo.id, updatedManifest, type) });
     }
 
     if (request.method === "DELETE" && url.pathname === "/api/widget") {
@@ -199,7 +214,7 @@ const server = createServer(async (request, response) => {
   }
 });
 
-watch(WIDGETS_ROOT, { persistent: true, recursive: true }, (_eventType, filename) => {
+watch(LIBRARY_ROOT, { persistent: true, recursive: true }, (_eventType, filename) => {
   const file = filename ? String(filename) : "";
   if (!/[.](html|css|js|json)$/i.test(file)) return;
 
@@ -288,6 +303,10 @@ function parseWidgetMetadataInput(body) {
   return { name, description, icon };
 }
 
+function categoryDirectory(type) {
+  return LIBRARY_CATEGORY_DIRS[type === "alert" ? "alert" : "widget"];
+}
+
 function slugify(value) {
   const slug = value
     .normalize("NFD")
@@ -309,33 +328,38 @@ function uniqueWidgetId(base, existingIds) {
 }
 
 async function createWidgetFiles(directory) {
-  await mkdir(directory);
+  await mkdir(directory, { recursive: true });
   await Promise.all(
     Object.entries(WIDGET_TEMPLATE_FILES).map(([file, content]) => writeFile(join(directory, file), content, "utf8"))
   );
 }
 
-function widgetFromManifest(id, manifest) {
+function widgetFromManifest(id, manifest, type) {
   return {
     id,
     name: manifest.name || id,
     description: manifest.description || "",
     icon: manifest.icon || "widgets",
+    type: type === "alert" ? "alert" : "widget",
     archived: Boolean(manifest.archived),
     order: Number(manifest.order) || 100
   };
 }
 
 async function listWidgets() {
-  const directories = await readdir(WIDGETS_ROOT, { withFileTypes: true });
   const widgets = [];
 
-  for (const directory of directories) {
-    if (!directory.isDirectory()) continue;
-    const manifestPath = join(WIDGETS_ROOT, directory.name, "widget.json");
-    if (!existsSync(manifestPath)) continue;
-    const manifest = await readJson(manifestPath);
-    widgets.push(widgetFromManifest(directory.name, manifest));
+  for (const [type, categoryRoot] of Object.entries(LIBRARY_CATEGORY_DIRS)) {
+    if (!existsSync(categoryRoot)) continue;
+    const directories = await readdir(categoryRoot, { withFileTypes: true });
+
+    for (const directory of directories) {
+      if (!directory.isDirectory()) continue;
+      const manifestPath = join(categoryRoot, directory.name, "widget.json");
+      if (!existsSync(manifestPath)) continue;
+      const manifest = await readJson(manifestPath);
+      widgets.push(widgetFromManifest(directory.name, manifest, type));
+    }
   }
 
   return widgets.sort((left, right) =>
@@ -345,11 +369,16 @@ async function listWidgets() {
 
 async function getWidgetInfo(widgetId) {
   if (typeof widgetId !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(widgetId)) return null;
-  const directory = join(WIDGETS_ROOT, widgetId);
-  const manifestPath = join(directory, "widget.json");
-  if (!existsSync(manifestPath)) return null;
-  const manifest = await readJson(manifestPath);
-  return { ...widgetFromManifest(widgetId, manifest), directory };
+
+  for (const [type, categoryRoot] of Object.entries(LIBRARY_CATEGORY_DIRS)) {
+    const directory = join(categoryRoot, widgetId);
+    const manifestPath = join(directory, "widget.json");
+    if (!existsSync(manifestPath)) continue;
+    const manifest = await readJson(manifestPath);
+    return { ...widgetFromManifest(widgetId, manifest, type), directory };
+  }
+
+  return null;
 }
 
 async function loadWidget(widgetInfo, platform = "streamelements") {

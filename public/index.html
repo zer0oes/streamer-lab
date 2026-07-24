@@ -97,24 +97,40 @@
 
     <main class="workspace">
       <aside class="panel controls">
-        <details class="sidebar-section" data-sidebar-section="widgets" open>
+        <details class="sidebar-section" data-sidebar-section="library" open>
           <summary class="sidebar-section__summary">
             <div class="section-heading">
               <div>
                 <span class="step">01</span>
-                <h2>Mes widgets</h2>
+                <h2>Ma bibliothèque</h2>
               </div>
               <span class="sidebar-section__meta">
-                <span class="hint" id="widget-count">0 widget</span>
                 <span class="material-symbols-rounded sidebar-section__chevron" aria-hidden="true">expand_more</span>
               </span>
             </div>
           </summary>
           <div class="sidebar-section__body">
+            <div class="library-tabs" id="library-tabs" role="tablist" aria-label="Bibliothèque">
+              <button type="button" class="library-tab is-active" role="tab" aria-selected="true" data-library-tab="widgets">
+                <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
+                <span>Widgets</span>
+                <span class="library-tab__count" id="widget-count">0</span>
+              </button>
+              <button type="button" class="library-tab" role="tab" aria-selected="false" data-library-tab="alerts">
+                <span class="material-symbols-rounded" aria-hidden="true">celebration</span>
+                <span>Alertes</span>
+                <span class="library-tab__count" id="alert-count">0</span>
+              </button>
+            </div>
             <div class="widget-library" id="widget-list" aria-label="Bibliothèque de widgets"></div>
             <button class="button button--wide widget-library__add" id="add-widget" type="button">
               <span class="material-symbols-rounded" aria-hidden="true">add</span>
               <span>Ajouter un widget</span>
+            </button>
+            <div class="widget-library" id="alert-list" aria-label="Bibliothèque d’alertes" hidden></div>
+            <button class="button button--wide widget-library__add" id="add-alert" type="button" hidden>
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              <span>Ajouter une alerte</span>
             </button>
           </div>
         </details>
@@ -378,6 +394,19 @@
             <span>Nom</span>
             <input id="widget-settings-name" maxlength="60" required autocomplete="off">
           </label>
+          <fieldset class="widget-type-field">
+            <legend>Type</legend>
+            <div class="widget-type-switch" id="widget-type-choice" role="group" aria-label="Type de widget">
+              <button type="button" class="widget-type-switch__button is-active" data-widget-type="widget" aria-pressed="true">
+                <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
+                <span>Widget</span>
+              </button>
+              <button type="button" class="widget-type-switch__button" data-widget-type="alert" aria-pressed="false">
+                <span class="material-symbols-rounded" aria-hidden="true">celebration</span>
+                <span>Alerte</span>
+              </button>
+            </div>
+          </fieldset>
           <label class="field">
             <span>Description</span>
             <textarea id="widget-settings-description" rows="3" maxlength="140"></textarea>
