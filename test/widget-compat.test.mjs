@@ -40,15 +40,20 @@ test("écoute les trois événements natifs utiles au goal StreamElements", asyn
   assert.match(source, /addEventListener\(["']onSessionUpdate["']/);
   assert.match(source, /detail\?\.session/);
   assert.match(source, /detail\?\.fieldData/);
-  assert.match(source, /SE_API\.store\.get/);
-  assert.match(source, /SE_API\.store\.set/);
 });
 
 test("démarre avec un payload StreamElements et réconcilie un follow", async () => {
   const source = await readFile(new URL("../widget/zer0oes-goal-bar/widget.streamelements.js", import.meta.url), "utf8");
   const listeners = {};
   const cssVariables = {};
-  const makeElement = () => ({ style: {}, dataset: {}, textContent: "", clientWidth: 260 });
+  const makeElement = () => ({
+    style: {},
+    dataset: {},
+    textContent: "",
+    clientWidth: 260,
+    offsetWidth: 260,
+    classList: { add() {}, remove() {} }
+  });
   const elements = Object.fromEntries([
     "googleFontLink",
     "fill",
@@ -58,8 +63,8 @@ test("démarre avec un payload StreamElements et réconcilie un follow", async (
     "current",
     "target"
   ].map(id => [id, makeElement()]));
-  const left = makeElement();
-  elements.goal.querySelector = selector => selector === ".goal-left" ? left : null;
+  const progress = makeElement();
+  elements.goal.querySelector = selector => selector === ".goal-progress" ? progress : null;
 
   const context = vm.createContext({
     window: { addEventListener: (name, handler) => { listeners[name] = handler; } },
@@ -68,7 +73,6 @@ test("démarre avec un payload StreamElements et réconcilie un follow", async (
       getElementById: id => elements[id] || null
     },
     localStorage: { getItem: () => null, setItem: () => {} },
-    SE_API: { store: { get: async () => ({}), set: async () => {} } },
     ResizeObserver: class { observe() {} },
     requestAnimationFrame: callback => callback(),
     setTimeout,
@@ -95,5 +99,5 @@ test("démarre avec un payload StreamElements et réconcilie un follow", async (
 
   listeners.onSessionUpdate({ detail: { session: { "follower-total": { count: 943 } } } });
   assert.equal(elements.current.textContent, "943");
-  assert.equal(cssVariables["--w"], "402px");
+  assert.equal(cssVariables["--w"], "400px");
 });
