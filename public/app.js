@@ -28,17 +28,7 @@ const elements = {
   widgetIconChoices: document.querySelector("#widget-icon-choices"),
   widgetSettingsMessage: document.querySelector("#widget-settings-message"),
   saveWidgetSettings: document.querySelector("#save-widget-settings"),
-  eventType: document.querySelector("#event-type"),
-  eventName: document.querySelector("#event-name"),
-  eventBroadcasterField: document.querySelector("#event-broadcaster-field"),
-  eventBroadcaster: document.querySelector("#event-broadcaster"),
-  eventSubTypeField: document.querySelector("#event-subtype-field"),
-  eventSubType: document.querySelector("#event-sub-type"),
-  eventAmountField: document.querySelector("#event-amount-field"),
-  eventAmountLabel: document.querySelector("#event-amount-label"),
-  eventAmount: document.querySelector("#event-amount"),
-  eventMessageField: document.querySelector("#event-message-field"),
-  eventMessage: document.querySelector("#event-message"),
+  eventAccordion: document.querySelector("#event-type-accordion"),
   customEvent: document.querySelector("#custom-event"),
   console: document.querySelector("#console-output"),
   liveStatus: document.querySelector("#live-status"),
@@ -196,23 +186,6 @@ function randomEventAmount(listener) {
   return Math.floor(Math.random() * 50) + 1;
 }
 
-const EVENT_TYPE_FIELDS = {
-  message: { broadcaster: true, amount: false, message: true, subType: false },
-  "follower-latest": { broadcaster: false, amount: false, message: false, subType: false },
-  "subscriber-latest": { broadcaster: false, amount: false, message: false, subType: true },
-  "tip-latest": { broadcaster: false, amount: true, amountLabel: "Montant (€)", message: true, subType: false },
-  "cheer-latest": { broadcaster: false, amount: true, amountLabel: "Montant (bits)", message: true, subType: false },
-  "raid-latest": { broadcaster: false, amount: true, amountLabel: "Viewers", message: false, subType: false }
-};
-
-function updateEventFormVisibility(listener) {
-  const config = EVENT_TYPE_FIELDS[listener] || EVENT_TYPE_FIELDS.message;
-  elements.eventBroadcasterField.style.display = config.broadcaster ? "" : "none";
-  elements.eventSubTypeField.style.display = config.subType ? "" : "none";
-  elements.eventAmountField.style.display = config.amount ? "" : "none";
-  elements.eventMessageField.style.display = config.message ? "" : "none";
-  elements.eventAmountLabel.textContent = config.amountLabel || "Montant";
-}
 const previewSizeStorageKey = "se-lab-preview-size-v2";
 const previewThemeStorageKey = "se-lab-preview-theme";
 const previewPlatformStorageKey = "widget-lab-platform";
@@ -588,6 +561,11 @@ function selectLibraryTab(tab) {
   elements.addWidgetButton.hidden = !showWidgets;
   elements.alertList.hidden = showWidgets;
   elements.addAlertButton.hidden = showWidgets;
+
+  const shownList = showWidgets ? elements.widgetList : elements.alertList;
+  shownList.classList.remove("is-entering");
+  void shownList.offsetWidth;
+  shownList.classList.add("is-entering");
 }
 
 function initializeWidgetSettings() {
@@ -1240,6 +1218,11 @@ function renderFields() {
     details.open = true;
     const summary = document.createElement("summary");
     summary.textContent = definition.group;
+    summary.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (details.open) collapseDetails(details);
+      else expandDetails(details);
+    });
     const body = document.createElement("div");
     body.className = "field-group__body";
     details.append(summary, body);
@@ -1528,17 +1511,25 @@ function dispatchChatMessage({ name, message, color = "#9f75ff", badges = [] }) 
   });
 }
 
-function sendPresetEvent() {
-  const listener = elements.eventType.value;
-  const config = EVENT_TYPE_FIELDS[listener] || EVENT_TYPE_FIELDS.message;
-  const isBroadcaster = listener === "message" && elements.eventBroadcaster.checked;
+function eventField(itemEl, field) {
+  return itemEl.querySelector(`[data-field="${field}"]`);
+}
+
+function sendPresetEvent(itemEl) {
+  const listener = itemEl.dataset.eventType;
+  const nameField = eventField(itemEl, "name");
+  const broadcasterField = eventField(itemEl, "broadcaster");
+  const amountField = eventField(itemEl, "amount");
+  const messageField = eventField(itemEl, "message");
+  const subTypeField = eventField(itemEl, "sub-type");
+  const isBroadcaster = listener === "message" && broadcasterField?.checked;
   const name = isBroadcaster
     ? (channel.username || "MaChaine")
-    : (elements.eventName.value.trim() || randomEventName());
+    : (nameField.value.trim() || randomEventName());
 
   if (listener === "message") {
     const badges = isBroadcaster ? [chatRoleBadges.broadcaster] : randomChatBadges();
-    const message = elements.eventMessage.value.trim() || randomChatMessage();
+    const message = messageField.value.trim() || randomChatMessage();
     dispatchChatMessage({ name, message, badges });
     addConsole("event", `${listener} · ${name}`);
     return;
@@ -1546,20 +1537,20 @@ function sendPresetEvent() {
 
   const event = { name, gifted: false, id: crypto.randomUUID() };
 
-  if (config.amount) {
-    const raw = elements.eventAmount.value.trim();
+  if (amountField) {
+    const raw = amountField.value.trim();
     const amount = raw === "" ? randomEventAmount(listener) : Math.max(0, Number(raw) || 0);
-    elements.eventAmount.value = amount;
+    amountField.value = amount;
     event.amount = amount;
     if (listener === "raid-latest") event.viewers = amount;
   }
 
-  if (config.message) {
-    event.message = elements.eventMessage.value;
+  if (messageField) {
+    event.message = messageField.value;
   }
 
-  if (config.subType) {
-    const subType = elements.eventSubType.value;
+  if (subTypeField) {
+    const subType = subTypeField.value;
     event.subType = subType;
     event.tier = subType === "prime" ? "prime" : "1000";
     event.gifted = subType === "gift" || subType === "communitygift";
@@ -1784,13 +1775,23 @@ function showToast(message) {
   toastTimer = setTimeout(() => elements.toast.classList.remove("is-visible"), 3500);
 }
 
+let eventSimulatorCloseTimer;
+
 function setEventSimulatorOpen(open, restoreFocus = false) {
-  elements.eventSimulator.hidden = !open;
+  clearTimeout(eventSimulatorCloseTimer);
   elements.eventFab.setAttribute("aria-expanded", String(open));
   if (open) {
-    requestAnimationFrame(() => document.querySelector(".event-type-option.is-selected")?.focus());
-  } else if (restoreFocus) {
-    elements.eventFab.focus();
+    elements.eventSimulator.hidden = false;
+    requestAnimationFrame(() => {
+      elements.eventSimulator.classList.add("is-open");
+    });
+    requestAnimationFrame(() => document.querySelector(".event-type-item[open] summary")?.focus());
+  } else {
+    elements.eventSimulator.classList.remove("is-open");
+    eventSimulatorCloseTimer = setTimeout(() => {
+      elements.eventSimulator.hidden = true;
+    }, 180);
+    if (restoreFocus) elements.eventFab.focus();
   }
 }
 
@@ -1801,36 +1802,87 @@ function escapeHtml(value) {
 }
 
 window.addEventListener("message", handleWidgetMessage);
-const eventTypeOptions = [...document.querySelectorAll(".event-type-option")];
 
-function selectEventType(option) {
-  elements.eventType.value = option.dataset.eventType;
-  for (const candidate of eventTypeOptions) {
-    const selected = candidate === option;
-    candidate.classList.toggle("is-selected", selected);
-    candidate.setAttribute("aria-selected", String(selected));
-  }
-  updateEventFormVisibility(option.dataset.eventType);
+for (const itemEl of document.querySelectorAll(".event-type-item")) {
+  eventField(itemEl, "submit")?.addEventListener("click", () => sendPresetEvent(itemEl));
 }
 
-for (const option of eventTypeOptions) {
-  option.addEventListener("click", () => selectEventType(option));
-  option.addEventListener("keydown", (event) => {
-    if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
-    event.preventDefault();
-    const direction = event.key === "ArrowDown" ? 1 : -1;
-    const nextIndex = (eventTypeOptions.indexOf(option) + direction + eventTypeOptions.length) % eventTypeOptions.length;
-    selectEventType(eventTypeOptions[nextIndex]);
-    eventTypeOptions[nextIndex].focus();
+const detailsReduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const detailsAnimDuration = 220;
+
+function detailsBody(detailsEl) {
+  return detailsEl.querySelector(":scope > summary ~ *");
+}
+
+function collapseDetails(detailsEl) {
+  if (!detailsEl.open) return Promise.resolve();
+  if (detailsReduceMotion) {
+    detailsEl.open = false;
+    return Promise.resolve();
+  }
+  const startHeight = detailsEl.offsetHeight;
+  const endHeight = detailsEl.querySelector("summary").offsetHeight;
+  detailsEl.style.overflow = "hidden";
+  const animation = detailsEl.animate(
+    { height: [`${startHeight}px`, `${endHeight}px`] },
+    { duration: detailsAnimDuration, easing: "ease" }
+  );
+  return animation.finished.then(() => {
+    detailsEl.open = false;
+    detailsEl.style.overflow = "";
+    detailsEl.style.height = "";
   });
 }
 
-updateEventFormVisibility(elements.eventType.value);
+function expandDetails(detailsEl) {
+  if (detailsEl.open) return;
+  if (detailsReduceMotion) {
+    detailsEl.open = true;
+    return;
+  }
+  const startHeight = detailsEl.querySelector("summary").offsetHeight;
+  detailsEl.style.overflow = "hidden";
+  detailsEl.open = true;
+  const endHeight = startHeight + detailsBody(detailsEl).offsetHeight;
+  detailsEl.animate(
+    { height: [`${startHeight}px`, `${endHeight}px`] },
+    { duration: detailsAnimDuration, easing: "ease" }
+  ).finished.then(() => {
+    detailsEl.style.overflow = "";
+    detailsEl.style.height = "";
+  });
+}
 
-elements.eventBroadcaster.addEventListener("change", () => {
-  const isBroadcaster = elements.eventBroadcaster.checked;
-  elements.eventName.disabled = isBroadcaster;
-  elements.eventName.placeholder = isBroadcaster
+const eventAccordionItems = [...document.querySelectorAll(".event-type-item")];
+
+for (const itemEl of eventAccordionItems) {
+  itemEl.querySelector("summary").addEventListener("click", (event) => {
+    event.preventDefault();
+    if (itemEl.open) {
+      collapseDetails(itemEl);
+      return;
+    }
+    for (const other of eventAccordionItems) {
+      if (other !== itemEl && other.open) collapseDetails(other);
+    }
+    expandDetails(itemEl);
+  });
+}
+
+for (const sectionEl of elements.sidebarSections) {
+  sectionEl.querySelector(":scope > summary").addEventListener("click", (event) => {
+    event.preventDefault();
+    if (sectionEl.open) collapseDetails(sectionEl);
+    else expandDetails(sectionEl);
+  });
+}
+
+const chatBroadcasterField = eventField(document.querySelector('.event-type-item[data-event-type="message"]'), "broadcaster");
+const chatNameField = eventField(document.querySelector('.event-type-item[data-event-type="message"]'), "name");
+chatBroadcasterField.addEventListener("change", () => {
+  const isBroadcaster = chatBroadcasterField.checked;
+  chatNameField.disabled = isBroadcaster;
+  chatNameField.placeholder = isBroadcaster
     ? (channel.username || "MaChaine")
     : "Aléatoire si vide";
 });
@@ -1855,7 +1907,6 @@ document.addEventListener("pointerdown", (event) => {
     setEventSimulatorOpen(false);
   }
 });
-document.querySelector("#send-event").addEventListener("click", sendPresetEvent);
 document.querySelector("#send-custom").addEventListener("click", () => {
   try {
     const detail = JSON.parse(elements.customEvent.value);

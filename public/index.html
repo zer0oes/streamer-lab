@@ -271,101 +271,135 @@
       <div class="event-simulator__body">
         <div class="field">
           <span>Événement</span>
-          <input id="event-type" type="hidden" value="message">
-          <div class="event-type-list" role="listbox" aria-label="Type d’événement">
-            <button
-              class="event-type-option is-selected"
-              type="button"
-              data-event-type="message"
-              role="option"
-              aria-selected="true"
-            >
-              <span class="material-symbols-rounded" aria-hidden="true">chat</span>
-              <span>Chat message</span>
-            </button>
-            <button
-              class="event-type-option"
-              type="button"
-              data-event-type="follower-latest"
-              role="option"
-              aria-selected="false"
-            >
-              <span class="material-symbols-rounded" aria-hidden="true">favorite</span>
-              <span>Follower event</span>
-            </button>
-            <button
-              class="event-type-option"
-              type="button"
-              data-event-type="subscriber-latest"
-              role="option"
-              aria-selected="false"
-            >
-              <span class="material-symbols-rounded" aria-hidden="true">person_add</span>
-              <span>Subscriber event</span>
-            </button>
-            <button
-              class="event-type-option"
-              type="button"
-              data-event-type="tip-latest"
-              role="option"
-              aria-selected="false"
-            >
-              <span class="material-symbols-rounded" aria-hidden="true">credit_card</span>
-              <span>Tipper event</span>
-            </button>
-            <button
-              class="event-type-option"
-              type="button"
-              data-event-type="cheer-latest"
-              role="option"
-              aria-selected="false"
-            >
-              <span class="material-symbols-rounded" aria-hidden="true">award_star</span>
-              <span>Cheer event</span>
-            </button>
-            <button
-              class="event-type-option"
-              type="button"
-              data-event-type="raid-latest"
-              role="option"
-              aria-selected="false"
-            >
-              <span class="material-symbols-rounded" aria-hidden="true">groups</span>
-              <span>Raid event</span>
-            </button>
+          <div class="event-type-accordion" id="event-type-accordion">
+            <details class="event-type-item" data-event-type="message" open>
+              <summary>
+                <span class="material-symbols-rounded" aria-hidden="true">chat</span>
+                <span>Chat message</span>
+                <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="event-type-item__body">
+                <label class="field">
+                  <span>Pseudo</span>
+                  <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
+                </label>
+                <label class="field checkbox-field">
+                  <span>Diffuseur (pseudo de la chaîne)</span>
+                  <input data-field="broadcaster" type="checkbox">
+                </label>
+                <label class="field">
+                  <span>Message</span>
+                  <input data-field="message" placeholder="Aléatoire si vide" autocomplete="off">
+                </label>
+                <button class="button button--primary button--wide" data-field="submit" type="button">Déclencher l’événement</button>
+              </div>
+            </details>
+
+            <details class="event-type-item" data-event-type="follower-latest">
+              <summary>
+                <span class="material-symbols-rounded" aria-hidden="true">favorite</span>
+                <span>Follower event</span>
+                <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="event-type-item__body">
+                <label class="field">
+                  <span>Pseudo</span>
+                  <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
+                </label>
+                <button class="button button--primary button--wide" data-field="submit" type="button">Déclencher l’événement</button>
+              </div>
+            </details>
+
+            <details class="event-type-item" data-event-type="subscriber-latest">
+              <summary>
+                <span class="material-symbols-rounded" aria-hidden="true">person_add</span>
+                <span>Subscriber event</span>
+                <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="event-type-item__body">
+                <label class="field">
+                  <span>Pseudo</span>
+                  <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Type d’abonnement</span>
+                  <select data-field="sub-type">
+                    <option value="tier1">Sub classique</option>
+                    <option value="prime">Sub Prime</option>
+                    <option value="gift">Sub-Gift</option>
+                    <option value="communitygift">Community Gift</option>
+                  </select>
+                </label>
+                <button class="button button--primary button--wide" data-field="submit" type="button">Déclencher l’événement</button>
+              </div>
+            </details>
+
+            <details class="event-type-item" data-event-type="tip-latest">
+              <summary>
+                <span class="material-symbols-rounded" aria-hidden="true">credit_card</span>
+                <span>Tipper event</span>
+                <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="event-type-item__body">
+                <label class="field">
+                  <span>Pseudo</span>
+                  <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Montant (€)</span>
+                  <input data-field="amount" type="number" min="0" step="1" placeholder="Aléatoire si vide">
+                </label>
+                <label class="field">
+                  <span>Message</span>
+                  <input data-field="message" placeholder="Aléatoire si vide" autocomplete="off">
+                </label>
+                <button class="button button--primary button--wide" data-field="submit" type="button">Déclencher l’événement</button>
+              </div>
+            </details>
+
+            <details class="event-type-item" data-event-type="cheer-latest">
+              <summary>
+                <span class="material-symbols-rounded" aria-hidden="true">award_star</span>
+                <span>Cheer event</span>
+                <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="event-type-item__body">
+                <label class="field">
+                  <span>Pseudo</span>
+                  <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Montant (bits)</span>
+                  <input data-field="amount" type="number" min="0" step="1" placeholder="Aléatoire si vide">
+                </label>
+                <label class="field">
+                  <span>Message</span>
+                  <input data-field="message" placeholder="Aléatoire si vide" autocomplete="off">
+                </label>
+                <button class="button button--primary button--wide" data-field="submit" type="button">Déclencher l’événement</button>
+              </div>
+            </details>
+
+            <details class="event-type-item" data-event-type="raid-latest">
+              <summary>
+                <span class="material-symbols-rounded" aria-hidden="true">groups</span>
+                <span>Raid event</span>
+                <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="event-type-item__body">
+                <label class="field">
+                  <span>Pseudo</span>
+                  <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Viewers</span>
+                  <input data-field="amount" type="number" min="0" step="1" placeholder="Aléatoire si vide">
+                </label>
+                <button class="button button--primary button--wide" data-field="submit" type="button">Déclencher l’événement</button>
+              </div>
+            </details>
           </div>
         </div>
-        <label class="field">
-          <span>Pseudo</span>
-          <input id="event-name" placeholder="Aléatoire si vide" autocomplete="off">
-        </label>
-
-        <label class="field checkbox-field" id="event-broadcaster-field">
-          <span>Diffuseur (pseudo de la chaîne)</span>
-          <input id="event-broadcaster" type="checkbox">
-        </label>
-
-        <label class="field" id="event-subtype-field">
-          <span>Type d’abonnement</span>
-          <select id="event-sub-type">
-            <option value="tier1">Sub classique</option>
-            <option value="prime">Sub Prime</option>
-            <option value="gift">Sub-Gift</option>
-            <option value="communitygift">Community Gift</option>
-          </select>
-        </label>
-
-        <label class="field" id="event-amount-field">
-          <span id="event-amount-label">Montant</span>
-          <input id="event-amount" type="number" min="0" step="1" placeholder="Aléatoire si vide">
-        </label>
-
-        <label class="field" id="event-message-field">
-          <span>Message</span>
-          <input id="event-message" placeholder="Aléatoire si vide" autocomplete="off">
-        </label>
-
-        <button class="button button--primary button--wide" id="send-event" type="button">Déclencher l’événement</button>
       </div>
 
       <details class="advanced">
