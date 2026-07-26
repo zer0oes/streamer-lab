@@ -335,20 +335,36 @@
             </button>
           </div>
         </div>
-        <div class="field-row">
-          <label class="field">
-            <span>Nom</span>
-            <input id="event-name" value="NovaViewer" autocomplete="off">
-          </label>
-          <label class="field field--small">
-            <span>Montant</span>
-            <input id="event-amount" type="number" value="5" min="0" step="1">
-          </label>
-        </div>
         <label class="field">
-          <span>Message</span>
-          <input id="event-message" value="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum cursus dignissim turpis quis efficitur. Phasellus fermentum et libero vitae placerat. Sed iaculis neque in justo." autocomplete="off">
+          <span>Pseudo</span>
+          <input id="event-name" placeholder="Aléatoire si vide" autocomplete="off">
         </label>
+
+        <label class="field checkbox-field" id="event-broadcaster-field">
+          <span>Diffuseur (pseudo de la chaîne)</span>
+          <input id="event-broadcaster" type="checkbox">
+        </label>
+
+        <label class="field" id="event-subtype-field">
+          <span>Type d’abonnement</span>
+          <select id="event-sub-type">
+            <option value="tier1">Sub classique</option>
+            <option value="prime">Sub Prime</option>
+            <option value="gift">Sub-Gift</option>
+            <option value="communitygift">Community Gift</option>
+          </select>
+        </label>
+
+        <label class="field" id="event-amount-field">
+          <span id="event-amount-label">Montant</span>
+          <input id="event-amount" type="number" min="0" step="1" placeholder="Aléatoire si vide">
+        </label>
+
+        <label class="field" id="event-message-field">
+          <span>Message</span>
+          <input id="event-message" placeholder="Aléatoire si vide" autocomplete="off">
+        </label>
+
         <button class="button button--primary button--wide" id="send-event" type="button">Déclencher l’événement</button>
       </div>
 
