@@ -12,7 +12,7 @@
   </head>
   <body>
     <header class="topbar">
-      <div class="brand">
+      <a class="brand" href="/" aria-label="Retour à l’accueil">
         <span class="brand__mark" aria-hidden="true">
           <svg class="brand__icon" viewBox="0 0 64 72">
             <defs>
@@ -34,41 +34,40 @@
           <span class="eyebrow">SANDBOX</span>
           <h1>Widget Lab</h1>
         </div>
-      </div>
-      <div class="platform-switch" role="group" aria-label="Plateforme simulée">
-        <button
-          class="platform-switch__button is-active"
-          type="button"
-          data-platform="streamelements"
-          aria-pressed="true"
-          aria-label="StreamElements"
-          title="StreamElements"
-        >
-          <img
-            class="platform-logo platform-logo--streamelements"
-            src="/assets/platforms/streamelements.svg"
-            alt=""
-            aria-hidden="true"
+      </a>
+      <div class="topbar__center">
+        <div class="platform-switch" role="group" aria-label="Plateforme simulée">
+          <button
+            class="platform-switch__button is-active"
+            type="button"
+            data-platform="streamelements"
+            aria-pressed="true"
+            aria-label="StreamElements"
+            title="StreamElements"
           >
-        </button>
-        <button
-          class="platform-switch__button"
-          type="button"
-          data-platform="streamlabs"
-          aria-pressed="false"
-          aria-label="Streamlabs"
-          title="Streamlabs"
-        >
-          <img
-            class="platform-logo platform-logo--streamlabs"
-            src="/assets/platforms/streamlabs.svg"
-            alt=""
-            aria-hidden="true"
+            <img
+              class="platform-logo platform-logo--streamelements"
+              src="/assets/platforms/streamelements.svg"
+              alt=""
+              aria-hidden="true"
+            >
+          </button>
+          <button
+            class="platform-switch__button"
+            type="button"
+            data-platform="streamlabs"
+            aria-pressed="false"
+            aria-label="Streamlabs"
+            title="Streamlabs"
           >
-        </button>
-      </div>
-      <div class="topbar__actions">
-        <span class="status" id="live-status"><i></i><span>Simulation</span></span>
+            <img
+              class="platform-logo platform-logo--streamlabs"
+              src="/assets/platforms/streamlabs.svg"
+              alt=""
+              aria-hidden="true"
+            >
+          </button>
+        </div>
         <div class="export-menu" id="export-menu">
           <button
             class="export-menu__trigger"
@@ -93,15 +92,38 @@
           </div>
         </div>
       </div>
+      <div class="topbar__actions">
+        <button class="icon-button" id="account-fab" type="button" aria-label="Mon compte" aria-expanded="false" aria-controls="account-panel" title="Mon compte">
+          <span class="material-symbols-rounded" aria-hidden="true">account_circle</span>
+        </button>
+      </div>
     </header>
 
     <main class="workspace">
       <aside class="panel controls">
+        <div class="controls__toolbar">
+          <button class="sidebar-nav-item" id="dashboard-fab" type="button" aria-label="Tableau de bord" title="Tableau de bord">
+            <span class="material-symbols-rounded" aria-hidden="true">dashboard</span>
+            <span>Dashboard</span>
+          </button>
+          <button class="sidebar-nav-item sidebar-nav-item--rail-only" id="library-nav" type="button" aria-label="Ma bibliothèque" title="Ma bibliothèque">
+            <span class="material-symbols-rounded" aria-hidden="true">topic</span>
+            <span>Ma bibliothèque</span>
+          </button>
+          <button class="sidebar-nav-item sidebar-nav-item--rail-only" id="fields-nav" type="button" aria-label="Champs" title="Champs">
+            <span class="material-symbols-rounded" aria-hidden="true">dynamic_form</span>
+            <span>Champs</span>
+          </button>
+          <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Replier le panneau" aria-expanded="true">
+            <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+          </button>
+        </div>
+        <div class="controls__body">
         <details class="sidebar-section" data-sidebar-section="library" open>
           <summary class="sidebar-section__summary">
             <div class="section-heading">
               <div>
-                <span class="step">01</span>
+                <span class="step material-symbols-rounded" aria-hidden="true">topic</span>
                 <h2>Ma bibliothèque</h2>
               </div>
               <span class="sidebar-section__meta">
@@ -117,7 +139,7 @@
                 <span class="library-tab__count" id="widget-count">0</span>
               </button>
               <button type="button" class="library-tab" role="tab" aria-selected="false" data-library-tab="alerts">
-                <span class="material-symbols-rounded" aria-hidden="true">celebration</span>
+                <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
                 <span>Alertes</span>
                 <span class="library-tab__count" id="alert-count">0</span>
               </button>
@@ -138,7 +160,7 @@
           <summary class="sidebar-section__summary">
             <div class="section-heading">
               <div>
-                <span class="step">02</span>
+                <span class="step material-symbols-rounded" aria-hidden="true">dynamic_form</span>
                 <h2>Champs</h2>
               </div>
               <span class="sidebar-section__meta">
@@ -151,9 +173,38 @@
             <div id="fields-form" class="fields-form"></div>
           </div>
         </details>
+        </div>
       </aside>
 
       <section class="preview-column">
+        <div class="dashboard-view" id="dashboard-view" hidden>
+          <div class="dashboard-hero">
+            <span class="eyebrow">SANDBOX</span>
+            <h2>Bienvenue sur Widget Lab</h2>
+            <p>Choisis un widget dans ta bibliothèque pour l’éditer, ou connecte tes comptes pour passer en mode live.</p>
+          </div>
+          <div class="dashboard-grid">
+            <button class="dashboard-card" type="button" id="dashboard-widgets-card">
+              <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
+              <div>
+                <strong id="dashboard-widget-count">0</strong>
+                <span>Widgets</span>
+              </div>
+            </button>
+            <button class="dashboard-card" type="button" id="dashboard-alerts-card">
+              <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
+              <div>
+                <strong id="dashboard-alert-count">0</strong>
+                <span>Alertes</span>
+              </div>
+            </button>
+          </div>
+          <div class="dashboard-connections">
+            <h3>Comptes connectés</h3>
+            <ul class="dashboard-connection-list" id="dashboard-connection-list"></ul>
+          </div>
+        </div>
+
         <div class="preview-toolbar">
           <div class="preview-toolbar__heading">
             <span class="preview-title" id="preview-title">Aperçu du widget</span>
@@ -264,7 +315,7 @@
           <h2 id="event-simulator-title">Déclencher un événement</h2>
         </div>
         <button class="icon-button" id="close-event-simulator" type="button" aria-label="Fermer">
-          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+          <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
         </button>
       </header>
 
@@ -424,8 +475,108 @@
       aria-expanded="false"
       title="Simuler un événement"
     >
-      <span class="material-symbols-rounded" aria-hidden="true">notifications</span>
+      <span class="material-symbols-rounded" aria-hidden="true">alarm_on</span>
     </button>
+
+    <section class="account-panel-drawer" id="account-panel" aria-labelledby="account-panel-title" hidden>
+      <header class="account-panel-drawer__header">
+        <h2 id="account-panel-title">Mon compte</h2>
+        <button class="icon-button" id="close-account-panel" type="button" aria-label="Fermer">
+          <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+        </button>
+      </header>
+
+      <div class="account-panel-drawer__body">
+        <p class="account-error" id="account-error" hidden></p>
+
+        <section class="account-state" id="logged-out-panel" hidden>
+          <p class="account-lead">Connecte-toi avec Twitch pour gérer tes intégrations StreamElements et Streamlabs.</p>
+          <a class="button button--twitch button--wide" id="twitch-login-button" href="/auth/twitch/start">
+            <svg class="twitch-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"></path>
+            </svg>
+            <span>Se connecter avec Twitch</span>
+          </a>
+        </section>
+
+        <section class="account-state" id="logged-in-panel" hidden>
+          <div class="account-identity">
+            <img class="account-avatar" id="account-avatar" alt="" hidden>
+            <div class="account-identity__name">
+              <span class="eyebrow">CONNECTÉ</span>
+              <h3 id="account-display-name"></h3>
+            </div>
+            <button class="button button--quiet" id="logout-button" type="button">Se déconnecter</button>
+          </div>
+
+          <div class="integration-grid">
+            <article class="integration-card" data-provider="streamelements">
+              <header>
+                <h3>StreamElements</h3>
+                <span class="integration-status" data-role="status">Non connecté</span>
+              </header>
+              <a class="integration-help" href="https://streamelements.com/dashboard/account/channels" target="_blank" rel="noopener noreferrer">
+                <span class="material-symbols-rounded" aria-hidden="true">open_in_new</span>
+                <span>Récupérer mon Channel ID et mon token</span>
+              </a>
+              <form class="integration-form" data-role="form">
+                <label class="field">
+                  <span>Channel ID</span>
+                  <input name="channelId" autocomplete="off" required>
+                </label>
+                <label class="field">
+                  <span>Token</span>
+                  <input name="token" type="password" autocomplete="off" required>
+                </label>
+                <label class="field">
+                  <span>Type de token</span>
+                  <select name="tokenType">
+                    <option value="jwt">JWT</option>
+                    <option value="apikey">API key</option>
+                    <option value="oauth2">OAuth2</option>
+                  </select>
+                </label>
+                <p class="integration-form__error" data-role="form-error" hidden></p>
+                <button class="button button--primary button--wide" type="submit">Connecter</button>
+              </form>
+              <div class="integration-connected" data-role="connected" hidden>
+                <p><span data-role="channel-name"></span></p>
+                <p class="integration-meta" data-role="connected-at"></p>
+                <button class="button button--quiet button--wide" data-role="disconnect" type="button">Déconnecter</button>
+              </div>
+            </article>
+
+            <article class="integration-card" data-provider="streamlabs">
+              <header>
+                <h3>Streamlabs</h3>
+                <span class="integration-status" data-role="status">Non connecté</span>
+              </header>
+              <a class="integration-help" href="https://streamlabs.com/dashboard#/apisettings" target="_blank" rel="noopener noreferrer">
+                <span class="material-symbols-rounded" aria-hidden="true">open_in_new</span>
+                <span>Récupérer mon Socket API Token</span>
+              </a>
+              <form class="integration-form" data-role="form">
+                <label class="field">
+                  <span>Nom de chaîne (optionnel)</span>
+                  <input name="channelName" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Socket API Token</span>
+                  <input name="token" type="password" autocomplete="off" required>
+                </label>
+                <p class="integration-form__error" data-role="form-error" hidden></p>
+                <button class="button button--primary button--wide" type="submit">Connecter</button>
+              </form>
+              <div class="integration-connected" data-role="connected" hidden>
+                <p><span data-role="channel-name"></span></p>
+                <p class="integration-meta" data-role="connected-at"></p>
+                <button class="button button--quiet button--wide" data-role="disconnect" type="button">Déconnecter</button>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </section>
 
     <dialog class="widget-settings" id="widget-settings-dialog" aria-labelledby="widget-settings-title">
       <form class="widget-settings__form" id="widget-settings-form">
@@ -435,7 +586,7 @@
             <h2 id="widget-settings-title">Modifier le widget</h2>
           </div>
           <button class="icon-button" id="close-widget-settings" type="button" aria-label="Fermer">
-            <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
           </button>
         </header>
         <div class="widget-settings__body">
@@ -452,7 +603,7 @@
                 <span>Widget</span>
               </button>
               <button type="button" class="widget-type-switch__button" data-widget-type="alert" aria-pressed="false">
-                <span class="material-symbols-rounded" aria-hidden="true">celebration</span>
+                <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
                 <span>Alerte</span>
               </button>
             </div>

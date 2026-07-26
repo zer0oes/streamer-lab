@@ -6,7 +6,8 @@ test("le HTML expose les éléments requis par les mises à jour dynamiques", as
   const html = await readFile(new URL("../public/index.html", import.meta.url), "utf8");
 
   for (const id of [
-    "live-status",
+    "account-fab",
+    "account-panel",
     "editor-status",
     "widget-list",
     "fields-form",

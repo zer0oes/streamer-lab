@@ -31,7 +31,22 @@ const elements = {
   eventAccordion: document.querySelector("#event-type-accordion"),
   customEvent: document.querySelector("#custom-event"),
   console: document.querySelector("#console-output"),
-  liveStatus: document.querySelector("#live-status"),
+  accountFab: document.querySelector("#account-fab"),
+  accountPanel: document.querySelector("#account-panel"),
+  accountError: document.querySelector("#account-error"),
+  loggedOutPanel: document.querySelector("#logged-out-panel"),
+  loggedInPanel: document.querySelector("#logged-in-panel"),
+  accountAvatar: document.querySelector("#account-avatar"),
+  accountDisplayName: document.querySelector("#account-display-name"),
+  logoutButton: document.querySelector("#logout-button"),
+  integrationCards: document.querySelectorAll(".integration-card"),
+  dashboardFab: document.querySelector("#dashboard-fab"),
+  dashboardView: document.querySelector("#dashboard-view"),
+  dashboardWidgetCount: document.querySelector("#dashboard-widget-count"),
+  dashboardAlertCount: document.querySelector("#dashboard-alert-count"),
+  dashboardConnectionList: document.querySelector("#dashboard-connection-list"),
+  workspace: document.querySelector(".workspace"),
+  sidebarToggle: document.querySelector("#sidebar-toggle"),
   previewShell: document.querySelector("#preview-shell"),
   previewCanvas: document.querySelector("#preview-canvas"),
   previewTitle: document.querySelector("#preview-title"),
@@ -60,6 +75,7 @@ const elements = {
 };
 
 let widget;
+let eventSimulatorCloseTimer;
 let widgetCatalog = [];
 let activeWidgetId = "";
 let widgetSwitching = false;
@@ -751,6 +767,7 @@ async function initialize() {
     initializeWidgetEditor();
     updateLiveStatus(state.live);
     connectEventStream();
+    showDashboard();
   } catch (error) {
     addConsole("error", error.message);
     showToast(error.message);
@@ -820,7 +837,10 @@ function buildWidgetLibraryRow(entry) {
   }
 
   button.append(icon, copy, status);
-  button.addEventListener("click", () => void switchWidget(entry.id));
+  button.addEventListener("click", () => {
+    hideDashboard();
+    void switchWidget(entry.id);
+  });
 
   const menu = document.createElement("div");
   menu.className = "widget-library__menu";
@@ -1215,7 +1235,6 @@ function renderFields() {
 
     const details = document.createElement("details");
     details.className = "field-group";
-    details.open = true;
     const summary = document.createElement("summary");
     summary.textContent = definition.group;
     summary.addEventListener("click", (event) => {
@@ -1694,13 +1713,10 @@ function updateLiveStatus(statuses) {
 }
 
 function renderLiveStatusIndicator() {
-  if (!elements.liveStatus) return;
+  if (!elements.accountFab) return;
   const key = previewPlatform === PLATFORM_STREAMLABS ? "streamlabs" : "streamelements";
   const status = liveStatuses[key] || "disabled";
-  const label = elements.liveStatus.querySelector("span");
-  elements.liveStatus.classList.toggle("is-live", status === "connected");
-  elements.liveStatus.classList.toggle("is-error", status.startsWith("error"));
-  label.textContent = status === "disabled" ? "Simulation" : status;
+  elements.accountFab.title = status === "disabled" ? "Mon compte (simulation)" : `Mon compte (${status})`;
 }
 
 function handleWidgetMessage(message) {
@@ -1774,8 +1790,6 @@ function showToast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => elements.toast.classList.remove("is-visible"), 3500);
 }
-
-let eventSimulatorCloseTimer;
 
 function setEventSimulatorOpen(open, restoreFocus = false) {
   clearTimeout(eventSimulatorCloseTimer);
@@ -1921,6 +1935,258 @@ document.querySelector("#send-custom").addEventListener("click", () => {
     showToast(`JSON invalide : ${error.message}`);
   }
 });
+
+let accountPanelCloseTimer;
+let accountPanelLoaded = false;
+
+function setAccountPanelOpen(open, restoreFocus = false) {
+  clearTimeout(accountPanelCloseTimer);
+  elements.accountFab.setAttribute("aria-expanded", String(open));
+  if (open) {
+    elements.accountPanel.hidden = false;
+    requestAnimationFrame(() => elements.accountPanel.classList.add("is-open"));
+    if (!accountPanelLoaded) {
+      accountPanelLoaded = true;
+      initializeAccountPanel();
+    }
+  } else {
+    elements.accountPanel.classList.remove("is-open");
+    accountPanelCloseTimer = setTimeout(() => {
+      elements.accountPanel.hidden = true;
+    }, 200);
+    if (restoreFocus) elements.accountFab.focus();
+  }
+}
+
+elements.accountFab.addEventListener("click", () => {
+  setAccountPanelOpen(elements.accountPanel.hidden);
+});
+document.querySelector("#close-account-panel").addEventListener("click", () => {
+  setAccountPanelOpen(false, true);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !elements.accountPanel.hidden) {
+    setAccountPanelOpen(false, true);
+  }
+});
+document.addEventListener("pointerdown", (event) => {
+  if (
+    !elements.accountPanel.hidden &&
+    !elements.accountPanel.contains(event.target) &&
+    !elements.accountFab.contains(event.target)
+  ) {
+    setAccountPanelOpen(false);
+  }
+});
+
+const ACCOUNT_ERROR_MESSAGES = {
+  twitch_not_configured: "La connexion Twitch n’est pas encore configurée sur ce serveur.",
+  cancelled: "Connexion Twitch annulée.",
+  failed: "La connexion Twitch a échoué. Réessaie."
+};
+
+async function fetchAccountJson(url, options) {
+  const response = await fetch(url, options);
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw Object.assign(new Error(body.error || `Erreur ${response.status}`), { status: response.status });
+  return body;
+}
+
+function formatAccountDate(ms) {
+  return ms ? new Date(ms).toLocaleString("fr-FR") : "";
+}
+
+function renderIntegrationCard(card, integration) {
+  const statusEl = card.querySelector('[data-role="status"]');
+  const helpEl = card.querySelector(".integration-help");
+  const formEl = card.querySelector('[data-role="form"]');
+  const connectedEl = card.querySelector('[data-role="connected"]');
+
+  if (integration) {
+    statusEl.textContent = "Connecté";
+    statusEl.classList.add("is-connected");
+    helpEl.hidden = true;
+    formEl.hidden = true;
+    connectedEl.hidden = false;
+    connectedEl.querySelector('[data-role="channel-name"]').textContent = integration.channelName || integration.channelId || "Connecté";
+    connectedEl.querySelector('[data-role="connected-at"]').textContent = `Connecté le ${formatAccountDate(integration.connectedAt)}`;
+  } else {
+    statusEl.textContent = "Non connecté";
+    statusEl.classList.remove("is-connected");
+    helpEl.hidden = false;
+    formEl.hidden = false;
+    connectedEl.hidden = true;
+    formEl.reset();
+  }
+}
+
+async function loadAccountIntegrations() {
+  const { integrations } = await fetchAccountJson("/api/integrations");
+  for (const card of elements.integrationCards) {
+    const provider = card.dataset.provider;
+    const integration = integrations.find((entry) => entry.provider === provider) || null;
+    renderIntegrationCard(card, integration);
+  }
+}
+
+function wireIntegrationCard(card) {
+  const provider = card.dataset.provider;
+  const formEl = card.querySelector('[data-role="form"]');
+  const formError = card.querySelector('[data-role="form-error"]');
+  const disconnectButton = card.querySelector('[data-role="disconnect"]');
+
+  formEl.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    formError.hidden = true;
+    const data = Object.fromEntries(new FormData(formEl).entries());
+    try {
+      const { integration } = await fetchAccountJson(`/api/integrations/${provider}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      renderIntegrationCard(card, integration);
+    } catch (error) {
+      formError.textContent = error.message;
+      formError.hidden = false;
+    }
+  });
+
+  disconnectButton.addEventListener("click", async () => {
+    try {
+      await fetchAccountJson(`/api/integration?provider=${provider}`, { method: "DELETE" });
+      renderIntegrationCard(card, null);
+    } catch (error) {
+      formError.textContent = error.message;
+      formError.hidden = false;
+    }
+  });
+}
+
+function showAccountError(message) {
+  elements.accountError.textContent = message;
+  elements.accountError.hidden = false;
+}
+
+async function initializeAccountPanel() {
+  const params = new URLSearchParams(window.location.search);
+  const queryMessage = ACCOUNT_ERROR_MESSAGES[params.get("error")] || ACCOUNT_ERROR_MESSAGES[params.get("login")];
+  if (queryMessage) showAccountError(queryMessage);
+
+  for (const card of elements.integrationCards) wireIntegrationCard(card);
+
+  elements.logoutButton.addEventListener("click", async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    elements.loggedInPanel.hidden = true;
+    elements.loggedOutPanel.hidden = false;
+    updateAccountFabIcon(false);
+  });
+
+  try {
+    const { authenticated, user } = await fetchAccountJson("/api/auth/me");
+    if (!authenticated) {
+      elements.loggedOutPanel.hidden = false;
+      return;
+    }
+
+    elements.loggedInPanel.hidden = false;
+    elements.accountDisplayName.textContent = user.displayName || user.twitchLogin;
+    if (user.avatarUrl) {
+      elements.accountAvatar.src = user.avatarUrl;
+      elements.accountAvatar.hidden = false;
+    }
+
+    await loadAccountIntegrations();
+  } catch (error) {
+    showAccountError(error.message);
+  }
+}
+
+function showDashboard() {
+  elements.dashboardView.hidden = false;
+  elements.eventFab.hidden = true;
+  setEventSimulatorOpen(false);
+  renderDashboard();
+}
+
+function hideDashboard() {
+  elements.dashboardView.hidden = true;
+  elements.eventFab.hidden = false;
+}
+
+function goToLibrary(tab) {
+  hideDashboard();
+  setSidebarCollapsed(false);
+  selectLibraryTab(tab);
+  const librarySection = document.querySelector('[data-sidebar-section="library"]');
+  if (librarySection && !librarySection.open) expandDetails(librarySection);
+}
+
+function jumpToSidebarSection(sectionKey) {
+  setSidebarCollapsed(false);
+  const section = document.querySelector(`[data-sidebar-section="${sectionKey}"]`);
+  if (section && !section.open) expandDetails(section);
+}
+
+async function renderDashboard() {
+  elements.dashboardWidgetCount.textContent = widgetCatalog.filter(entry => entry.type !== "alert").length;
+  elements.dashboardAlertCount.textContent = widgetCatalog.filter(entry => entry.type === "alert").length;
+
+  const rows = [
+    dashboardConnectionRow("StreamElements", liveStatuses.streamelements === "connected", liveStatuses.streamelements === "connected" ? "Connecté" : "Simulation"),
+    dashboardConnectionRow("Streamlabs", liveStatuses.streamlabs === "connected", liveStatuses.streamlabs === "connected" ? "Connecté" : "Simulation")
+  ];
+
+  try {
+    const { authenticated, user } = await fetchAccountJson("/api/auth/me");
+    rows.unshift(dashboardConnectionRow("Compte Twitch", authenticated, authenticated ? (user.displayName || user.twitchLogin) : "Non connecté"));
+    updateAccountFabIcon(authenticated);
+  } catch {
+    rows.unshift(dashboardConnectionRow("Compte Twitch", false, "Non connecté"));
+    updateAccountFabIcon(false);
+  }
+
+  elements.dashboardConnectionList.replaceChildren(...rows);
+}
+
+function updateAccountFabIcon(authenticated) {
+  elements.accountFab.querySelector(".material-symbols-rounded").textContent = authenticated ? "account_circle" : "account_circle_off";
+  elements.accountFab.classList.toggle("is-live", authenticated);
+}
+
+function dashboardConnectionRow(label, connected, detail) {
+  const item = document.createElement("li");
+  item.className = `dashboard-connection${connected ? " is-connected" : ""}`;
+  const dot = document.createElement("i");
+  const strong = document.createElement("strong");
+  strong.textContent = label;
+  const span = document.createElement("span");
+  span.textContent = detail;
+  item.append(dot, strong, span);
+  return item;
+}
+
+function setSidebarCollapsed(collapsed) {
+  elements.workspace.classList.toggle("is-sidebar-collapsed", collapsed);
+  elements.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+  elements.sidebarToggle.setAttribute("aria-label", collapsed ? "Déplier le panneau" : "Replier le panneau");
+  elements.sidebarToggle.querySelector(".material-symbols-rounded").textContent = collapsed ? "chevron_right" : "chevron_left";
+}
+
+elements.sidebarToggle.addEventListener("click", () => {
+  setSidebarCollapsed(!elements.workspace.classList.contains("is-sidebar-collapsed"));
+});
+
+elements.dashboardFab.addEventListener("click", () => showDashboard());
+document.querySelector("#dashboard-widgets-card").addEventListener("click", () => goToLibrary("widgets"));
+document.querySelector("#dashboard-alerts-card").addEventListener("click", () => goToLibrary("alerts"));
+document.querySelector("#library-nav").addEventListener("click", () => jumpToSidebarSection("library"));
+document.querySelector("#fields-nav").addEventListener("click", () => jumpToSidebarSection("fields"));
+
+if (new URLSearchParams(window.location.search).get("account") === "open") {
+  setAccountPanelOpen(true);
+}
+
 async function exportWidgetCode(platform) {
   const saved = await flushWidgetEditor();
   if (!saved) {

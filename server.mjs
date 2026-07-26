@@ -6,6 +6,18 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { astroToLabEvents, parseEnv } from "./lib/streamelements.mjs";
 import { streamlabsEventToLabEvents } from "./lib/streamlabs.mjs";
+import { parseCookies, serializeCookie } from "./lib/cookies.mjs";
+import {
+  OAUTH_STATE_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
+  buildTwitchAuthorizeUrl,
+  exchangeCodeForToken,
+  fetchTwitchUser,
+  requireSession,
+  signSessionCookie
+} from "./lib/auth.mjs";
+import { store } from "./lib/db.mjs";
+import { disconnectIntegration, maskIntegration, saveManualToken } from "./lib/integrations.mjs";
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 const PUBLIC_ROOT = join(ROOT, "public");
@@ -42,6 +54,8 @@ const editableWidgetFiles = new Set([
 
 if (existsSync(ENV_PATH)) Object.assign(process.env, parseEnv(readFileSync(ENV_PATH, "utf8")));
 
+const port = Number(process.env.PORT) || 4173;
+
 const config = {
   channelId: process.env.SE_CHANNEL_ID?.trim() ?? "",
   channelName: process.env.SE_CHANNEL_NAME?.trim() || "MaChaine",
@@ -51,8 +65,16 @@ const config = {
     .split(",")
     .map((topic) => topic.trim())
     .filter(Boolean),
-  streamlabsToken: process.env.SL_SOCKET_TOKEN?.trim() ?? ""
+  streamlabsToken: process.env.SL_SOCKET_TOKEN?.trim() ?? "",
+  twitchClientId: process.env.TWITCH_CLIENT_ID?.trim() ?? "",
+  twitchClientSecret: process.env.TWITCH_CLIENT_SECRET?.trim() ?? "",
+  twitchRedirectUri: process.env.TWITCH_REDIRECT_URI?.trim() || `http://localhost:${port}/auth/twitch/callback`,
+  sessionSecret: process.env.SESSION_SECRET?.trim() ?? "",
+  cookieSecure: process.env.COOKIE_SECURE?.trim() === "true"
 };
+const authConfigured = Boolean(config.twitchClientId && config.twitchClientSecret && config.sessionSecret);
+
+store.deleteExpiredSessions();
 
 let session = await readJson(MOCK_SESSION_PATH);
 let liveStatus = config.channelId && config.token ? "connecting" : "disabled";
@@ -197,6 +219,144 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    // --- Comptes & integrations ---
+
+    if (request.method === "GET" && url.pathname === "/auth/twitch/start") {
+      if (!authConfigured) {
+        response.writeHead(302, { Location: "/?account=open&error=twitch_not_configured" });
+        return response.end();
+      }
+      const state = randomUUID();
+      response.setHeader("Set-Cookie", serializeCookie(OAUTH_STATE_COOKIE_NAME, state, { maxAgeSeconds: 600, secure: config.cookieSecure }));
+      const authorizeUrl = buildTwitchAuthorizeUrl({
+        clientId: config.twitchClientId,
+        redirectUri: config.twitchRedirectUri,
+        state
+      });
+      response.writeHead(302, { Location: authorizeUrl });
+      return response.end();
+    }
+
+    if (request.method === "GET" && url.pathname === "/auth/twitch/callback") {
+      const cookies = parseCookies(request.headers.cookie);
+      const expectedState = cookies[OAUTH_STATE_COOKIE_NAME];
+      const returnedState = url.searchParams.get("state");
+      const code = url.searchParams.get("code");
+      const clearStateCookie = serializeCookie(OAUTH_STATE_COOKIE_NAME, "", { maxAgeSeconds: 0, secure: config.cookieSecure });
+
+      if (url.searchParams.get("error") || !code || !expectedState || expectedState !== returnedState) {
+        response.setHeader("Set-Cookie", clearStateCookie);
+        response.writeHead(302, { Location: "/?account=open&login=cancelled" });
+        return response.end();
+      }
+
+      try {
+        const tokenResponse = await exchangeCodeForToken({
+          code,
+          clientId: config.twitchClientId,
+          clientSecret: config.twitchClientSecret,
+          redirectUri: config.twitchRedirectUri
+        });
+        const twitchUser = await fetchTwitchUser(tokenResponse.access_token, config.twitchClientId);
+        const user = store.upsertUserFromTwitch(twitchUser);
+        const newSession = store.createSession(user.id);
+        const sessionCookie = serializeCookie(SESSION_COOKIE_NAME, signSessionCookie(newSession.id, config.sessionSecret), {
+          maxAgeSeconds: Math.floor((newSession.expiresAt - Date.now()) / 1000),
+          secure: config.cookieSecure
+        });
+        response.setHeader("Set-Cookie", [clearStateCookie, sessionCookie]);
+        response.writeHead(302, { Location: "/?account=open" });
+        return response.end();
+      } catch (error) {
+        console.error(error);
+        response.setHeader("Set-Cookie", clearStateCookie);
+        response.writeHead(302, { Location: "/?account=open&login=failed" });
+        return response.end();
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/auth/dev-login") {
+      if (process.env.ENABLE_DEV_LOGIN !== "true") return sendJson(response, 404, { error: "Introuvable" });
+      if (!config.sessionSecret) return sendJson(response, 500, { error: "SESSION_SECRET manquant" });
+      const body = await readRequestJson(request);
+      const twitchLogin = typeof body.twitchLogin === "string" && body.twitchLogin.trim() ? body.twitchLogin.trim() : "dev-user";
+      const displayName = typeof body.displayName === "string" && body.displayName.trim() ? body.displayName.trim() : twitchLogin;
+      const user = store.upsertUserFromTwitch({ twitchId: `dev-${twitchLogin}`, twitchLogin, displayName, avatarUrl: null });
+      const newSession = store.createSession(user.id);
+      response.setHeader("Set-Cookie", serializeCookie(SESSION_COOKIE_NAME, signSessionCookie(newSession.id, config.sessionSecret), {
+        maxAgeSeconds: Math.floor((newSession.expiresAt - Date.now()) / 1000),
+        secure: config.cookieSecure
+      }));
+      return sendJson(response, 200, { loggedIn: true });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/auth/logout") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (auth) store.deleteSession(auth.session.id);
+      response.setHeader("Set-Cookie", serializeCookie(SESSION_COOKIE_NAME, "", { maxAgeSeconds: 0, secure: config.cookieSecure }));
+      return sendJson(response, 200, { loggedOut: true });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/auth/me") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 200, { authenticated: false });
+      return sendJson(response, 200, {
+        authenticated: true,
+        user: {
+          id: auth.user.id,
+          twitchLogin: auth.user.twitch_login,
+          displayName: auth.user.display_name,
+          avatarUrl: auth.user.avatar_url
+        }
+      });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/integrations") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
+      return sendJson(response, 200, { integrations: store.listIntegrationsForUser(auth.user.id).map(maskIntegration) });
+    }
+
+    if (
+      request.method === "POST" &&
+      (url.pathname === "/api/integrations/streamelements" || url.pathname === "/api/integrations/streamlabs")
+    ) {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
+      const provider = url.pathname.endsWith("streamlabs") ? "streamlabs" : "streamelements";
+      const body = await readRequestJson(request);
+      const token = typeof body.token === "string" ? body.token.trim() : "";
+      if (!token) return sendJson(response, 400, { error: "Token requis" });
+      if (provider === "streamelements" && !["jwt", "apikey", "oauth2"].includes(body.tokenType)) {
+        return sendJson(response, 400, { error: "tokenType invalide" });
+      }
+      try {
+        const integration = saveManualToken({
+          userId: auth.user.id,
+          provider,
+          channelId: typeof body.channelId === "string" ? body.channelId.trim() || null : null,
+          channelName: typeof body.channelName === "string" ? body.channelName.trim() || null : null,
+          token,
+          tokenType: provider === "streamelements" ? body.tokenType : null,
+          topics: null
+        }, store);
+        return sendJson(response, 200, { integration });
+      } catch (error) {
+        return sendJson(response, 500, { error: error.message });
+      }
+    }
+
+    if (request.method === "DELETE" && url.pathname === "/api/integration") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
+      const provider = url.searchParams.get("provider");
+      if (provider !== "streamelements" && provider !== "streamlabs") {
+        return sendJson(response, 400, { error: "provider invalide" });
+      }
+      const deleted = disconnectIntegration(auth.user.id, provider, store);
+      return sendJson(response, 200, { deleted, provider });
+    }
+
     if (request.method === "GET" && url.pathname === "/vendor/jquery.min.js") {
       const jqueryPath = join(ROOT, "node_modules", "jquery", "dist", "jquery.min.js");
       if (!existsSync(jqueryPath)) {
@@ -231,10 +391,10 @@ setInterval(() => {
   for (const client of sseClients) client.write(": keep-alive\n\n");
 }, 20_000).unref();
 
-const port = Number(process.env.PORT) || 4173;
 server.listen(port, "127.0.0.1", () => {
   console.log(`StreamElements Widget Lab : http://localhost:${port}`);
   if (!config.channelId || !config.token) console.log("Mode simulation. Configurez .env pour activer les evenements reels.");
+  if (!authConfigured) console.log("Connexion Twitch desactivee. Renseignez TWITCH_CLIENT_ID/SECRET et SESSION_SECRET dans .env pour l'activer.");
 });
 
 if (config.channelId && config.token) connectAstro();
