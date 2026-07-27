@@ -9,7 +9,10 @@
   .topbar { position: relative; }
   .event-fab { right: var(--space-16); bottom: var(--space-16); }
   .event-simulator { right: var(--space-16); bottom: 84px; }
+  .dashboard-add-fab { right: var(--space-16); bottom: var(--space-16); }
   .toast { right: 84px; bottom: 22px; }
+  .dashboard-view__columns { grid-template-columns: 1fr; }
+  .dashboard-view__group-columns { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {

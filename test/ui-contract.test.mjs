@@ -13,7 +13,10 @@ test("le HTML expose les éléments requis par les mises à jour dynamiques", as
     "fields-form",
     "widget-settings-dialog",
     "widget-settings-form",
-    "widget-settings-message"
+    "widget-settings-message",
+    "contact-dialog",
+    "contact-form",
+    "contact-form-open"
   ]) {
     assert.match(html, new RegExp(`id=["']${id}["']`), `Élément #${id} absent`);
   }

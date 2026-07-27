@@ -1,52 +1,58 @@
 // Widget library: tabs, cards/rows, and the widget-settings dialog.
 
-.library-tabs {
-  display: flex;
-  margin-bottom: var(--space-12);
-  padding: var(--space-3);
+.library-group {
+  margin-bottom: var(--space-10);
   border: 1px solid var(--line);
   border-radius: var(--radius-9);
   background: var(--panel-alt);
+  overflow: hidden;
 
-  &__tab {
-    display: inline-flex;
-    flex: 1;
+  &:last-child { margin-bottom: var(--space-12); }
+
+  &[open] {
+    .library-group__chevron { color: var(--accent-bright); transform: rotate(180deg); }
+  }
+
+  &__summary {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    gap: var(--space-6);
+    gap: var(--space-8);
     min-height: 36px;
-    padding: var(--space-5) var(--space-10);
-    border: 0;
-    border-radius: var(--radius-6);
-    color: var(--muted);
-    background: transparent;
+    padding: var(--space-7) var(--space-10);
     cursor: pointer;
+    list-style: none;
+    color: var(--muted);
     font-size: var(--text-12);
     font-weight: 650;
-    transition: color var(--duration-base), background var(--duration-base), box-shadow var(--duration-base);
+    user-select: none;
 
+    &::-webkit-details-marker { display: none; }
     &:hover { color: var(--text); }
-    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
 
-    &.is-active {
-      color: #fff;
-      background: var(--accent-gradient);
-      box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 24%, transparent);
-
-      .library-tab__count { color: #fff; background: rgb(255 255 255 / 18%); }
-    }
-
-    .material-symbols-rounded { font-size: 17px; }
+    .material-symbols-rounded:first-child { font-size: 17px; }
   }
-}
 
-.library-tab__count {
-  padding: 1px var(--space-6);
-  border-radius: 999px;
-  color: var(--muted);
-  background: rgb(255 255 255 / 8%);
-  font-size: var(--text-10);
-  font-weight: 720;
+  &__label { flex: 1; }
+
+  &__count {
+    padding: 1px var(--space-6);
+    border-radius: 999px;
+    color: var(--muted);
+    background: rgb(255 255 255 / 8%);
+    font-size: var(--text-10);
+    font-weight: 720;
+  }
+
+  &__chevron {
+    color: #747b88;
+    font-size: 18px;
+    transition: transform var(--duration-base), color var(--duration-base);
+  }
+
+  &__body {
+    padding: 0 var(--space-8) var(--space-8);
+  }
 }
 
 .widget-library {
@@ -91,38 +97,42 @@
   }
 
   &__item {
-    display: grid;
-    grid-template-columns: 34px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: var(--space-10);
-    width: 100%;
-    min-height: 52px;
-    padding: var(--space-7) var(--space-9);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-9);
+    // display: contents — le bouton reste cliquable/focusable (c'est un
+    // élément du DOM) mais ne génère plus sa propre boîte : ses enfants
+    // (icône/copy/status) s'intègrent directement dans la grille de
+    // .widget-library__row, qui porte désormais la cartouche visuelle
+    // unique (voir &__row juste en dessous).
+    display: contents;
     color: #d0d4dc;
-    background: color-mix(in srgb, var(--panel-soft) 65%, transparent);
     cursor: pointer;
+    // text-align: left — sans ça, ça remonte le text-align:center par défaut
+    // du user-agent stylesheet sur <button> (text-align est hérité, et
+    // display:contents laisse toujours passer les propriétés héritées à ses
+    // enfants même sans générer sa propre boîte).
     text-align: left;
-    transition: border-color var(--duration-base), background var(--duration-base), transform var(--duration-fast);
-
-    &:hover { border-color: #414753; background: #1a1d24; }
-    &:active { transform: translateY(1px); }
-    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
-    &:disabled { cursor: wait; opacity: 0.65; }
-
-    &.is-active {
-      border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
-      background: linear-gradient(135deg, color-mix(in srgb, var(--accent-bright) 16%, transparent), color-mix(in srgb, var(--accent) 7%, transparent));
-      box-shadow: inset 3px 0 0 var(--accent-bright);
-    }
   }
 
   &__row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 52px;
-    align-items: stretch;
-    gap: var(--space-6);
+    grid-template-columns: 34px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-10);
+    min-height: 52px;
+    padding: var(--space-7) var(--space-9);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-9);
+    background: color-mix(in srgb, var(--panel-soft) 65%, transparent);
+    transition: border-color var(--duration-base), background var(--duration-base);
+
+    &:hover { border-color: #414753; background: #1a1d24; }
+    &:has(.widget-library__item:focus-visible) { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+    &:has(.widget-library__item:disabled) { cursor: wait; opacity: 0.65; }
+
+    &:has(.widget-library__item.is-active) {
+      border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent-bright) 16%, transparent), color-mix(in srgb, var(--accent) 7%, transparent));
+      box-shadow: inset 3px 0 0 var(--accent-bright);
+    }
   }
 
   &__menu { position: relative; }
@@ -130,19 +140,20 @@
   &__options {
     display: grid;
     place-items: center;
-    width: 100%;
-    height: 100%;
+    width: 28px;
+    height: 28px;
     padding: 0;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-8);
+    border: 0;
+    border-radius: var(--radius-7);
     color: var(--muted);
-    background: color-mix(in srgb, var(--panel-soft) 65%, transparent);
+    background: transparent;
     cursor: pointer;
+    transition: color var(--duration-fast), background var(--duration-fast);
 
-    &:hover { color: #fff; border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent); }
+    &:hover { color: #fff; background: color-mix(in srgb, var(--accent-bright) 14%, transparent); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
     &:disabled { cursor: wait; opacity: 0.6; }
-    &[aria-expanded="true"] { color: #fff; border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent); }
+    &[aria-expanded="true"] { color: #fff; background: color-mix(in srgb, var(--accent-bright) 18%, transparent); }
     .material-symbols-rounded { font-size: 18px; }
   }
 
@@ -213,7 +224,7 @@
     }
 
     strong { color: #eef0f4; font-size: var(--text-11); font-weight: 750; }
-    small { margin-top: 3px; color: var(--muted); font-size: var(--text-9); }
+    small { margin-top: 3px; color: var(--text-secondary); font-size: var(--text-9); }
   }
 
   &__badge {

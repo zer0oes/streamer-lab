@@ -18,6 +18,13 @@
 
     .controls { padding: 0; border-right: 0; }
     .controls__body { display: none; }
+    // Only the copyright/GitHub/Discord row hides — the contact button
+    // stays reachable (icon-only, via the shared .sidebar-nav-item rules
+    // below) at the bottom of the collapsed rail. margin-top:auto pins the
+    // footer to the bottom now that .controls__body's flex:1 filler (which
+    // does this in the expanded state) is gone.
+    .controls__footer-links { display: none; }
+    .controls__footer { margin-top: auto; }
     .controls__toolbar { flex-direction: column; height: auto; padding: var(--space-14) var(--space-10); }
 
     .sidebar-nav-item {
@@ -27,7 +34,19 @@
     }
 
     .sidebar-nav-item--rail-only { display: flex; }
-    .sidebar-toggle { margin: 0 auto; }
+    // The "déplier" toggle sits first in the collapsed rail rather than at
+    // its normal (last) DOM position, which only applies to this stacked
+    // state — the expanded row layout is untouched.
+    .sidebar-toggle { order: -1; margin: 0 auto; }
+  }
+
+  // The platform switch/export menu and the "Champs" section only make
+  // sense while actually editing a widget/alert — hidden on the dashboard,
+  // where nothing is selected. Toggled alongside .is-sidebar-collapsed by
+  // setEditingChromeVisible() in app.js.
+  &.is-dashboard {
+    #fields-nav { display: none; }
+    [data-sidebar-section="fields"] { display: none; }
   }
 }
 
@@ -49,8 +68,11 @@
     align-items: center;
     justify-content: space-between;
     flex: 0 0 auto;
-    gap: var(--space-8);
-    padding: var(--space-14);
+    gap: var(--space-12);
+    // Matches .sidebar-section__summary's padding — when expanded, this row
+    // is meant to read like "Ma bibliothèque"'s section header. Overridden
+    // back to a compact rail padding by the .is-sidebar-collapsed rule.
+    padding: var(--space-20) var(--space-25);
     border-bottom: 1px solid var(--line);
   }
 
@@ -58,6 +80,52 @@
     flex: 1;
     min-width: 0;
     overflow: auto;
+  }
+
+  &__footer {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+    padding: var(--space-14);
+    border-top: 1px solid var(--line);
+  }
+
+  &__footer-links {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    color: var(--muted);
+    font-size: var(--text-10);
+  }
+
+  &__footer-copyright {
+    margin-right: auto;
+    color: inherit;
+    text-decoration: none;
+
+    &:hover { color: #fff; text-decoration: underline; }
+  }
+
+  &__footer-icon {
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+
+    &:hover { color: #fff; }
+
+    .github-logo,
+    .discord-logo { width: 16px; height: 16px; fill: currentColor; }
+  }
+
+  // Extra `.sidebar-nav-item` compound (not just `&`) to out-specificity that
+  // block's own rules (declared later in this file, same 1-class weight).
+  &__footer-contact.sidebar-nav-item {
+    justify-content: center;
+    padding: var(--space-6) var(--space-12);
+    font-size: var(--text-11);
+
+    .material-symbols-rounded { font-size: 16px; }
   }
 }
 
@@ -78,6 +146,52 @@
   &:hover { color: #fff; border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent); }
   .material-symbols-rounded { font-size: 18px; color: var(--accent-bright); }
   &--rail-only { display: none; }
+
+  // "You are here" indicator — currently only ever toggled on #dashboard-fab,
+  // matching the .is-active look already used elsewhere (platform-switch,
+  // widget-library items).
+  &.is-active {
+    color: #fff;
+    background: var(--accent-gradient);
+    border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
+
+    .material-symbols-rounded { color: #fff; }
+  }
+}
+
+// Dashboard is the only nav item always visible in the expanded toolbar
+// (Bibliothèque/Champs stay rail-only) — restyled here to match
+// .sidebar-section__summary/.sidebar-section__step's look (icon + divider,
+// larger type, no pill/border) instead of the plain bordered box other
+// nav items use. Scoped to the expanded state only: the collapsed rail
+// keeps the shared compact .sidebar-nav-item treatment above.
+.workspace:not(.is-sidebar-collapsed) #dashboard-fab {
+  gap: var(--space-12);
+  padding: var(--space-6) var(--space-9);
+  margin: calc(var(--space-6) * -1) calc(var(--space-9) * -1);
+  border: 0;
+  border-radius: var(--radius-8);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-14);
+
+  &:hover { color: var(--text); background: color-mix(in srgb, var(--accent-bright) 4%, transparent); }
+
+  .material-symbols-rounded {
+    padding-right: var(--space-12);
+    border-right: 1px solid var(--line);
+    font-size: 24px;
+  }
+
+  // Overrides the general .is-active pill treatment above (accent-gradient
+  // background would clash with this row's flat, border-less look) with a
+  // subtler persistent tint instead.
+  &.is-active {
+    background: color-mix(in srgb, var(--accent-bright) 10%, transparent);
+    color: var(--accent-bright);
+
+    &:hover { background: color-mix(in srgb, var(--accent-bright) 14%, transparent); }
+  }
 }
 
 .sidebar-toggle {

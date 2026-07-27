@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sandbox · Local Widget Lab</title>
+    <title>Streamer Lab</title>
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0"
@@ -31,8 +31,7 @@
           </svg>
         </span>
         <div>
-          <span class="eyebrow">SANDBOX</span>
-          <h1>Widget Lab</h1>
+          <h1>Streamer Lab</h1>
         </div>
       </a>
       <div class="topbar__center">
@@ -89,6 +88,10 @@
               <span class="material-symbols-rounded" aria-hidden="true">sync_alt</span>
               <span id="export-convert-label">Convertir pour Streamlabs</span>
             </button>
+            <button class="export-menu__item" type="button" role="menuitem" data-export-action="shortcut">
+              <span class="material-symbols-rounded" aria-hidden="true">link</span>
+              <span>Créer un raccourci .url</span>
+            </button>
           </div>
         </div>
       </div>
@@ -99,7 +102,7 @@
       </div>
     </header>
 
-    <main class="workspace">
+    <main class="workspace is-sidebar-collapsed">
       <aside class="panel controls">
         <div class="controls__toolbar">
           <button class="sidebar-nav-item" id="dashboard-fab" type="button" aria-label="Tableau de bord" title="Tableau de bord">
@@ -114,8 +117,8 @@
             <span class="material-symbols-rounded" aria-hidden="true">dynamic_form</span>
             <span>Champs</span>
           </button>
-          <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Replier le panneau" aria-expanded="true">
-            <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+          <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Déplier le panneau" aria-expanded="false">
+            <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
           </button>
         </div>
         <div class="controls__body">
@@ -132,28 +135,36 @@
             </div>
           </summary>
           <div class="sidebar-section__body">
-            <div class="library-tabs" id="library-tabs" role="tablist" aria-label="Bibliothèque">
-              <button type="button" class="library-tabs__tab is-active" role="tab" aria-selected="true" data-library-tab="widgets">
+            <details class="library-group" data-library-group="widget" open>
+              <summary class="library-group__summary">
                 <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
-                <span>Widgets</span>
-                <span class="library-tab__count" id="widget-count">0</span>
-              </button>
-              <button type="button" class="library-tabs__tab" role="tab" aria-selected="false" data-library-tab="alerts">
+                <span class="library-group__label">Widgets</span>
+                <span class="library-group__count" id="widget-count">0</span>
+                <span class="material-symbols-rounded library-group__chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="library-group__body">
+                <div class="widget-library" id="widget-list" aria-label="Bibliothèque de widgets"></div>
+                <button class="button button--wide widget-library__add" id="add-widget" type="button">
+                  <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                  <span>Ajouter un widget</span>
+                </button>
+              </div>
+            </details>
+            <details class="library-group" data-library-group="alert" open>
+              <summary class="library-group__summary">
                 <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
-                <span>Alertes</span>
-                <span class="library-tab__count" id="alert-count">0</span>
-              </button>
-            </div>
-            <div class="widget-library" id="widget-list" aria-label="Bibliothèque de widgets"></div>
-            <button class="button button--wide widget-library__add" id="add-widget" type="button">
-              <span class="material-symbols-rounded" aria-hidden="true">add</span>
-              <span>Ajouter un widget</span>
-            </button>
-            <div class="widget-library" id="alert-list" aria-label="Bibliothèque d’alertes" hidden></div>
-            <button class="button button--wide widget-library__add" id="add-alert" type="button" hidden>
-              <span class="material-symbols-rounded" aria-hidden="true">add</span>
-              <span>Ajouter une alerte</span>
-            </button>
+                <span class="library-group__label">Alertes</span>
+                <span class="library-group__count" id="alert-count">0</span>
+                <span class="material-symbols-rounded library-group__chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="library-group__body">
+                <div class="widget-library" id="alert-list" aria-label="Bibliothèque d’alertes"></div>
+                <button class="button button--wide widget-library__add" id="add-alert" type="button">
+                  <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                  <span>Ajouter une alerte</span>
+                </button>
+              </div>
+            </details>
           </div>
         </details>
         <details class="sidebar-section" data-sidebar-section="fields" open>
@@ -174,34 +185,107 @@
           </div>
         </details>
         </div>
+        <div class="controls__footer">
+          <button type="button" class="sidebar-nav-item controls__footer-contact" id="contact-form-open">
+            <span class="material-symbols-rounded" aria-hidden="true">mail</span>
+            <span>Nous contacter</span>
+          </button>
+          <div class="controls__footer-links">
+            <a class="controls__footer-copyright" href="https://www.aurore-salavert.fr/" target="_blank" rel="noopener">© <span id="footer-year"></span> Stream Widget Studio</a>
+            <a class="controls__footer-icon" href="https://github.com/zer0oes/stream-widget-studio" target="_blank" rel="noopener" aria-label="Dépôt GitHub" title="GitHub">
+              <svg class="github-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757-1.089-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"></path>
+              </svg>
+            </a>
+            <a class="controls__footer-icon" href="https://discord.gg/zUXhtd295u" target="_blank" rel="noopener" aria-label="Support Discord" title="Support Discord">
+              <svg class="discord-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.07.07 0 0 0-.079.037c-.211.375-.445.865-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.6 12.6 0 0 0-.618-1.25.07.07 0 0 0-.078-.037A19.74 19.74 0 0 0 3.677 4.37a.06.06 0 0 0-.03.028C.533 9.046-.32 13.58.099 18.058a.08.08 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.08.08 0 0 0 .084-.028 14.2 14.2 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.1 13.1 0 0 1-1.872-.893.077.077 0 0 1-.008-.128q.19-.142.372-.291a.074.074 0 0 1 .078-.01c3.928 1.793 8.18 1.793 12.061 0a.073.073 0 0 1 .079.01q.183.149.372.291a.077.077 0 0 1-.006.128 12.3 12.3 0 0 1-1.873.892.076.076 0 0 0-.04.106c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.029 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.548-13.66a.06.06 0 0 0-.031-.028M8.02 15.33c-1.183 0-2.157-1.086-2.157-2.42 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.419-2.157 2.419m7.975 0c-1.183 0-2.157-1.086-2.157-2.42 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.419-2.157 2.419"></path>
+              </svg>
+            </a>
+          </div>
+        </div>
       </aside>
 
       <section class="preview-column">
         <div class="dashboard-view" id="dashboard-view" hidden>
           <div class="dashboard-view__hero">
-            <span class="eyebrow">SANDBOX</span>
-            <h2>Bienvenue sur Widget Lab</h2>
+            <span class="eyebrow">DASHBOARD</span>
+            <h2>Bienvenue sur Streamer Lab</h2>
             <p>Choisis un widget dans ta bibliothèque pour l’éditer, ou connecte tes comptes pour passer en mode live.</p>
           </div>
-          <div class="dashboard-view__grid">
-            <button class="dashboard-view__grid-item" type="button" id="dashboard-widgets-card">
-              <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
-              <div>
-                <strong id="dashboard-widget-count">0</strong>
-                <span>Widgets</span>
+          <div class="dashboard-view__columns">
+            <section class="dashboard-view__group">
+              <h3 class="dashboard-view__group-title">Ma bibliothèque</h3>
+              <label class="dashboard-view__search" for="dashboard-library-search">
+                <span class="material-symbols-rounded" aria-hidden="true">search</span>
+                <input id="dashboard-library-search" type="search" list="dashboard-library-suggestions"
+                       placeholder="Rechercher un widget ou une alerte…" autocomplete="off">
+              </label>
+              <datalist id="dashboard-library-suggestions"></datalist>
+              <div class="dashboard-view__group-columns">
+                <div class="dashboard-view__column">
+                  <div class="dashboard-view__column-header">
+                    <h4 class="dashboard-view__column-title">Widgets</h4>
+                    <button class="icon-button dashboard-view__filter-trigger" type="button"
+                            data-dropdown-trigger data-role="filter-trigger" data-scope="widget"
+                            aria-haspopup="menu" aria-expanded="false" aria-label="Trier les widgets">
+                      <span class="material-symbols-rounded" aria-hidden="true">filter_list</span>
+                    </button>
+                    <div class="dashboard-view__filter-panel" role="menu" hidden>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="name-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Nom (A→Z)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="name-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Nom (Z→A)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="updated-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Modifié (récent d'abord)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="updated-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Modifié (ancien d'abord)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="created-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Créé (récent d'abord)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="created-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Créé (ancien d'abord)</span></button>
+                    </div>
+                  </div>
+                  <div class="widget-library" id="dashboard-widget-list" aria-label="Widgets"></div>
+                </div>
+
+                <div class="dashboard-view__column">
+                  <div class="dashboard-view__column-header">
+                    <h4 class="dashboard-view__column-title">Alertes</h4>
+                    <button class="icon-button dashboard-view__filter-trigger" type="button"
+                            data-dropdown-trigger data-role="filter-trigger" data-scope="alert"
+                            aria-haspopup="menu" aria-expanded="false" aria-label="Trier les alertes">
+                      <span class="material-symbols-rounded" aria-hidden="true">filter_list</span>
+                    </button>
+                    <div class="dashboard-view__filter-panel" role="menu" hidden>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="name-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Nom (A→Z)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="name-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Nom (Z→A)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="updated-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Modifié (récent d'abord)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="updated-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Modifié (ancien d'abord)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="created-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Créé (récent d'abord)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="created-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Créé (ancien d'abord)</span></button>
+                    </div>
+                  </div>
+                  <div class="widget-library" id="dashboard-alert-list" aria-label="Alertes"></div>
+                </div>
               </div>
-            </button>
-            <button class="dashboard-view__grid-item" type="button" id="dashboard-alerts-card">
-              <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
-              <div>
-                <strong id="dashboard-alert-count">0</strong>
-                <span>Alertes</span>
-              </div>
-            </button>
+            </section>
+
+            <section class="dashboard-view__column">
+              <h3 class="dashboard-view__group-title">Comptes</h3>
+              <ul class="dashboard-view__connections-list" id="dashboard-connection-list"></ul>
+            </section>
           </div>
-          <div class="dashboard-view__connections">
-            <h3>Comptes connectés</h3>
-            <ul class="dashboard-view__connections-list" id="dashboard-connection-list"></ul>
+
+          <div class="dashboard-add-fab">
+            <button class="dashboard-add-fab__trigger" id="dashboard-add-fab-trigger" type="button"
+                    data-dropdown-trigger aria-haspopup="menu" aria-expanded="false" aria-label="Ajouter" title="Ajouter">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+            </button>
+            <div class="dashboard-add-fab__panel" role="menu" hidden>
+              <button class="dashboard-add-fab__item" type="button" role="menuitem" id="dashboard-add-fab-widget">
+                <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
+                <span>Ajouter un widget</span>
+              </button>
+              <button class="dashboard-add-fab__item" type="button" role="menuitem" id="dashboard-add-fab-alert">
+                <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
+                <span>Ajouter une alerte</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -527,7 +611,12 @@
                 </label>
                 <label class="field">
                   <span class="field__label">Token</span>
-                  <input name="token" type="password" autocomplete="off" required>
+                  <span class="field__input-group">
+                    <input name="token" type="password" autocomplete="off" required>
+                    <button class="field__reveal-toggle" type="button" data-role="reveal-token" aria-label="Afficher le token">
+                      <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
+                    </button>
+                  </span>
                 </label>
                 <label class="field">
                   <span class="field__label">Type de token</span>
@@ -538,6 +627,7 @@
                   </select>
                 </label>
                 <p class="integration-form__error" data-role="form-error" hidden></p>
+                <button class="button button--quiet button--wide" type="button" data-role="load-env-defaults" hidden>Charger depuis .env</button>
                 <button class="button button--primary button--wide" type="submit">Connecter</button>
               </form>
               <div class="integration-card__connected" data-role="connected" hidden>
@@ -563,9 +653,15 @@
                 </label>
                 <label class="field">
                   <span class="field__label">Socket API Token</span>
-                  <input name="token" type="password" autocomplete="off" required>
+                  <span class="field__input-group">
+                    <input name="token" type="password" autocomplete="off" required>
+                    <button class="field__reveal-toggle" type="button" data-role="reveal-token" aria-label="Afficher le token">
+                      <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
+                    </button>
+                  </span>
                 </label>
                 <p class="integration-form__error" data-role="form-error" hidden></p>
+                <button class="button button--quiet button--wide" type="button" data-role="load-env-defaults" hidden>Charger depuis .env</button>
                 <button class="button button--primary button--wide" type="submit">Connecter</button>
               </form>
               <div class="integration-card__connected" data-role="connected" hidden>
@@ -622,6 +718,46 @@
         <footer class="widget-settings__footer">
           <button class="button button--quiet" id="cancel-widget-settings" type="button">Annuler</button>
           <button class="button button--primary" id="save-widget-settings" type="submit">Enregistrer</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="widget-settings" id="contact-dialog" aria-labelledby="contact-dialog-title">
+      <form class="widget-settings__form" id="contact-form">
+        <header class="widget-settings__header">
+          <h2 id="contact-dialog-title">Nous contacter</h2>
+          <button type="button" class="icon-button" id="close-contact-dialog" aria-label="Fermer">
+            <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+          </button>
+        </header>
+        <div class="widget-settings__body">
+          <div class="field__row">
+            <label class="field">
+              <span class="field__label">Prénom</span>
+              <input type="text" id="contact-first-name" name="firstName" maxlength="80" required autocomplete="given-name">
+            </label>
+            <label class="field">
+              <span class="field__label">Nom</span>
+              <input type="text" id="contact-last-name" name="lastName" maxlength="80" required autocomplete="family-name">
+            </label>
+          </div>
+          <label class="field">
+            <span class="field__label">Email</span>
+            <input type="email" id="contact-email" name="email" maxlength="254" required autocomplete="email">
+          </label>
+          <label class="field">
+            <span class="field__label">Sujet</span>
+            <input type="text" id="contact-subject" name="subject" maxlength="150" required autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="field__label">Message</span>
+            <textarea id="contact-message" name="message" rows="5" maxlength="4000" required></textarea>
+          </label>
+          <p class="widget-settings__message" id="contact-message-status" role="status" aria-live="polite"></p>
+        </div>
+        <footer class="widget-settings__footer">
+          <button type="button" class="button button--quiet" id="cancel-contact">Annuler</button>
+          <button type="submit" class="button button--primary" id="submit-contact">Envoyer</button>
         </footer>
       </form>
     </dialog>

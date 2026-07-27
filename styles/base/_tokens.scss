@@ -7,6 +7,16 @@
 // scale), so a self-documenting literal name avoids implying a design
 // progression that doesn't actually exist yet.
 
+@use "sass:color";
+
+// Base colors that have a -bright/-dark sibling are kept as Sass variables
+// so the siblings can be derived with color.scale() (+20%/-20% lightness)
+// instead of hand-picked hex values that can drift out of sync.
+$accent: #9f75ff;
+$accent-bright: color.scale($accent, $lightness: 20%);
+$danger: #ff5d73;
+$danger-bright: color.scale($danger, $lightness: 20%);
+
 :root {
   color-scheme: dark;
 
@@ -25,14 +35,14 @@
   --muted: #858b98;
 
   // --- Brand / accent ------------------------------------------------------
-  --accent: #7447e8;
-  --accent-bright: #9f75ff;
-  --accent-gradient: linear-gradient(145deg, #9f75ff, #7447e8);
+  --accent: #{$accent};
+  --accent-bright: #{$accent-bright};
+  --accent-gradient: linear-gradient(145deg, #{$accent-bright}, #{$accent});
 
   // --- Semantic status -------------------------------------------------
   --green: #39d98a;
-  --danger: #ff5d73;
-  --danger-bright: #ff8797;
+  --danger: #{$danger};
+  --danger-bright: #{$danger-bright};
   --warning: #f4b740;
 
   // --- Brand: Twitch --------------------------------------------------

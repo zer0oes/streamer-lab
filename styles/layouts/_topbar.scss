@@ -16,6 +16,12 @@
 
   &__actions {
     @include primitives.heading-row;
+    // Pinned to the explicit last track so it stays docked to the right
+    // regardless of grid auto-placement — without this, hiding
+    // .topbar__center (e.g. on the dashboard) leaves only 2 grid items,
+    // and auto-placement would slot .topbar__actions into the middle
+    // "auto" column instead of the rightmost one.
+    grid-column: 3;
     justify-self: end;
     gap: var(--space-12);
   }
@@ -25,6 +31,12 @@
     align-items: center;
     justify-self: center;
     gap: var(--space-12);
+
+    // The `[hidden]` attribute needs the extra class+attribute compound
+    // here to out-specificity this block's own `display: flex` above —
+    // otherwise the author rule (same-origin, same specificity, declared
+    // later) wins over the UA stylesheet's `[hidden] { display: none; }`.
+    &[hidden] { display: none; }
   }
 }
 

@@ -9,6 +9,33 @@
   &__label { color: #adb2bd; font-size: var(--text-11); font-weight: 650; }
   &__row { display: flex; gap: var(--space-10); }
   &--small { max-width: 92px; }
+
+  &__input-group {
+    position: relative;
+    display: flex;
+
+    input { padding-right: 40px; }
+  }
+
+  &__reveal-toggle {
+    position: absolute;
+    top: 50%;
+    right: var(--space-6);
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-6);
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: var(--muted);
+    background: none;
+
+    &:hover { color: var(--text); background: var(--panel-soft); }
+    .material-symbols-rounded { font-size: 18px; }
+  }
 }
 
 input,

@@ -1,4 +1,4 @@
-# Sandbox Widget Lab
+# Streamer Lab
 
 Un environnement local pour développer et tester des **Custom Widgets StreamElements et Streamlabs** sans modifier un overlay déjà publié.
 

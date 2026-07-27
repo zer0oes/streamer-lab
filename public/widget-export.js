@@ -32,7 +32,7 @@ export function buildPlatformExport(widget, values, platform) {
           ? `Un pont de compatibilité ${compatibility.label} a été ajouté au début de widget.js.`
           : "Aucun pont n’a été nécessaire : le code utilise déjà les événements de cette plateforme.",
         "",
-        "Les valeurs configurées dans Local Widget Lab sont incluses dans fields.json."
+        "Les valeurs configurées dans Streamer Lab sont incluses dans fields.json."
       ].join("\n") + "\n"
     },
     platform: target,
@@ -134,7 +134,7 @@ function buildCompatibilityBridge(js, platform, fields) {
 }
 
 function streamlabsTargetBridge() {
-  return `/* Local Widget Lab — pont automatique StreamElements → Streamlabs */
+  return `/* Streamer Lab — pont automatique StreamElements → Streamlabs */
 (function () {
   if (window.__localWidgetLabStreamlabsBridge) return;
   window.__localWidgetLabStreamlabsBridge = true;
@@ -199,7 +199,7 @@ function streamlabsTargetBridge() {
 
 function streamElementsTargetBridge(fields) {
   const serializedFields = JSON.stringify(fields).replaceAll("<", "\\u003c");
-  return `/* Local Widget Lab — pont automatique Streamlabs → StreamElements */
+  return `/* Streamer Lab — pont automatique Streamlabs → StreamElements */
 (function () {
   if (window.__localWidgetLabStreamElementsBridge) return;
   window.__localWidgetLabStreamElementsBridge = true;

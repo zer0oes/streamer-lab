@@ -18,14 +18,19 @@ import {
 } from "./lib/auth.mjs";
 import { store } from "./lib/db.mjs";
 import { disconnectIntegration, maskIntegration, saveManualToken } from "./lib/integrations.mjs";
+import { saveContactMessage } from "./lib/contact.mjs";
+import {
+  LIBRARY_ROOT,
+  LIBRARY_CATEGORY_DIRS,
+  categoryDirectory,
+  widgetFromManifest,
+  listWidgets,
+  getWidgetInfo,
+  bumpUpdatedAt
+} from "./lib/widgets.mjs";
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 const PUBLIC_ROOT = join(ROOT, "public");
-const LIBRARY_ROOT = join(ROOT, "library");
-const LIBRARY_CATEGORY_DIRS = {
-  widget: join(LIBRARY_ROOT, "widgets"),
-  alert: join(LIBRARY_ROOT, "alerts")
-};
 const DEFAULT_WIDGET_ID = "zer0oes-goal-bar";
 const MOCK_SESSION_PATH = join(ROOT, "mocks", "session.json");
 const ENV_PATH = join(ROOT, ".env");
@@ -136,6 +141,7 @@ const server = createServer(async (request, response) => {
       }
       const path = join(widgetInfo.directory, body.file);
       await writeFile(path, body.content, "utf8");
+      await bumpUpdatedAt(widgetInfo.directory);
       return sendJson(response, 200, { saved: true, widgetId: widgetInfo.id, file: body.file, at: Date.now() });
     }
 
@@ -152,7 +158,8 @@ const server = createServer(async (request, response) => {
       const widgets = await listWidgets();
       const widgetId = uniqueWidgetId(slugify(metadata.name), new Set(widgets.map((entry) => entry.id)));
       const order = widgets.reduce((max, entry) => Math.max(max, entry.order), 0) + 10;
-      const manifest = { id: widgetId, ...metadata, order };
+      const now = Date.now();
+      const manifest = { id: widgetId, ...metadata, order, createdAt: now, updatedAt: now };
       const directory = join(categoryDirectory(type), widgetId);
 
       await createWidgetFiles(directory);
@@ -176,7 +183,7 @@ const server = createServer(async (request, response) => {
 
       const manifestPath = join(widgetInfo.directory, "widget.json");
       const manifest = await readJson(manifestPath);
-      const updatedManifest = { ...manifest, ...metadata };
+      const updatedManifest = { ...manifest, ...metadata, updatedAt: Date.now() };
 
       let targetDirectory = widgetInfo.directory;
       if (type !== widgetInfo.type) {
@@ -307,7 +314,8 @@ const server = createServer(async (request, response) => {
           id: auth.user.id,
           twitchLogin: auth.user.twitch_login,
           displayName: auth.user.display_name,
-          avatarUrl: auth.user.avatar_url
+          avatarUrl: auth.user.avatar_url,
+          lastLoginAt: auth.user.last_login_at
         }
       });
     }
@@ -347,6 +355,24 @@ const server = createServer(async (request, response) => {
       }
     }
 
+    if (request.method === "POST" && url.pathname === "/api/contact") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      const body = await readRequestJson(request);
+      try {
+        const saved = saveContactMessage({
+          userId: auth?.user.id,
+          firstName: typeof body.firstName === "string" ? body.firstName : "",
+          lastName: typeof body.lastName === "string" ? body.lastName : "",
+          email: typeof body.email === "string" ? body.email : "",
+          subject: typeof body.subject === "string" ? body.subject : "",
+          message: typeof body.message === "string" ? body.message : ""
+        }, store);
+        return sendJson(response, 200, { id: saved.id, createdAt: saved.created_at });
+      } catch (error) {
+        return sendJson(response, 400, { error: error.message });
+      }
+    }
+
     if (request.method === "DELETE" && url.pathname === "/api/integration") {
       const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
       if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
@@ -356,6 +382,30 @@ const server = createServer(async (request, response) => {
       }
       const deleted = disconnectIntegration(auth.user.id, provider, store);
       return sendJson(response, 200, { deleted, provider });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/integrations/env-defaults") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
+      return sendJson(response, 200, {
+        streamelements: { channelId: config.channelId || null, tokenType: config.tokenType, hasToken: Boolean(config.token) },
+        streamlabs: { hasToken: Boolean(config.streamlabsToken) }
+      });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/integrations/env-defaults/reveal") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
+      const provider = url.searchParams.get("provider");
+      if (provider !== "streamelements" && provider !== "streamlabs") {
+        return sendJson(response, 400, { error: "provider invalide" });
+      }
+      if (provider === "streamelements") {
+        if (!config.token) return sendJson(response, 404, { error: "Aucun token .env pour ce fournisseur" });
+        return sendJson(response, 200, { channelId: config.channelId || null, channelName: config.channelName || null, tokenType: config.tokenType, token: config.token });
+      }
+      if (!config.streamlabsToken) return sendJson(response, 404, { error: "Aucun token .env pour ce fournisseur" });
+      return sendJson(response, 200, { token: config.streamlabsToken });
     }
 
     if (request.method === "GET" && url.pathname === "/vendor/jquery.min.js") {
@@ -393,7 +443,7 @@ setInterval(() => {
 }, 20_000).unref();
 
 server.listen(port, "127.0.0.1", () => {
-  console.log(`StreamElements Widget Lab : http://localhost:${port}`);
+  console.log(`Streamer Lab : http://localhost:${port}`);
   if (!config.channelId || !config.token) console.log("Mode simulation. Configurez .env pour activer les evenements reels.");
   if (!authConfigured) console.log("Connexion Twitch desactivee. Renseignez TWITCH_CLIENT_ID/SECRET et SESSION_SECRET dans .env pour l'activer.");
 });
@@ -464,10 +514,6 @@ function parseWidgetMetadataInput(body) {
   return { name, description, icon };
 }
 
-function categoryDirectory(type) {
-  return LIBRARY_CATEGORY_DIRS[type === "alert" ? "alert" : "widget"];
-}
-
 function slugify(value) {
   const slug = value
     .normalize("NFD")
@@ -493,53 +539,6 @@ async function createWidgetFiles(directory) {
   await Promise.all(
     Object.entries(WIDGET_TEMPLATE_FILES).map(([file, content]) => writeFile(join(directory, file), content, "utf8"))
   );
-}
-
-function widgetFromManifest(id, manifest, type) {
-  return {
-    id,
-    name: manifest.name || id,
-    description: manifest.description || "",
-    icon: manifest.icon || "widgets",
-    type: type === "alert" ? "alert" : "widget",
-    archived: Boolean(manifest.archived),
-    order: Number(manifest.order) || 100
-  };
-}
-
-async function listWidgets() {
-  const widgets = [];
-
-  for (const [type, categoryRoot] of Object.entries(LIBRARY_CATEGORY_DIRS)) {
-    if (!existsSync(categoryRoot)) continue;
-    const directories = await readdir(categoryRoot, { withFileTypes: true });
-
-    for (const directory of directories) {
-      if (!directory.isDirectory()) continue;
-      const manifestPath = join(categoryRoot, directory.name, "widget.json");
-      if (!existsSync(manifestPath)) continue;
-      const manifest = await readJson(manifestPath);
-      widgets.push(widgetFromManifest(directory.name, manifest, type));
-    }
-  }
-
-  return widgets.sort((left, right) =>
-    left.order - right.order || left.name.localeCompare(right.name, "fr")
-  );
-}
-
-async function getWidgetInfo(widgetId) {
-  if (typeof widgetId !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(widgetId)) return null;
-
-  for (const [type, categoryRoot] of Object.entries(LIBRARY_CATEGORY_DIRS)) {
-    const directory = join(categoryRoot, widgetId);
-    const manifestPath = join(directory, "widget.json");
-    if (!existsSync(manifestPath)) continue;
-    const manifest = await readJson(manifestPath);
-    return { ...widgetFromManifest(widgetId, manifest, type), directory };
-  }
-
-  return null;
 }
 
 async function loadWidget(widgetInfo, platform = "streamelements") {

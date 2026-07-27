@@ -1,4 +1,4 @@
-// Home dashboard: library/alert counts, connected-account status.
+// Home dashboard: widgets/alerts columns, connected-account status.
 
 .dashboard-view {
   position: absolute;
@@ -18,37 +18,117 @@
     p { margin: 0; color: var(--muted); font-size: var(--text-13); line-height: 1.5; }
   }
 
-  &__grid {
+  &__columns {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 200px));
-    gap: var(--space-14);
-    margin-bottom: 32px;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: var(--space-20);
+    align-items: start;
   }
 
-  &__grid-item {
+  &__group { min-width: 0; }
+
+  &__group-title {
+    margin: 0 0 var(--space-12);
+    color: var(--accent-bright);
+    font-size: var(--text-14);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  &__search {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: var(--space-8);
+    margin-bottom: var(--space-14);
+    padding: 0 var(--space-11);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-8);
+    background: var(--panel-soft);
+
+    .material-symbols-rounded { font-size: 18px; color: var(--muted); }
+
+    input {
+      width: 100%;
+      padding: var(--space-9) 0;
+      border: 0;
+      background: none;
+
+      &:focus { box-shadow: none; }
+    }
+  }
+
+  &__group-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-20);
+  }
+
+  &__column { min-width: 0; }
+
+  &__column-header {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: var(--space-14);
-    padding: var(--space-18) var(--space-20);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-12);
-    cursor: pointer;
-    background: var(--panel);
-    text-align: left;
-    transition: border-color var(--duration-fast), background var(--duration-fast);
-
-    &:hover { border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent); background: #1a1d24; }
-    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
-
-    .material-symbols-rounded { color: var(--accent-bright); font-size: 26px; }
-    strong { display: block; font-size: var(--text-22); }
-    span:last-child { color: var(--muted); font-size: var(--text-11); }
+    justify-content: space-between;
+    gap: var(--space-10);
+    margin-bottom: var(--space-12);
   }
 
-  &__connections {
-    max-width: 420px;
+  &__column-title {
+    margin: 0;
+    font-size: var(--text-13);
+  }
 
-    h3 { margin: 0 0 var(--space-12); font-size: var(--text-13); }
+  &__filter-trigger[aria-expanded="true"] {
+    color: #fff;
+    border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
+  }
+
+  &__filter-panel {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    right: 0;
+    width: max-content;
+    min-width: 200px;
+    padding: var(--space-5);
+    border: 1px solid #343944;
+    border-radius: var(--radius-10);
+    background: color-mix(in srgb, var(--panel) 98%, transparent);
+    box-shadow: 0 18px 52px rgb(0 0 0 / 48%);
+    backdrop-filter: blur(18px);
+
+    &[hidden] { display: none; }
+  }
+
+  &__filter-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-9);
+    width: 100%;
+    min-height: 34px;
+    padding: 0 var(--space-10);
+    border: 0;
+    border-radius: var(--radius-7);
+    color: var(--text-secondary);
+    background: transparent;
+    cursor: pointer;
+    font-size: var(--text-10);
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+
+    .dashboard-view__filter-check { visibility: hidden; }
+    &[aria-checked="true"] .dashboard-view__filter-check { visibility: visible; }
+    &:hover { color: #fff; background: color-mix(in srgb, var(--accent-bright) 12%, transparent); }
+    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+  }
+
+  &__filter-check {
+    font-size: 15px;
+    color: var(--accent-bright);
   }
 
   &__connections-list { display: grid; gap: var(--space-8); margin: 0; padding: 0; list-style: none; }
@@ -63,16 +143,154 @@
     background: var(--panel);
     font-size: var(--text-12);
 
-    i {
-      width: 8px;
-      height: 8px;
-      flex: 0 0 auto;
-      border-radius: 50%;
-      background: #69707d;
-    }
-
-    &.is-connected i { background: var(--green); box-shadow: 0 0 10px color-mix(in srgb, var(--green) 55%, transparent); }
     strong { font-weight: 700; }
     span { color: var(--muted); }
+
+    &.is-connected .dashboard-view__connections-logo { opacity: 1; filter: none; }
+  }
+
+  &__connections-logo {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    opacity: 0.56;
+    filter: grayscale(1) brightness(1.65);
+
+    .twitch-logo { width: 20px; height: 20px; fill: currentColor; color: var(--muted); }
+
+    // Platform icons are wide horizontal lockups (icon + wordmark) in their
+    // source SVG — the container is narrowed (non-circular) so overflow
+    // clips off the wordmark, leaving just the icon mark visible. Each
+    // source file positions its mark differently, hence per-provider widths.
+    &--icon { border-radius: var(--radius-6); }
+    &--streamelements { width: 20px; }
+    &--streamlabs { width: 24px; }
+  }
+
+  &__connections-platform-icon {
+    height: 28px;
+    width: auto;
+    max-width: none;
+
+    // Streamlabs' mark reads visually heavier (solid white shape) than
+    // StreamElements' thin line-art at the same box size, so it's scaled
+    // down a notch to match perceived weight — width shrinks in lockstep
+    // via the container above to keep the same crop framing.
+    &--streamlabs {
+      height: 20px;
+      filter: brightness(0) invert(1);
+    }
+  }
+
+  &__connections-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  &__connections-copy { flex: 1; display: grid; min-width: 0; }
+
+  &__connections-disconnect {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+
+    .material-symbols-rounded { font-size: 16px; }
+  }
+
+  &__connections-dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #69707d;
+
+    &.is-connected {
+      background: var(--green);
+      box-shadow: 0 0 8px color-mix(in srgb, var(--green) 55%, transparent);
+      animation: dashboard-connections-dot-pulse 1.8s ease-in-out infinite;
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: none;
+      }
+    }
+  }
+}
+
+@keyframes dashboard-connections-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.35); }
+}
+
+.dashboard-add-fab {
+  position: fixed;
+  right: var(--space-24);
+  bottom: 22px;
+  z-index: 35;
+
+  &__trigger {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--accent-bright) 55%, transparent);
+    border-radius: 50%;
+    cursor: pointer;
+    color: #fff;
+    background: var(--accent-gradient);
+    box-shadow:
+      0 12px 30px rgb(0 0 0 / 42%),
+      0 0 28px color-mix(in srgb, var(--accent) 30%, transparent);
+    transition: transform var(--duration-base), box-shadow var(--duration-base);
+
+    &:hover { transform: translateY(-2px); }
+    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+    &[aria-expanded="true"] { transform: rotate(45deg); }
+    .material-symbols-rounded { font-size: 26px; }
+  }
+
+  &__panel {
+    position: absolute;
+    z-index: 20;
+    right: 0;
+    bottom: calc(100% + 12px);
+    width: max-content;
+    min-width: 200px;
+    padding: var(--space-5);
+    border: 1px solid #343944;
+    border-radius: var(--radius-10);
+    background: color-mix(in srgb, var(--panel) 98%, transparent);
+    box-shadow: 0 18px 52px rgb(0 0 0 / 48%);
+    backdrop-filter: blur(18px);
+
+    &[hidden] { display: none; }
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-9);
+    width: 100%;
+    min-height: 40px;
+    padding: 0 var(--space-12);
+    border: 0;
+    border-radius: var(--radius-7);
+    color: var(--text-secondary);
+    background: transparent;
+    cursor: pointer;
+    font-size: var(--text-12);
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+
+    .material-symbols-rounded { color: var(--accent-bright); font-size: 18px; }
+    &:hover { color: #fff; background: color-mix(in srgb, var(--accent-bright) 12%, transparent); }
+    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
   }
 }

@@ -10,7 +10,7 @@ import { buildPlatformExport, createZip } from "/widget-export.js";
 const elements = {
   frame: document.querySelector("#widget-frame"),
   fields: document.querySelector("#fields-form"),
-  libraryTabs: document.querySelectorAll("[data-library-tab]"),
+  libraryGroups: document.querySelectorAll("[data-library-group]"),
   widgetList: document.querySelector("#widget-list"),
   widgetCount: document.querySelector("#widget-count"),
   addWidgetButton: document.querySelector("#add-widget"),
@@ -42,11 +42,22 @@ const elements = {
   integrationCards: document.querySelectorAll(".integration-card"),
   dashboardFab: document.querySelector("#dashboard-fab"),
   dashboardView: document.querySelector("#dashboard-view"),
-  dashboardWidgetCount: document.querySelector("#dashboard-widget-count"),
-  dashboardAlertCount: document.querySelector("#dashboard-alert-count"),
+  dashboardWidgetList: document.querySelector("#dashboard-widget-list"),
+  dashboardAlertList: document.querySelector("#dashboard-alert-list"),
+  dashboardLibrarySearch: document.querySelector("#dashboard-library-search"),
+  dashboardLibrarySuggestions: document.querySelector("#dashboard-library-suggestions"),
+  dashboardFilterTriggers: document.querySelectorAll('[data-role="filter-trigger"]'),
+  dashboardAddFabTrigger: document.querySelector("#dashboard-add-fab-trigger"),
+  dashboardAddFabWidget: document.querySelector("#dashboard-add-fab-widget"),
+  dashboardAddFabAlert: document.querySelector("#dashboard-add-fab-alert"),
   dashboardConnectionList: document.querySelector("#dashboard-connection-list"),
   workspace: document.querySelector(".workspace"),
   sidebarToggle: document.querySelector("#sidebar-toggle"),
+  topbarCenter: document.querySelector(".topbar__center"),
+  footerYear: document.querySelector("#footer-year"),
+  contactDialog: document.querySelector("#contact-dialog"),
+  contactForm: document.querySelector("#contact-form"),
+  contactOpenButton: document.querySelector("#contact-form-open"),
   previewShell: document.querySelector("#preview-shell"),
   previewCanvas: document.querySelector("#preview-canvas"),
   previewTitle: document.querySelector("#preview-title"),
@@ -78,10 +89,11 @@ let widget;
 let eventSimulatorCloseTimer;
 let widgetCatalog = [];
 let activeWidgetId = "";
+let librarySearchTerm = "";
+let librarySortMode = { widget: "name-asc", alert: "name-asc" };
 let widgetSwitching = false;
 let selectedWidgetIcon = "widgets";
 let selectedWidgetType = "widget";
-let activeLibraryTab = "widgets";
 let widgetSettingsMode = "edit";
 let fieldData = {};
 let session = {};
@@ -207,7 +219,16 @@ const previewThemeStorageKey = "se-lab-preview-theme";
 const previewPlatformStorageKey = "widget-lab-platform";
 const activeWidgetStorageKey = "widget-lab-active-widget";
 const sidebarStateStorageKey = "widget-lab-sidebar-sections";
-const libraryTabStorageKey = "widget-lab-library-tab";
+const libraryGroupsStorageKey = "widget-lab-library-groups";
+const librarySortStorageKey = "widget-lab-library-sort";
+try {
+  // JSON.parse d'une ancienne valeur "name-asc" (chaîne simple, pré-migration
+  // vers un tri par colonne) n'est pas un JSON valide et lève : on retombe
+  // proprement sur le défaut, migration gratuite sans code spécial.
+  librarySortMode = { ...librarySortMode, ...JSON.parse(localStorage.getItem(librarySortStorageKey)) };
+} catch {
+  // valeur absente ou invalide : on garde le défaut défini plus haut.
+}
 const widgetIconChoices = [
   ["widgets", "Widgets"],
   ["animation", "Animation"],
@@ -327,10 +348,12 @@ initializeExportMenu();
 initializePreviewControls();
 initializePreviewTheme();
 initializeSidebarSections();
-initializeLibraryTabs();
+initializeLibraryGroups();
 initializeWidgetSettings();
-initializeWidgetLibraryMenu();
+initializeDropdowns();
+initializeDashboardLibraryControls();
 initializeEditorCopyButton();
+initializeContactForm();
 await initialize();
 
 function loadPreviewSize() {
@@ -427,6 +450,11 @@ function initializeExportMenu() {
 
   for (const item of elements.exportMenuItems) {
     item.addEventListener("click", async () => {
+      if (item.dataset.exportAction === "shortcut") {
+        setExportMenuOpen(false);
+        exportWidgetShortcut();
+        return;
+      }
       const platform = item.dataset.exportAction === "download"
         ? previewPlatform
         : previewPlatform === PLATFORM_STREAMLABS ? PLATFORM_STREAM_ELEMENTS : PLATFORM_STREAMLABS;
@@ -524,61 +552,100 @@ function updatePreviewScale() {
   elements.previewShell.style.height = `${previewSize.height * scale}px`;
 }
 
-function initializeSidebarSections() {
+// Anime l'ouverture/fermeture d'un <details> natif : le navigateur ne peut
+// pas transitionner display:none <-> visible en CSS pur, donc on intercepte
+// le clic sur <summary>, on anime la hauteur via la Web Animations API, puis
+// on pose details.open au bon moment (ce qui déclenche le toggle natif, donc
+// aucun changement requis à la logique de persistance qui l'écoute déjà).
+function makeDetailsAnimatable(details) {
+  const summary = details.querySelector(":scope > summary");
+  const body = details.lastElementChild;
+  if (!summary || body === summary) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const duration = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--duration-slow")) || 200;
+  let animation = null;
+
+  summary.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (animation) animation.cancel();
+    details.style.overflow = "hidden";
+    if (details.open) shrink(); else grow();
+  });
+
+  function shrink() {
+    const startHeight = `${details.offsetHeight}px`;
+    const endHeight = `${summary.offsetHeight}px`;
+    animation = details.animate({ height: [startHeight, endHeight] }, { duration, easing: "ease" });
+    animation.onfinish = () => finish(false);
+  }
+
+  function grow() {
+    details.open = true;
+    requestAnimationFrame(() => {
+      const startHeight = `${summary.offsetHeight}px`;
+      const endHeight = `${summary.offsetHeight + body.offsetHeight}px`;
+      details.style.height = startHeight;
+      animation = details.animate({ height: [startHeight, endHeight] }, { duration, easing: "ease" });
+      animation.onfinish = () => finish(true);
+    });
+  }
+
+  function finish(open) {
+    details.open = open;
+    details.style.height = "";
+    details.style.overflow = "";
+    animation = null;
+  }
+}
+
+// Persiste l'état ouvert/fermé d'un groupe de <details> dans localStorage,
+// partagé entre les sections de la sidebar et les groupes de bibliothèque.
+function wireAccordionPersistence(detailsElements, storageKey, keyOf) {
   let savedState = {};
   try {
-    savedState = JSON.parse(localStorage.getItem(sidebarStateStorageKey) || "{}");
+    savedState = JSON.parse(localStorage.getItem(storageKey) || "{}");
   } catch {
     savedState = {};
   }
 
-  for (const section of elements.sidebarSections) {
-    const key = section.dataset.sidebarSection;
-    if (typeof savedState[key] === "boolean") section.open = savedState[key];
-    section.addEventListener("toggle", () => {
+  for (const details of detailsElements) {
+    const key = keyOf(details);
+    if (typeof savedState[key] === "boolean") details.open = savedState[key];
+    details.addEventListener("toggle", () => {
       let currentState = {};
       try {
-        currentState = JSON.parse(localStorage.getItem(sidebarStateStorageKey) || "{}");
+        currentState = JSON.parse(localStorage.getItem(storageKey) || "{}");
       } catch {
         currentState = {};
       }
-      currentState[key] = section.open;
-      localStorage.setItem(sidebarStateStorageKey, JSON.stringify(currentState));
+      currentState[key] = details.open;
+      localStorage.setItem(storageKey, JSON.stringify(currentState));
     });
   }
 }
 
-function initializeLibraryTabs() {
-  const saved = localStorage.getItem(libraryTabStorageKey);
-  selectLibraryTab(saved === "alerts" ? "alerts" : "widgets");
-
-  for (const button of elements.libraryTabs) {
-    button.addEventListener("click", () => selectLibraryTab(button.dataset.libraryTab));
-  }
+function initializeSidebarSections() {
+  for (const section of elements.sidebarSections) makeDetailsAnimatable(section);
+  wireAccordionPersistence(elements.sidebarSections, sidebarStateStorageKey, (details) => details.dataset.sidebarSection);
 }
 
-function syncLibraryTabToWidget(widgetId) {
+function initializeLibraryGroups() {
+  for (const group of elements.libraryGroups) makeDetailsAnimatable(group);
+  wireAccordionPersistence(elements.libraryGroups, libraryGroupsStorageKey, (details) => details.dataset.libraryGroup);
+}
+
+// Les 2 groupes (Widgets/Alertes) peuvent être ouverts indépendamment ; on se
+// contente d'ouvrir celui qui contient le widget concerné, sans toucher à
+// l'autre (contrairement à l'ancien système d'onglets mutuellement exclusifs).
+function revealLibraryGroupForWidget(widgetId) {
   const entry = widgetCatalog.find((item) => item.id === widgetId);
-  if (entry) selectLibraryTab(entry.type === "alert" ? "alerts" : "widgets");
-}
+  if (!entry) return;
+  const isAlert = entry.type === "alert";
+  const group = document.querySelector(`[data-library-group="${isAlert ? "alert" : "widget"}"]`);
+  if (group && !group.open) group.open = true;
 
-function selectLibraryTab(tab) {
-  activeLibraryTab = tab === "alerts" ? "alerts" : "widgets";
-  localStorage.setItem(libraryTabStorageKey, activeLibraryTab);
-
-  for (const button of elements.libraryTabs) {
-    const selected = button.dataset.libraryTab === activeLibraryTab;
-    button.classList.toggle("is-active", selected);
-    button.setAttribute("aria-selected", String(selected));
-  }
-
-  const showWidgets = activeLibraryTab === "widgets";
-  elements.widgetList.hidden = !showWidgets;
-  elements.addWidgetButton.hidden = !showWidgets;
-  elements.alertList.hidden = showWidgets;
-  elements.addAlertButton.hidden = showWidgets;
-
-  const shownList = showWidgets ? elements.widgetList : elements.alertList;
+  const shownList = isAlert ? elements.alertList : elements.widgetList;
   shownList.classList.remove("is-entering");
   void shownList.offsetWidth;
   shownList.classList.add("is-entering");
@@ -613,6 +680,100 @@ function initializeWidgetSettings() {
   });
   elements.addWidgetButton.addEventListener("click", () => openWidgetCreation("widget"));
   elements.addAlertButton.addEventListener("click", () => openWidgetCreation("alert"));
+}
+
+function initializeDashboardLibraryControls() {
+  elements.dashboardLibrarySearch.addEventListener("input", () => {
+    librarySearchTerm = elements.dashboardLibrarySearch.value;
+    renderWidgetLibrary();
+  });
+
+  for (const trigger of elements.dashboardFilterTriggers) {
+    const scope = trigger.dataset.scope;
+    const panel = trigger.nextElementSibling;
+    updateFilterPanelChecks(panel, librarySortMode[scope]);
+
+    trigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleDropdown(trigger);
+    });
+
+    for (const item of panel.querySelectorAll("[data-sort]")) {
+      item.addEventListener("click", () => {
+        librarySortMode[scope] = item.dataset.sort;
+        localStorage.setItem(librarySortStorageKey, JSON.stringify(librarySortMode));
+        updateFilterPanelChecks(panel, librarySortMode[scope]);
+        closeAllDropdowns();
+        renderWidgetLibrary();
+      });
+    }
+  }
+
+  elements.dashboardAddFabTrigger.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleDropdown(elements.dashboardAddFabTrigger);
+  });
+  elements.dashboardAddFabWidget.addEventListener("click", () => {
+    closeAllDropdowns();
+    openWidgetCreation("widget");
+  });
+  elements.dashboardAddFabAlert.addEventListener("click", () => {
+    closeAllDropdowns();
+    openWidgetCreation("alert");
+  });
+}
+
+function updateFilterPanelChecks(panel, activeSort) {
+  for (const item of panel.querySelectorAll("[data-sort]")) {
+    item.setAttribute("aria-checked", String(item.dataset.sort === activeSort));
+  }
+}
+
+function initializeContactForm() {
+  const close = () => elements.contactDialog.close();
+  elements.contactOpenButton.addEventListener("click", () => {
+    elements.contactForm.reset();
+    setContactMessage("");
+    elements.contactDialog.showModal();
+  });
+  document.querySelector("#close-contact-dialog").addEventListener("click", close);
+  document.querySelector("#cancel-contact").addEventListener("click", close);
+  elements.contactDialog.addEventListener("click", event => {
+    if (event.target === elements.contactDialog) close();
+  });
+  elements.contactForm.addEventListener("submit", event => {
+    event.preventDefault();
+    void submitContactForm();
+  });
+}
+
+function setContactMessage(message, state) {
+  const el = document.querySelector("#contact-message-status");
+  el.textContent = message;
+  el.className = `widget-settings__message${state ? ` is-${state}` : ""}`;
+}
+
+async function submitContactForm() {
+  const payload = {
+    firstName: document.querySelector("#contact-first-name").value.trim(),
+    lastName: document.querySelector("#contact-last-name").value.trim(),
+    email: document.querySelector("#contact-email").value.trim(),
+    subject: document.querySelector("#contact-subject").value.trim(),
+    message: document.querySelector("#contact-message").value.trim()
+  };
+  try {
+    const response = await fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Erreur HTTP ${response.status}`);
+    elements.contactDialog.close();
+    showToast("Message envoyé, merci !");
+  } catch (error) {
+    setContactMessage(error.message, "error");
+  }
 }
 
 function openWidgetSettings(entry) {
@@ -718,7 +879,7 @@ async function saveWidgetMetadata() {
       widget.widgetMeta = { ...widget.widgetMeta, ...updatedWidget };
       applyWidgetMeta();
     }
-    selectLibraryTab(updatedWidget.type === "alert" ? "alerts" : "widgets");
+    revealLibraryGroupForWidget(updatedWidget.id);
     renderWidgetLibrary();
     setWidgetSettingsMessage("Informations enregistrées.", "success");
     elements.widgetSettingsDialog.close();
@@ -732,6 +893,7 @@ async function saveWidgetMetadata() {
 }
 
 async function initialize() {
+  elements.footerYear.textContent = String(new Date().getFullYear());
   try {
     const [catalogResponse, stateResponse] = await Promise.all([
       fetch("/api/widgets"),
@@ -740,12 +902,16 @@ async function initialize() {
     if (!catalogResponse.ok) throw new Error((await catalogResponse.json()).error);
     const catalog = await catalogResponse.json();
     widgetCatalog = catalog.widgets || [];
+    const requestedWidgetId = new URLSearchParams(window.location.search).get("widget");
+    const openDirectly = widgetCatalog.some(entry => entry.id === requestedWidgetId);
     const savedWidgetId = localStorage.getItem(activeWidgetStorageKey);
-    activeWidgetId = widgetCatalog.some(entry => entry.id === savedWidgetId)
-      ? savedWidgetId
-      : widgetCatalog.some(entry => entry.id === catalog.defaultWidgetId)
-        ? catalog.defaultWidgetId
-        : widgetCatalog[0]?.id;
+    activeWidgetId = openDirectly
+      ? requestedWidgetId
+      : widgetCatalog.some(entry => entry.id === savedWidgetId)
+        ? savedWidgetId
+        : widgetCatalog.some(entry => entry.id === catalog.defaultWidgetId)
+          ? catalog.defaultWidgetId
+          : widgetCatalog[0]?.id;
     if (!activeWidgetId) throw new Error("Aucun widget disponible");
 
     const widgetResponse = await fetch(
@@ -759,7 +925,7 @@ async function initialize() {
     session = state.session;
     channel = state.channel;
     fieldData = loadFieldData(widget.fields);
-    syncLibraryTabToWidget(activeWidgetId);
+    revealLibraryGroupForWidget(activeWidgetId);
     renderWidgetLibrary();
     applyWidgetMeta();
     renderFields();
@@ -767,7 +933,7 @@ async function initialize() {
     initializeWidgetEditor();
     updateLiveStatus(state.live);
     connectEventStream();
-    showDashboard();
+    if (openDirectly) hideDashboard(); else showDashboard();
   } catch (error) {
     addConsole("error", error.message);
     showToast(error.message);
@@ -778,20 +944,53 @@ function renderWidgetLibrary() {
   const widgets = widgetCatalog.filter((entry) => entry.type !== "alert");
   const alerts = widgetCatalog.filter((entry) => entry.type === "alert");
 
-  elements.widgetList.replaceChildren();
   elements.widgetCount.textContent = String(widgets.length);
-  if (widgets.length) {
-    for (const entry of widgets) elements.widgetList.append(buildWidgetLibraryRow(entry));
-  } else {
-    elements.widgetList.append(buildLibraryEmptyState("Aucun widget pour l’instant."));
-  }
+  populateWidgetLibraryList(elements.widgetList, widgets, "Aucun widget pour l’instant.");
+  populateWidgetLibraryList(elements.dashboardWidgetList, filterAndSortLibraryEntries(widgets, "widget"), dashboardLibraryEmptyMessage("Aucun widget pour l’instant."), { showMeta: true });
 
-  elements.alertList.replaceChildren();
   elements.alertCount.textContent = String(alerts.length);
-  if (alerts.length) {
-    for (const entry of alerts) elements.alertList.append(buildWidgetLibraryRow(entry));
+  populateWidgetLibraryList(elements.alertList, alerts, "Aucune alerte pour l’instant.");
+  populateWidgetLibraryList(elements.dashboardAlertList, filterAndSortLibraryEntries(alerts, "alert"), dashboardLibraryEmptyMessage("Aucune alerte pour l’instant."), { showMeta: true });
+
+  updateDashboardLibrarySuggestions();
+}
+
+function dashboardLibraryEmptyMessage(defaultMessage) {
+  const term = librarySearchTerm.trim();
+  return term ? `Aucun résultat pour « ${term} ».` : defaultMessage;
+}
+
+function filterAndSortLibraryEntries(entries, scope) {
+  const term = librarySearchTerm.trim().toLowerCase();
+  const filtered = term
+    ? entries.filter((entry) =>
+        entry.name.toLowerCase().includes(term) ||
+        (entry.description || "").toLowerCase().includes(term))
+    : entries;
+
+  const byName = (a, b) => a.name.localeCompare(b.name, "fr");
+  const sorters = {
+    "name-asc": byName,
+    "name-desc": (a, b) => -byName(a, b),
+    "updated-asc": (a, b) => (a.updatedAt || 0) - (b.updatedAt || 0),
+    "updated-desc": (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0),
+    "created-asc": (a, b) => (a.createdAt || 0) - (b.createdAt || 0),
+    "created-desc": (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+  };
+  return [...filtered].sort(sorters[librarySortMode[scope]] || sorters["name-asc"]);
+}
+
+function updateDashboardLibrarySuggestions() {
+  const names = [...new Set(widgetCatalog.map((entry) => entry.name))].sort((a, b) => a.localeCompare(b, "fr"));
+  elements.dashboardLibrarySuggestions.innerHTML = names.map((name) => `<option value="${escapeHtml(name)}"></option>`).join("");
+}
+
+function populateWidgetLibraryList(container, entries, emptyMessage, options) {
+  container.replaceChildren();
+  if (entries.length) {
+    for (const entry of entries) container.append(buildWidgetLibraryRow(entry, options));
   } else {
-    elements.alertList.append(buildLibraryEmptyState("Aucune alerte pour l’instant."));
+    container.append(buildLibraryEmptyState(emptyMessage));
   }
 }
 
@@ -802,17 +1001,21 @@ function buildLibraryEmptyState(message) {
   return empty;
 }
 
-function buildWidgetLibraryRow(entry) {
+function buildWidgetLibraryRow(entry, { showMeta = false } = {}) {
   const row = document.createElement("div");
   row.className = "widget-library__row";
+
+  // Sur le dashboard, aucun widget/alerte n'est "en cours d'édition" à l'écran :
+  // ne jamais afficher de sélection tant que le dashboard est visible.
+  const isActive = entry.id === activeWidgetId && elements.dashboardView.hidden;
 
   const button = document.createElement("button");
   button.type = "button";
   button.className = "widget-library__item";
-  button.classList.toggle("is-active", entry.id === activeWidgetId);
+  button.classList.toggle("is-active", isActive);
   button.disabled = widgetSwitching || platformSwitching;
   button.dataset.widgetId = entry.id;
-  button.setAttribute("aria-pressed", String(entry.id === activeWidgetId));
+  button.setAttribute("aria-pressed", String(isActive));
 
   const icon = document.createElement("span");
   icon.className = "widget-library__icon";
@@ -826,8 +1029,15 @@ function buildWidgetLibraryRow(entry) {
   description.textContent = entry.description;
   copy.append(name, description);
 
+  if (showMeta && entry.updatedAt) {
+    const meta = document.createElement("small");
+    meta.className = "widget-library__meta";
+    meta.textContent = `Modifié le ${formatAccountDate(entry.updatedAt)}`;
+    copy.append(meta);
+  }
+
   const status = document.createElement("span");
-  if (entry.id === activeWidgetId) {
+  if (isActive) {
     status.className = "material-symbols-rounded widget-library__active-mark";
     status.textContent = "check_circle";
     status.setAttribute("aria-hidden", "true");
@@ -848,6 +1058,7 @@ function buildWidgetLibraryRow(entry) {
   const menuTrigger = document.createElement("button");
   menuTrigger.type = "button";
   menuTrigger.className = "widget-library__options";
+  menuTrigger.dataset.dropdownTrigger = "";
   menuTrigger.disabled = widgetSwitching || platformSwitching;
   menuTrigger.title = `Options de ${entry.name}`;
   menuTrigger.setAttribute("aria-label", `Options de ${entry.name}`);
@@ -866,7 +1077,7 @@ function buildWidgetLibraryRow(entry) {
   editItem.setAttribute("role", "menuitem");
   editItem.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">edit</span><span>Modifier</span>';
   editItem.addEventListener("click", () => {
-    closeWidgetMenus();
+    closeAllDropdowns();
     openWidgetSettings(entry);
   });
 
@@ -876,19 +1087,14 @@ function buildWidgetLibraryRow(entry) {
   deleteItem.setAttribute("role", "menuitem");
   deleteItem.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">delete</span><span>Supprimer</span>';
   deleteItem.addEventListener("click", () => {
-    closeWidgetMenus();
+    closeAllDropdowns();
     void deleteWidgetEntry(entry);
   });
 
   menuPanel.append(editItem, deleteItem);
   menuTrigger.addEventListener("click", (event) => {
     event.stopPropagation();
-    const wasOpen = menuTrigger.getAttribute("aria-expanded") === "true";
-    closeWidgetMenus();
-    if (!wasOpen) {
-      menuPanel.hidden = false;
-      menuTrigger.setAttribute("aria-expanded", "true");
-    }
+    toggleDropdown(menuTrigger);
   });
   menu.append(menuTrigger, menuPanel);
 
@@ -896,19 +1102,33 @@ function buildWidgetLibraryRow(entry) {
   return row;
 }
 
-function closeWidgetMenus() {
-  for (const trigger of elements.widgetList.querySelectorAll(".widget-library__options[aria-expanded='true']")) {
+// Mécanique de dropdown partagée par le menu d'options widget/alerte, les
+// filtres de tri par colonne du dashboard et le bouton flottant "Ajouter" :
+// tout déclencheur porte [data-dropdown-trigger] et son panneau (hidden par
+// défaut) est son frère immédiat dans le DOM.
+function closeAllDropdowns() {
+  for (const trigger of document.querySelectorAll('[data-dropdown-trigger][aria-expanded="true"]')) {
     trigger.setAttribute("aria-expanded", "false");
     trigger.nextElementSibling.hidden = true;
   }
 }
 
-function initializeWidgetLibraryMenu() {
+function toggleDropdown(trigger) {
+  const panel = trigger.nextElementSibling;
+  const wasOpen = trigger.getAttribute("aria-expanded") === "true";
+  closeAllDropdowns();
+  if (!wasOpen) {
+    panel.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+  }
+}
+
+function initializeDropdowns() {
   document.addEventListener("click", (event) => {
-    if (!event.target.closest(".widget-library__menu")) closeWidgetMenus();
+    if (!event.target.closest('[data-dropdown-trigger], [role="menu"]')) closeAllDropdowns();
   });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeWidgetMenus();
+    if (event.key === "Escape") closeAllDropdowns();
   });
 }
 
@@ -953,7 +1173,7 @@ async function switchWidget(nextWidgetId) {
   activeWidgetId = nextWidgetId;
   widgetSwitching = true;
   for (const platformButton of elements.platformButtons) platformButton.disabled = true;
-  syncLibraryTabToWidget(activeWidgetId);
+  revealLibraryGroupForWidget(activeWidgetId);
   renderWidgetLibrary();
 
   const loaded = await refreshWidgetPreview(
@@ -2037,6 +2257,8 @@ function wireIntegrationCard(card) {
   const formEl = card.querySelector('[data-role="form"]');
   const formError = card.querySelector('[data-role="form-error"]');
   const disconnectButton = card.querySelector('[data-role="disconnect"]');
+  const revealButton = card.querySelector('[data-role="reveal-token"]');
+  const loadEnvButton = card.querySelector('[data-role="load-env-defaults"]');
 
   formEl.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -2059,6 +2281,28 @@ function wireIntegrationCard(card) {
     try {
       await fetchAccountJson(`/api/integration?provider=${provider}`, { method: "DELETE" });
       renderIntegrationCard(card, null);
+    } catch (error) {
+      formError.textContent = error.message;
+      formError.hidden = false;
+    }
+  });
+
+  revealButton?.addEventListener("click", () => {
+    const tokenInput = formEl.elements.token;
+    const icon = revealButton.querySelector(".material-symbols-rounded");
+    const revealed = tokenInput.type === "text";
+    tokenInput.type = revealed ? "password" : "text";
+    icon.textContent = revealed ? "visibility" : "visibility_off";
+    revealButton.setAttribute("aria-label", revealed ? "Afficher le token" : "Masquer le token");
+  });
+
+  loadEnvButton?.addEventListener("click", async () => {
+    formError.hidden = true;
+    try {
+      const defaults = await fetchAccountJson(`/api/integrations/env-defaults/reveal?provider=${provider}`);
+      for (const key of ["channelId", "channelName", "tokenType", "token"]) {
+        if (formEl.elements[key] && defaults[key] != null) formEl.elements[key].value = defaults[key];
+      }
     } catch (error) {
       formError.textContent = error.message;
       formError.hidden = false;
@@ -2100,6 +2344,16 @@ async function initializeAccountPanel() {
     }
 
     await loadAccountIntegrations();
+
+    try {
+      const envDefaults = await fetchAccountJson("/api/integrations/env-defaults");
+      for (const card of elements.integrationCards) {
+        const loadEnvButton = card.querySelector('[data-role="load-env-defaults"]');
+        if (loadEnvButton) loadEnvButton.hidden = !envDefaults[card.dataset.provider]?.hasToken;
+      }
+    } catch {
+      // .env non configure ou endpoint indisponible : les boutons restent masques.
+    }
   } catch (error) {
     showAccountError(error.message);
   }
@@ -2109,20 +2363,24 @@ function showDashboard() {
   elements.dashboardView.hidden = false;
   elements.eventFab.hidden = true;
   setEventSimulatorOpen(false);
+  setEditingChromeVisible(false);
+  renderWidgetLibrary();
   renderDashboard();
 }
 
 function hideDashboard() {
   elements.dashboardView.hidden = true;
   elements.eventFab.hidden = false;
+  setEditingChromeVisible(true);
 }
 
-function goToLibrary(tab) {
-  hideDashboard();
-  setSidebarCollapsed(false);
-  selectLibraryTab(tab);
-  const librarySection = document.querySelector('[data-sidebar-section="library"]');
-  if (librarySection && !librarySection.open) expandDetails(librarySection);
+// La bascule de plateforme, le menu Exporter et la section Champs n'ont de
+// sens que lorsqu'un widget/une alerte est réellement en cours d'édition —
+// masqués sur le dashboard, où rien n'est sélectionné.
+function setEditingChromeVisible(editing) {
+  elements.topbarCenter.hidden = !editing;
+  elements.workspace.classList.toggle("is-dashboard", !editing);
+  elements.dashboardFab.classList.toggle("is-active", !editing);
 }
 
 function jumpToSidebarSection(sectionKey) {
@@ -2132,22 +2390,34 @@ function jumpToSidebarSection(sectionKey) {
 }
 
 async function renderDashboard() {
-  elements.dashboardWidgetCount.textContent = widgetCatalog.filter(entry => entry.type !== "alert").length;
-  elements.dashboardAlertCount.textContent = widgetCatalog.filter(entry => entry.type === "alert").length;
-
-  const rows = [
-    dashboardConnectionRow("StreamElements", liveStatuses.streamelements === "connected", liveStatuses.streamelements === "connected" ? "Connecté" : "Simulation"),
-    dashboardConnectionRow("Streamlabs", liveStatuses.streamlabs === "connected", liveStatuses.streamlabs === "connected" ? "Connecté" : "Simulation")
-  ];
+  let authenticated = false;
+  let user = null;
+  let userIntegrations = new Set();
+  let userIntegrationsByProvider = new Map();
 
   try {
-    const { authenticated, user } = await fetchAccountJson("/api/auth/me");
-    rows.unshift(dashboardConnectionRow("Compte Twitch", authenticated, authenticated ? (user.displayName || user.twitchLogin) : "Non connecté"));
+    const me = await fetchAccountJson("/api/auth/me");
+    authenticated = me.authenticated;
+    user = me.user;
     updateAccountFabIcon(authenticated);
+    if (authenticated) {
+      const { integrations } = await fetchAccountJson("/api/integrations");
+      userIntegrations = new Set(integrations.map((entry) => entry.provider));
+      userIntegrationsByProvider = new Map(integrations.map((entry) => [entry.provider, entry]));
+    }
   } catch {
-    rows.unshift(dashboardConnectionRow("Compte Twitch", false, "Non connecté"));
     updateAccountFabIcon(false);
   }
+
+  const twitchDetail = authenticated
+    ? `${user.displayName || user.twitchLogin}${user.lastLoginAt ? ` · Connecté le ${formatAccountDate(user.lastLoginAt)}` : ""}`
+    : "Non connecté";
+
+  const rows = [
+    dashboardConnectionRow("twitch", "Compte Twitch", authenticated, twitchDetail, { avatarUrl: user?.avatarUrl }),
+    dashboardConnectionRow("streamelements", "StreamElements", liveStatuses.streamelements === "connected", buildLiveConnectionDetail("streamelements", liveStatuses.streamelements === "connected", userIntegrationsByProvider), { linked: userIntegrations.has("streamelements") }),
+    dashboardConnectionRow("streamlabs", "Streamlabs", liveStatuses.streamlabs === "connected", buildLiveConnectionDetail("streamlabs", liveStatuses.streamlabs === "connected", userIntegrationsByProvider), { linked: userIntegrations.has("streamlabs") })
+  ];
 
   elements.dashboardConnectionList.replaceChildren(...rows);
 }
@@ -2157,15 +2427,99 @@ function updateAccountFabIcon(authenticated) {
   elements.accountFab.classList.toggle("is-live", authenticated);
 }
 
-function dashboardConnectionRow(label, connected, detail) {
+function buildLiveConnectionDetail(provider, connected, integrationsByProvider) {
+  const status = connected ? "Connecté" : "Simulation";
+  const integration = integrationsByProvider.get(provider);
+  return integration?.connectedAt ? `${status} · Lié le ${formatAccountDate(integration.connectedAt)}` : status;
+}
+
+function dashboardConnectionRow(provider, label, connected, detail, options = {}) {
+  const { avatarUrl, linked } = options;
   const item = document.createElement("li");
   item.className = `dashboard-view__connections-item${connected ? " is-connected" : ""}`;
-  const dot = document.createElement("i");
+
+  const logo = document.createElement("span");
+  logo.className = "dashboard-view__connections-logo";
+  if (provider === "twitch") {
+    if (connected && avatarUrl) {
+      const img = document.createElement("img");
+      img.className = "dashboard-view__connections-avatar";
+      img.src = avatarUrl;
+      img.alt = "";
+      logo.append(img);
+    } else {
+      logo.innerHTML = '<svg class="twitch-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"></path></svg>';
+    }
+  } else {
+    logo.classList.add("dashboard-view__connections-logo--icon", `dashboard-view__connections-logo--${provider}`);
+    const img = document.createElement("img");
+    img.className = `dashboard-view__connections-platform-icon dashboard-view__connections-platform-icon--${provider}`;
+    img.src = `/assets/platforms/${provider}.svg`;
+    img.alt = "";
+    logo.append(img);
+  }
+
+  const copy = document.createElement("span");
+  copy.className = "dashboard-view__connections-copy";
   const strong = document.createElement("strong");
   strong.textContent = label;
   const span = document.createElement("span");
   span.textContent = detail;
-  item.append(dot, strong, span);
+  copy.append(strong, span);
+
+  item.append(logo, copy);
+
+  if (provider === "twitch" && connected) {
+    const logoutButton = document.createElement("button");
+    logoutButton.type = "button";
+    logoutButton.className = "icon-button dashboard-view__connections-disconnect";
+    logoutButton.setAttribute("aria-label", "Se déconnecter de Twitch");
+    logoutButton.title = "Se déconnecter de Twitch";
+    logoutButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">logout</span>';
+    logoutButton.addEventListener("click", async () => {
+      logoutButton.disabled = true;
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+        elements.loggedInPanel.hidden = true;
+        elements.loggedOutPanel.hidden = false;
+        updateAccountFabIcon(false);
+        renderDashboard();
+      } catch (error) {
+        showToast(error.message);
+        logoutButton.disabled = false;
+      }
+    });
+    item.append(logoutButton);
+  }
+
+  if (linked !== undefined) {
+    if (linked) {
+      const disconnectButton = document.createElement("button");
+      disconnectButton.type = "button";
+      disconnectButton.className = "icon-button dashboard-view__connections-disconnect";
+      disconnectButton.setAttribute("aria-label", `Déconnecter ${label}`);
+      disconnectButton.title = `Déconnecter ${label}`;
+      disconnectButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">link_off</span>';
+      disconnectButton.addEventListener("click", async () => {
+        disconnectButton.disabled = true;
+        try {
+          await fetchAccountJson(`/api/integration?provider=${provider}`, { method: "DELETE" });
+          showToast(`${label} déconnecté`);
+          renderDashboard();
+        } catch (error) {
+          showToast(error.message);
+          disconnectButton.disabled = false;
+        }
+      });
+      item.append(disconnectButton);
+    }
+
+    const linkDot = document.createElement("i");
+    linkDot.className = `dashboard-view__connections-dot${linked ? " is-connected" : ""}`;
+    linkDot.title = linked ? `${label} lié à ton compte` : `${label} non lié à ton compte`;
+    item.append(linkDot);
+  }
+
   return item;
 }
 
@@ -2181,13 +2535,44 @@ elements.sidebarToggle.addEventListener("click", () => {
 });
 
 elements.dashboardFab.addEventListener("click", () => showDashboard());
-document.querySelector("#dashboard-widgets-card").addEventListener("click", () => goToLibrary("widgets"));
-document.querySelector("#dashboard-alerts-card").addEventListener("click", () => goToLibrary("alerts"));
 document.querySelector("#library-nav").addEventListener("click", () => jumpToSidebarSection("library"));
 document.querySelector("#fields-nav").addEventListener("click", () => jumpToSidebarSection("fields"));
 
 if (new URLSearchParams(window.location.search).get("account") === "open") {
   setAccountPanelOpen(true);
+}
+
+function slugifyWidgetName(name) {
+  return String(name)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "custom-widget";
+}
+
+function exportWidgetShortcut() {
+  if (!activeWidgetId) return;
+  const configuredName = String(
+    fieldData?.widgetName ||
+    widget?.fields?.widgetName?.value ||
+    widget?.widgetMeta?.name ||
+    "custom-widget"
+  );
+  const slug = slugifyWidgetName(configuredName);
+  const shortcutUrl = `${window.location.origin}/?widget=${encodeURIComponent(activeWidgetId)}`;
+  const content = `[InternetShortcut]\r\nURL=${shortcutUrl}\r\n`;
+  const blob = new Blob([content], { type: "application/x-mswinurl" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${slug}.url`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  addConsole("info", "Raccourci .url généré");
+  showToast("Raccourci téléchargé");
 }
 
 async function exportWidgetCode(platform) {
@@ -2208,12 +2593,7 @@ async function exportWidgetCode(platform) {
     widget.widgetMeta?.name ||
     "custom-widget"
   );
-  const slug = configuredName
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "") || "custom-widget";
+  const slug = slugifyWidgetName(configuredName);
   const suffix = exported.platform === PLATFORM_STREAMLABS ? "streamlabs" : "streamelements";
   const blob = new Blob([archive], { type: "application/zip" });
   const url = URL.createObjectURL(blob);
