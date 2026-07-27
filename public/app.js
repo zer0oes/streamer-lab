@@ -588,7 +588,7 @@ function initializeWidgetSettings() {
   for (const [iconName, label] of widgetIconChoices) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "widget-icon-choice";
+    button.className = "widget-icon-choices__choice";
     button.dataset.widgetIcon = iconName;
     button.title = label;
     button.setAttribute("aria-label", label);
@@ -1174,7 +1174,7 @@ function setEditorFileState(file, state, message, shouldRender = true) {
 function renderEditorFileState(file) {
   if (!elements.editorStatus) return;
   const { state = "synced", message = "Synchronisé" } = editorFileStates.get(file) || {};
-  elements.editorStatus.className = `editor-status is-${state}`;
+  elements.editorStatus.className = `widget-editor__status is-${state}`;
   elements.editorStatus.querySelector("span").textContent = message;
 }
 
@@ -1236,6 +1236,7 @@ function renderFields() {
     const details = document.createElement("details");
     details.className = "field-group";
     const summary = document.createElement("summary");
+    summary.className = "field-group__summary";
     summary.textContent = definition.group;
     summary.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1270,7 +1271,7 @@ function renderFields() {
     if (definition.type === "checkbox") {
       const label = document.createElement("label");
       label.className = "checkbox-field";
-      label.innerHTML = `<span>${escapeHtml(definition.label || key)}</span>`;
+      label.innerHTML = `<span class="checkbox-field__label">${escapeHtml(definition.label || key)}</span>`;
       const input = document.createElement("input");
       input.type = "checkbox";
       input.checked = Boolean(fieldData[key]);
@@ -1283,14 +1284,16 @@ function renderFields() {
     const label = document.createElement("label");
     label.className = "field";
     const caption = document.createElement("span");
+    caption.className = "field__label";
     caption.textContent = definition.label || key;
     label.append(caption);
     const input = createFieldInput(key, definition);
 
     if (definition.type === "slider") {
       const row = document.createElement("div");
-      row.className = "field-control-row";
+      row.className = "field-group__control-row";
       const output = document.createElement("output");
+      output.className = "field-group__control-output";
       output.textContent = fieldData[key];
       input.addEventListener("input", () => { output.textContent = input.value; });
       row.append(input, output);
@@ -1769,9 +1772,9 @@ function buildRecents(data) {
 }
 
 function addConsole(level, message) {
-  elements.console.querySelector(".console-empty")?.remove();
+  elements.console.querySelector(".console-panel__empty")?.remove();
   const line = document.createElement("div");
-  line.className = `console-line console-line--${level}`;
+  line.className = `console-panel__line console-panel__line--${level}`;
   const time = document.createElement("time");
   time.textContent = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const badge = document.createElement("b");
@@ -1998,7 +2001,7 @@ function formatAccountDate(ms) {
 
 function renderIntegrationCard(card, integration) {
   const statusEl = card.querySelector('[data-role="status"]');
-  const helpEl = card.querySelector(".integration-help");
+  const helpEl = card.querySelector(".integration-card__help");
   const formEl = card.querySelector('[data-role="form"]');
   const connectedEl = card.querySelector('[data-role="connected"]');
 
@@ -2156,7 +2159,7 @@ function updateAccountFabIcon(authenticated) {
 
 function dashboardConnectionRow(label, connected, detail) {
   const item = document.createElement("li");
-  item.className = `dashboard-connection${connected ? " is-connected" : ""}`;
+  item.className = `dashboard-view__connections-item${connected ? " is-connected" : ""}`;
   const dot = document.createElement("i");
   const strong = document.createElement("strong");
   strong.textContent = label;
@@ -2237,5 +2240,5 @@ document.querySelector("#checker-toggle").addEventListener("click", ({ currentTa
   renderWidget();
 });
 document.querySelector("#clear-console").addEventListener("click", () => {
-  elements.console.innerHTML = '<span class="console-empty">La console est vide.</span>';
+  elements.console.innerHTML = '<span class="console-panel__empty">La console est vide.</span>';
 });

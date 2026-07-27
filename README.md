@@ -22,6 +22,8 @@ npm run dev
 
 Ouvrir ensuite [http://localhost:4173](http://localhost:4173).
 
+`npm run dev` compile d'abord le CSS (`styles/*.scss` → `public/styles.css`, écrit par Sass et gitignoré) puis lance le serveur et un watcher Sass en parallèle — toute modification dans `styles/` recompile automatiquement. `npm start` fait un build unique sans watcher. Le CSS source (les tokens, les partials par zone) vit dans `styles/` ; ne jamais éditer `public/styles.css` directement, il est régénéré à chaque build.
+
 Le mode simulation fonctionne immédiatement. La bibliothèque située dans `library/` rassemble tous les widgets dans des sous-dossiers, eux-mêmes répartis entre `library/widgets/` (widgets classiques) et `library/alerts/` (alertes). Les changements apportés au widget actif déclenchent automatiquement un rechargement de l’aperçu, sans dépendre du mode `node --watch` de Node.
 
 L’éditeur intégré, placé entre l’aperçu et la console, permet aussi de modifier directement les quatre fichiers utilisés par la plateforme active. L’aperçu est actualisé pendant la saisie et les changements sont enregistrés automatiquement dans `library/`. `Ctrl + S` force l’enregistrement immédiat. L’onglet **Fields** vérifie que le JSON est valide avant toute sauvegarde.

@@ -4,3 +4,10 @@ node_modules/
 npm-debug.log*
 .DS_Store
 library/*/zer0oes-*
+
+# Compiled CSS — source of truth is styles/*.scss, run `npm run build:css`
+# (or `npm run dev`, which does it automatically) to regenerate.
+/public/styles.css
+/public/styles.css.map
+
+.vscode/sidebar-notes.json

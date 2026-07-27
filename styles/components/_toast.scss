@@ -1,0 +1,22 @@
+// Toast notifications.
+
+.toast {
+  position: fixed;
+  right: 96px;
+  bottom: 28px;
+  z-index: 40;
+  max-width: min(420px, calc(100vw - 44px));
+  padding: var(--space-10) var(--space-14);
+  border: 1px solid #444a55;
+  border-radius: var(--radius-8);
+  opacity: 0;
+  pointer-events: none;
+  color: #e8eaf0;
+  background: #20232a;
+  box-shadow: 0 12px 36px rgb(0 0 0 / 35%);
+  font-size: var(--text-11);
+  transform: translateY(8px);
+  transition: opacity var(--duration-slow), transform var(--duration-slow);
+}
+
+.toast.is-visible { opacity: 1; transform: translateY(0); }

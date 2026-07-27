@@ -1,0 +1,33 @@
+/*! Compiled from styles/main.scss — edit source files, not this file. */
+
+// Tokens first: every other partial reads these custom properties.
+@use "base/tokens";
+
+// Reset/base next, so component rules win at equal specificity.
+@use "base/reset";
+
+// Shared atoms (eyebrow, hint, material icons, heading-row mixin) before
+// anything that uses them.
+@use "base/primitives";
+
+// Shared primitives (buttons, form fields, icon buttons) before the
+// components that compose them.
+@use "components/buttons-forms";
+
+// Layout regions and the components inside them, roughly top-to-bottom as
+// they appear on screen.
+@use "layouts/topbar";
+@use "layouts/sidebar";
+@use "components/library";
+@use "layouts/dashboard";
+@use "layouts/preview";
+@use "components/editor";
+@use "components/event-simulator";
+@use "components/account-panel";
+
+// Small leftovers.
+@use "components/toast";
+
+// Responsive overrides last, so they can override any component rule
+// above at equal specificity within their media query.
+@use "responsive";

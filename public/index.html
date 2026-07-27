@@ -93,7 +93,7 @@
         </div>
       </div>
       <div class="topbar__actions">
-        <button class="icon-button" id="account-fab" type="button" aria-label="Mon compte" aria-expanded="false" aria-controls="account-panel" title="Mon compte">
+        <button class="icon-button account-fab" id="account-fab" type="button" aria-label="Mon compte" aria-expanded="false" aria-controls="account-panel" title="Mon compte">
           <span class="material-symbols-rounded" aria-hidden="true">account_circle</span>
         </button>
       </div>
@@ -121,9 +121,9 @@
         <div class="controls__body">
         <details class="sidebar-section" data-sidebar-section="library" open>
           <summary class="sidebar-section__summary">
-            <div class="section-heading">
-              <div>
-                <span class="step material-symbols-rounded" aria-hidden="true">topic</span>
+            <div class="sidebar-section__heading">
+              <div class="sidebar-section__heading-actions">
+                <span class="sidebar-section__step material-symbols-rounded" aria-hidden="true">topic</span>
                 <h2>Ma bibliothèque</h2>
               </div>
               <span class="sidebar-section__meta">
@@ -133,12 +133,12 @@
           </summary>
           <div class="sidebar-section__body">
             <div class="library-tabs" id="library-tabs" role="tablist" aria-label="Bibliothèque">
-              <button type="button" class="library-tab is-active" role="tab" aria-selected="true" data-library-tab="widgets">
+              <button type="button" class="library-tabs__tab is-active" role="tab" aria-selected="true" data-library-tab="widgets">
                 <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
                 <span>Widgets</span>
                 <span class="library-tab__count" id="widget-count">0</span>
               </button>
-              <button type="button" class="library-tab" role="tab" aria-selected="false" data-library-tab="alerts">
+              <button type="button" class="library-tabs__tab" role="tab" aria-selected="false" data-library-tab="alerts">
                 <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
                 <span>Alertes</span>
                 <span class="library-tab__count" id="alert-count">0</span>
@@ -158,9 +158,9 @@
         </details>
         <details class="sidebar-section" data-sidebar-section="fields" open>
           <summary class="sidebar-section__summary">
-            <div class="section-heading">
-              <div>
-                <span class="step material-symbols-rounded" aria-hidden="true">dynamic_form</span>
+            <div class="sidebar-section__heading">
+              <div class="sidebar-section__heading-actions">
+                <span class="sidebar-section__step material-symbols-rounded" aria-hidden="true">dynamic_form</span>
                 <h2>Champs</h2>
               </div>
               <span class="sidebar-section__meta">
@@ -178,20 +178,20 @@
 
       <section class="preview-column">
         <div class="dashboard-view" id="dashboard-view" hidden>
-          <div class="dashboard-hero">
+          <div class="dashboard-view__hero">
             <span class="eyebrow">SANDBOX</span>
             <h2>Bienvenue sur Widget Lab</h2>
             <p>Choisis un widget dans ta bibliothèque pour l’éditer, ou connecte tes comptes pour passer en mode live.</p>
           </div>
-          <div class="dashboard-grid">
-            <button class="dashboard-card" type="button" id="dashboard-widgets-card">
+          <div class="dashboard-view__grid">
+            <button class="dashboard-view__grid-item" type="button" id="dashboard-widgets-card">
               <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
               <div>
                 <strong id="dashboard-widget-count">0</strong>
                 <span>Widgets</span>
               </div>
             </button>
-            <button class="dashboard-card" type="button" id="dashboard-alerts-card">
+            <button class="dashboard-view__grid-item" type="button" id="dashboard-alerts-card">
               <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
               <div>
                 <strong id="dashboard-alert-count">0</strong>
@@ -199,19 +199,19 @@
               </div>
             </button>
           </div>
-          <div class="dashboard-connections">
+          <div class="dashboard-view__connections">
             <h3>Comptes connectés</h3>
-            <ul class="dashboard-connection-list" id="dashboard-connection-list"></ul>
+            <ul class="dashboard-view__connections-list" id="dashboard-connection-list"></ul>
           </div>
         </div>
 
         <div class="preview-toolbar">
           <div class="preview-toolbar__heading">
-            <span class="preview-title" id="preview-title">Aperçu du widget</span>
-            <span class="preview-meta" id="preview-meta">1920 × 1080</span>
+            <span class="preview-toolbar__title" id="preview-title">Aperçu du widget</span>
+            <span class="preview-toolbar__meta" id="preview-meta">1920 × 1080</span>
           </div>
           <div class="preview-toolbar__actions">
-            <div class="preview-size" aria-label="Dimensions du widget">
+            <div class="preview-toolbar__size" aria-label="Dimensions du widget">
               <label>
                 <span>L</span>
                 <input id="preview-width" type="number" value="1920" min="64" max="4096" step="1" aria-label="Largeur du widget">
@@ -245,9 +245,10 @@
           </div>
         </div>
         <div class="preview-shell is-checker" id="preview-shell">
-          <div class="preview-canvas" id="preview-canvas">
+          <div class="preview-shell__canvas" id="preview-canvas">
             <iframe
               id="widget-frame"
+              class="preview-shell__frame"
               title="Aperçu du Custom Widget"
               sandbox="allow-scripts"
             ></iframe>
@@ -260,30 +261,30 @@
               <span class="widget-editor__eyebrow">CODE DU WIDGET</span>
               <h2 id="widget-editor-title">Édition en temps réel</h2>
             </div>
-            <span class="editor-status is-synced" id="editor-status" role="status">
+            <span class="widget-editor__status is-synced" id="editor-status" role="status">
               <i></i>
               <span>Synchronisé</span>
             </span>
           </header>
           <div class="editor-tabs" role="tablist" aria-label="Fichiers du widget">
-            <button class="editor-tab is-active" type="button" role="tab" aria-selected="true" data-editor-file="html">HTML</button>
-            <button class="editor-tab" type="button" role="tab" aria-selected="false" data-editor-file="css">CSS</button>
-            <button class="editor-tab" type="button" role="tab" aria-selected="false" data-editor-file="js">JS</button>
-            <button class="editor-tab" type="button" role="tab" aria-selected="false" data-editor-file="fields">Fields</button>
-            <button class="editor-tab" type="button" role="tab" aria-selected="false" data-editor-file="data">Data</button>
+            <button class="editor-tabs__tab editor-tabs__tab--html is-active" type="button" role="tab" aria-selected="true" data-editor-file="html">HTML</button>
+            <button class="editor-tabs__tab editor-tabs__tab--css" type="button" role="tab" aria-selected="false" data-editor-file="css">CSS</button>
+            <button class="editor-tabs__tab editor-tabs__tab--js" type="button" role="tab" aria-selected="false" data-editor-file="js">JS</button>
+            <button class="editor-tabs__tab editor-tabs__tab--fields" type="button" role="tab" aria-selected="false" data-editor-file="fields">Fields</button>
+            <button class="editor-tabs__tab editor-tabs__tab--data" type="button" role="tab" aria-selected="false" data-editor-file="data">Data</button>
           </div>
           <div class="widget-editor__body">
-            <pre class="widget-code-highlight" id="widget-code-highlight" aria-hidden="true"><code></code></pre>
+            <pre class="widget-editor__code-highlight" id="widget-code-highlight" aria-hidden="true"><code></code></pre>
             <textarea
               id="widget-code-editor"
-              class="widget-code-editor"
+              class="widget-editor__code-editor"
               aria-label="Code HTML du widget"
               autocomplete="off"
               autocapitalize="off"
               spellcheck="false"
               wrap="off"
             ></textarea>
-            <button class="editor-copy-button" id="editor-copy-button" type="button" title="Copier le code" aria-label="Copier le code">
+            <button class="widget-editor__copy-button" id="editor-copy-button" type="button" title="Copier le code" aria-label="Copier le code">
               <span class="material-symbols-rounded" aria-hidden="true">content_copy</span>
             </button>
           </div>
@@ -294,11 +295,11 @@
         </section>
 
         <section class="console-panel">
-          <div class="console-heading">
+          <div class="console-panel__heading">
             <span>Console du widget</span>
             <button class="text-button" id="clear-console" type="button">Effacer</button>
           </div>
-          <div class="console-output" id="console-output" aria-live="polite"></div>
+          <div class="console-panel__output" id="console-output" aria-live="polite"></div>
         </section>
       </section>
     </main>
@@ -321,25 +322,25 @@
 
       <div class="event-simulator__body">
         <div class="field">
-          <span>Événement</span>
+          <span class="field__label">Événement</span>
           <div class="event-type-accordion" id="event-type-accordion">
             <details class="event-type-item" data-event-type="message" open>
-              <summary>
+              <summary class="event-type-item__summary">
                 <span class="material-symbols-rounded" aria-hidden="true">chat</span>
                 <span>Chat message</span>
                 <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
               </summary>
               <div class="event-type-item__body">
                 <label class="field">
-                  <span>Pseudo</span>
+                  <span class="field__label">Pseudo</span>
                   <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
                 </label>
                 <label class="field checkbox-field">
-                  <span>Diffuseur (pseudo de la chaîne)</span>
+                  <span class="checkbox-field__label">Diffuseur (pseudo de la chaîne)</span>
                   <input data-field="broadcaster" type="checkbox">
                 </label>
                 <label class="field">
-                  <span>Message</span>
+                  <span class="field__label">Message</span>
                   <input data-field="message" placeholder="Aléatoire si vide" autocomplete="off">
                 </label>
                 <button class="button button--primary button--wide" data-field="submit" type="button">Déclencher l’événement</button>
@@ -347,14 +348,14 @@
             </details>
 
             <details class="event-type-item" data-event-type="follower-latest">
-              <summary>
+              <summary class="event-type-item__summary">
                 <span class="material-symbols-rounded" aria-hidden="true">favorite</span>
                 <span>Follower event</span>
                 <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
               </summary>
               <div class="event-type-item__body">
                 <label class="field">
-                  <span>Pseudo</span>
+                  <span class="field__label">Pseudo</span>
                   <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
                 </label>
                 <button class="button button--primary button--wide" data-field="submit" type="button">Déclencher l’événement</button>
@@ -362,18 +363,18 @@
             </details>
 
             <details class="event-type-item" data-event-type="subscriber-latest">
-              <summary>
+              <summary class="event-type-item__summary">
                 <span class="material-symbols-rounded" aria-hidden="true">person_add</span>
                 <span>Subscriber event</span>
                 <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
               </summary>
               <div class="event-type-item__body">
                 <label class="field">
-                  <span>Pseudo</span>
+                  <span class="field__label">Pseudo</span>
                   <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
                 </label>
                 <label class="field">
-                  <span>Type d’abonnement</span>
+                  <span class="field__label">Type d’abonnement</span>
                   <select data-field="sub-type">
                     <option value="tier1">Sub classique</option>
                     <option value="prime">Sub Prime</option>
@@ -386,22 +387,22 @@
             </details>
 
             <details class="event-type-item" data-event-type="tip-latest">
-              <summary>
+              <summary class="event-type-item__summary">
                 <span class="material-symbols-rounded" aria-hidden="true">credit_card</span>
                 <span>Tipper event</span>
                 <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
               </summary>
               <div class="event-type-item__body">
                 <label class="field">
-                  <span>Pseudo</span>
+                  <span class="field__label">Pseudo</span>
                   <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
                 </label>
                 <label class="field">
-                  <span>Montant (€)</span>
+                  <span class="field__label">Montant (€)</span>
                   <input data-field="amount" type="number" min="0" step="1" placeholder="Aléatoire si vide">
                 </label>
                 <label class="field">
-                  <span>Message</span>
+                  <span class="field__label">Message</span>
                   <input data-field="message" placeholder="Aléatoire si vide" autocomplete="off">
                 </label>
                 <button class="button button--primary button--wide" data-field="submit" type="button">Déclencher l’événement</button>
@@ -409,22 +410,22 @@
             </details>
 
             <details class="event-type-item" data-event-type="cheer-latest">
-              <summary>
+              <summary class="event-type-item__summary">
                 <span class="material-symbols-rounded" aria-hidden="true">award_star</span>
                 <span>Cheer event</span>
                 <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
               </summary>
               <div class="event-type-item__body">
                 <label class="field">
-                  <span>Pseudo</span>
+                  <span class="field__label">Pseudo</span>
                   <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
                 </label>
                 <label class="field">
-                  <span>Montant (bits)</span>
+                  <span class="field__label">Montant (bits)</span>
                   <input data-field="amount" type="number" min="0" step="1" placeholder="Aléatoire si vide">
                 </label>
                 <label class="field">
-                  <span>Message</span>
+                  <span class="field__label">Message</span>
                   <input data-field="message" placeholder="Aléatoire si vide" autocomplete="off">
                 </label>
                 <button class="button button--primary button--wide" data-field="submit" type="button">Déclencher l’événement</button>
@@ -432,18 +433,18 @@
             </details>
 
             <details class="event-type-item" data-event-type="raid-latest">
-              <summary>
+              <summary class="event-type-item__summary">
                 <span class="material-symbols-rounded" aria-hidden="true">groups</span>
                 <span>Raid event</span>
                 <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
               </summary>
               <div class="event-type-item__body">
                 <label class="field">
-                  <span>Pseudo</span>
+                  <span class="field__label">Pseudo</span>
                   <input data-field="name" placeholder="Aléatoire si vide" autocomplete="off">
                 </label>
                 <label class="field">
-                  <span>Viewers</span>
+                  <span class="field__label">Viewers</span>
                   <input data-field="amount" type="number" min="0" step="1" placeholder="Aléatoire si vide">
                 </label>
                 <button class="button button--primary button--wide" data-field="submit" type="button">Déclencher l’événement</button>
@@ -454,9 +455,9 @@
       </div>
 
       <details class="advanced">
-        <summary>Événement JSON personnalisé</summary>
+        <summary class="advanced__summary">Événement JSON personnalisé</summary>
         <label class="field">
-          <span>Detail de onEventReceived</span>
+          <span class="field__label">Detail de onEventReceived</span>
           <textarea id="custom-event" rows="8" spellcheck="false">{
   "listener": "follower-latest",
   "event": { "name": "DebugUser", "amount": 1 }
@@ -487,10 +488,10 @@
       </header>
 
       <div class="account-panel-drawer__body">
-        <p class="account-error" id="account-error" hidden></p>
+        <p class="account-panel-drawer__error" id="account-error" hidden></p>
 
-        <section class="account-state" id="logged-out-panel" hidden>
-          <p class="account-lead">Connecte-toi avec Twitch pour gérer tes intégrations StreamElements et Streamlabs.</p>
+        <section class="account-panel-drawer__state" id="logged-out-panel" hidden>
+          <p class="account-panel-drawer__lead">Connecte-toi avec Twitch pour gérer tes intégrations StreamElements et Streamlabs.</p>
           <a class="button button--twitch button--wide" id="twitch-login-button" href="/auth/twitch/start">
             <svg class="twitch-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"></path>
@@ -499,9 +500,9 @@
           </a>
         </section>
 
-        <section class="account-state" id="logged-in-panel" hidden>
+        <section class="account-panel-drawer__state" id="logged-in-panel" hidden>
           <div class="account-identity">
-            <img class="account-avatar" id="account-avatar" alt="" hidden>
+            <img class="account-identity__avatar" id="account-avatar" alt="" hidden>
             <div class="account-identity__name">
               <span class="eyebrow">CONNECTÉ</span>
               <h3 id="account-display-name"></h3>
@@ -511,25 +512,25 @@
 
           <div class="integration-grid">
             <article class="integration-card" data-provider="streamelements">
-              <header>
+              <header class="integration-card__header">
                 <h3>StreamElements</h3>
-                <span class="integration-status" data-role="status">Non connecté</span>
+                <span class="integration-card__status" data-role="status">Non connecté</span>
               </header>
-              <a class="integration-help" href="https://streamelements.com/dashboard/account/channels" target="_blank" rel="noopener noreferrer">
+              <a class="integration-card__help" href="https://streamelements.com/dashboard/account/channels" target="_blank" rel="noopener noreferrer">
                 <span class="material-symbols-rounded" aria-hidden="true">open_in_new</span>
                 <span>Récupérer mon Channel ID et mon token</span>
               </a>
-              <form class="integration-form" data-role="form">
+              <form class="integration-card__form" data-role="form">
                 <label class="field">
-                  <span>Channel ID</span>
+                  <span class="field__label">Channel ID</span>
                   <input name="channelId" autocomplete="off" required>
                 </label>
                 <label class="field">
-                  <span>Token</span>
+                  <span class="field__label">Token</span>
                   <input name="token" type="password" autocomplete="off" required>
                 </label>
                 <label class="field">
-                  <span>Type de token</span>
+                  <span class="field__label">Type de token</span>
                   <select name="tokenType">
                     <option value="jwt">JWT</option>
                     <option value="apikey">API key</option>
@@ -539,37 +540,37 @@
                 <p class="integration-form__error" data-role="form-error" hidden></p>
                 <button class="button button--primary button--wide" type="submit">Connecter</button>
               </form>
-              <div class="integration-connected" data-role="connected" hidden>
+              <div class="integration-card__connected" data-role="connected" hidden>
                 <p><span data-role="channel-name"></span></p>
-                <p class="integration-meta" data-role="connected-at"></p>
+                <p class="integration-card__meta" data-role="connected-at"></p>
                 <button class="button button--quiet button--wide" data-role="disconnect" type="button">Déconnecter</button>
               </div>
             </article>
 
             <article class="integration-card" data-provider="streamlabs">
-              <header>
+              <header class="integration-card__header">
                 <h3>Streamlabs</h3>
-                <span class="integration-status" data-role="status">Non connecté</span>
+                <span class="integration-card__status" data-role="status">Non connecté</span>
               </header>
-              <a class="integration-help" href="https://streamlabs.com/dashboard#/apisettings" target="_blank" rel="noopener noreferrer">
+              <a class="integration-card__help" href="https://streamlabs.com/dashboard#/apisettings" target="_blank" rel="noopener noreferrer">
                 <span class="material-symbols-rounded" aria-hidden="true">open_in_new</span>
                 <span>Récupérer mon Socket API Token</span>
               </a>
-              <form class="integration-form" data-role="form">
+              <form class="integration-card__form" data-role="form">
                 <label class="field">
-                  <span>Nom de chaîne (optionnel)</span>
+                  <span class="field__label">Nom de chaîne (optionnel)</span>
                   <input name="channelName" autocomplete="off">
                 </label>
                 <label class="field">
-                  <span>Socket API Token</span>
+                  <span class="field__label">Socket API Token</span>
                   <input name="token" type="password" autocomplete="off" required>
                 </label>
                 <p class="integration-form__error" data-role="form-error" hidden></p>
                 <button class="button button--primary button--wide" type="submit">Connecter</button>
               </form>
-              <div class="integration-connected" data-role="connected" hidden>
+              <div class="integration-card__connected" data-role="connected" hidden>
                 <p><span data-role="channel-name"></span></p>
-                <p class="integration-meta" data-role="connected-at"></p>
+                <p class="integration-card__meta" data-role="connected-at"></p>
                 <button class="button button--quiet button--wide" data-role="disconnect" type="button">Déconnecter</button>
               </div>
             </article>
@@ -592,7 +593,7 @@
         <div class="widget-settings__body">
           <input id="widget-settings-id" type="hidden">
           <label class="field">
-            <span>Nom</span>
+            <span class="field__label">Nom</span>
             <input id="widget-settings-name" maxlength="60" required autocomplete="off">
           </label>
           <fieldset class="widget-type-field">
@@ -609,7 +610,7 @@
             </div>
           </fieldset>
           <label class="field">
-            <span>Description</span>
+            <span class="field__label">Description</span>
             <textarea id="widget-settings-description" rows="3" maxlength="140"></textarea>
           </label>
           <fieldset class="widget-icon-field">

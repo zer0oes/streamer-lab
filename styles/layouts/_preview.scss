@@ -1,0 +1,230 @@
+// Preview column: toolbar, checker toggle, theme switch, canvas/frame.
+@use "../base/primitives";
+
+// Local, file-scoped near-black surfaces reused a few times within this
+// partial only — not promoted to global tokens since nothing outside this
+// file needs them.
+$preview-surface: #11141a;
+
+.preview-column { position: relative; min-width: 0; padding: clamp(var(--space-18), 3vw, 40px); }
+
+.preview-toolbar {
+  @include primitives.heading-row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-10) var(--space-18);
+  margin-bottom: var(--space-12);
+}
+
+.preview-toolbar__heading { display: flex; align-items: baseline; gap: var(--space-10); }
+.preview-toolbar__actions { display: flex; align-items: center; gap: 16px; }
+.preview-toolbar__title { font-size: var(--text-12); font-weight: 750; }
+.preview-toolbar__meta { color: var(--muted); font-size: var(--text-10); }
+
+.checker-button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #303540;
+  border-radius: var(--radius-7);
+  color: var(--muted);
+  background: $preview-surface;
+  cursor: pointer;
+  transition: color var(--duration-base), border-color var(--duration-base), background var(--duration-base), box-shadow var(--duration-base), transform var(--duration-fast);
+}
+
+.checker-button .material-symbols-rounded { font-size: 18px; }
+.checker-button:hover { color: var(--text); border-color: #454b58; }
+.checker-button:active { transform: translateY(1px); }
+.checker-button:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
+
+.checker-button.is-active {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
+  background: var(--accent-gradient);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.preview-theme {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--muted);
+  font-size: var(--text-10);
+  cursor: pointer;
+}
+
+.preview-theme input {
+  position: absolute;
+  width: 1px;
+  min-height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.preview-theme__track {
+  position: relative;
+  width: 58px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--accent-bright) 48%, transparent);
+  border-radius: 999px;
+  background: var(--accent-gradient);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 28%), 0 0 14px color-mix(in srgb, var(--accent) 18%, transparent);
+  transition: border-color var(--duration-slow), box-shadow var(--duration-slow), filter var(--duration-slow);
+}
+
+.preview-theme:hover .preview-theme__track {
+  filter: brightness(1.08);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 24%), 0 0 16px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.preview-theme input:focus-visible + .preview-theme__track {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 3px;
+}
+
+.preview-theme__thumb {
+  position: absolute;
+  z-index: 1;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f8fafc;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--shadow) 42%, transparent);
+  transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.preview-theme__icon {
+  position: absolute;
+  z-index: 2;
+  top: var(--space-7);
+  font-size: 14px;
+  transition: color var(--duration-slow), opacity var(--duration-slow);
+}
+
+.preview-theme__icon--dark { left: var(--space-7); color: var(--accent); }
+.preview-theme__icon--light { right: var(--space-7); color: rgb(255 255 255 / 70%); }
+
+.preview-theme input:checked + .preview-theme__track {
+  border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
+  background: var(--accent-gradient);
+}
+
+.preview-theme input:checked + .preview-theme__track .preview-theme__thumb {
+  transform: translateX(28px);
+}
+
+.preview-theme input:checked + .preview-theme__track .preview-theme__icon--dark {
+  color: rgb(255 255 255 / 70%);
+}
+
+.preview-theme input:checked + .preview-theme__track .preview-theme__icon--light {
+  color: var(--accent);
+}
+
+.preview-toolbar__size {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--muted);
+  font-size: var(--text-10);
+}
+
+.preview-toolbar__size label { display: flex; align-items: center; gap: var(--space-4); }
+
+.preview-toolbar__size input {
+  width: 64px;
+  height: 28px;
+  padding: 0 var(--space-7);
+  color: #eef0f4;
+  border: 1px solid #303540;
+  border-radius: var(--radius-6);
+  outline: none;
+  background: $preview-surface;
+  font-size: var(--text-11);
+}
+
+.preview-toolbar__size input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.preview-shell {
+  --preview-width: 1920px;
+
+  position: relative;
+  overflow: hidden;
+  width: min(100%, var(--preview-width));
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-12);
+  background: #151820;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 28%);
+}
+
+.preview-shell.is-checker {
+  background-color: #15171c;
+  background-image:
+    linear-gradient(45deg, #1f2229 25%, transparent 25%),
+    linear-gradient(-45deg, #1f2229 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1f2229 75%),
+    linear-gradient(-45deg, transparent 75%, #1f2229 75%);
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
+}
+
+.preview-shell.is-light {
+  background: #f2f4f7;
+}
+
+.preview-shell.is-checker.is-light {
+  background-color: #f4f6f9;
+  background-image:
+    linear-gradient(45deg, #dfe3e9 25%, transparent 25%),
+    linear-gradient(-45deg, #dfe3e9 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #dfe3e9 75%),
+    linear-gradient(-45deg, transparent 75%, #dfe3e9 75%);
+}
+
+.preview-shell.is-checker .preview-shell__canvas,
+.preview-shell.is-checker .preview-shell__frame {
+  background: transparent;
+}
+
+.preview-shell__canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  width: 1920px;
+  height: 1080px;
+  background:
+    radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--line-soft) 35%, transparent), transparent 46%),
+    $preview-surface;
+  transform-origin: top left;
+}
+
+.preview-shell.is-light .preview-shell__canvas,
+.preview-shell.is-light .preview-shell__frame {
+  background: #f2f4f7;
+}
+
+.preview-shell.is-light.is-checker .preview-shell__canvas,
+.preview-shell.is-light.is-checker .preview-shell__frame {
+  background: transparent;
+}
+
+.preview-shell__frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: $preview-surface;
+}

@@ -1,0 +1,33 @@
+// Reset + generic base rules shared across every component.
+
+* { box-sizing: border-box; }
+
+*::-webkit-scrollbar { width: 4px; height: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent-bright) 55%, transparent); border-radius: var(--radius-8); }
+*::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent-bright) 85%, transparent); }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+html,
+body { min-height: 100%; }
+
+body {
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 73% -20%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 34rem),
+    var(--bg);
+}
+
+button,
+input,
+select,
+textarea { font: inherit; }
+
+button { color: inherit; }
+
+h1,
+h2 { margin: 0; }
+
+h1 { font-size: clamp(17px, 2vw, 22px); letter-spacing: -0.025em; }
+h2 { font-size: var(--text-14); }

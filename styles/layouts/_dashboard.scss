@@ -1,0 +1,70 @@
+// Home dashboard: library/alert counts, connected-account status.
+
+.dashboard-view {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: auto;
+  padding: clamp(var(--space-18), 3vw, 40px);
+  background: var(--bg);
+}
+
+.dashboard-view[hidden] { display: none; }
+
+.dashboard-view__hero { max-width: 480px; margin-bottom: 28px; }
+.dashboard-view__hero h2 { margin: var(--space-6) 0 var(--space-8); font-size: clamp(20px, 2.4vw, 26px); }
+.dashboard-view__hero p { margin: 0; color: var(--muted); font-size: var(--text-13); line-height: 1.5; }
+
+.dashboard-view__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 200px));
+  gap: var(--space-14);
+  margin-bottom: 32px;
+}
+
+.dashboard-view__grid-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-14);
+  padding: var(--space-18) var(--space-20);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-12);
+  cursor: pointer;
+  background: var(--panel);
+  text-align: left;
+  transition: border-color var(--duration-fast), background var(--duration-fast);
+}
+
+.dashboard-view__grid-item:hover { border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent); background: #1a1d24; }
+.dashboard-view__grid-item:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+
+.dashboard-view__grid-item .material-symbols-rounded { color: var(--accent-bright); font-size: 26px; }
+.dashboard-view__grid-item strong { display: block; font-size: var(--text-22); }
+.dashboard-view__grid-item span:last-child { color: var(--muted); font-size: var(--text-11); }
+
+.dashboard-view__connections { max-width: 420px; }
+.dashboard-view__connections h3 { margin: 0 0 var(--space-12); font-size: var(--text-13); }
+.dashboard-view__connections-list { display: grid; gap: var(--space-8); margin: 0; padding: 0; list-style: none; }
+
+.dashboard-view__connections-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  padding: var(--space-10) var(--space-14);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-9);
+  background: var(--panel);
+  font-size: var(--text-12);
+}
+
+.dashboard-view__connections-item i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #69707d;
+}
+
+.dashboard-view__connections-item.is-connected i { background: var(--green); box-shadow: 0 0 10px color-mix(in srgb, var(--green) 55%, transparent); }
+.dashboard-view__connections-item strong { font-weight: 700; }
+.dashboard-view__connections-item span { color: var(--muted); }

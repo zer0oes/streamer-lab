@@ -1,0 +1,138 @@
+// Right-side account drawer: Twitch login, StreamElements/Streamlabs cards.
+
+.account-panel-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 40;
+  overflow: auto;
+  width: min(420px, 92vw);
+  height: 100vh;
+  height: 100dvh;
+  border-left: 1px solid #343944;
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  box-shadow: -24px 0 70px rgb(0 0 0 / 45%);
+  backdrop-filter: blur(18px);
+  opacity: 0;
+  transform: translateX(100%);
+  transition: opacity var(--duration-slow) ease, transform var(--duration-slow) ease;
+}
+
+.account-panel-drawer[hidden] { display: none; }
+.account-panel-drawer.is-open { opacity: 1; transform: translateX(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .account-panel-drawer { transition: opacity var(--duration-slow) ease; transform: none; }
+}
+
+.account-panel-drawer__header {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--topbar-height);
+  padding: var(--space-14) clamp(var(--space-18), 3vw, 42px);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.account-panel-drawer__header h2 { font-size: clamp(17px, 2vw, 22px); letter-spacing: -0.025em; }
+
+.account-panel-drawer__body { padding: var(--space-24); }
+
+.account-panel-drawer__error {
+  margin: 0 0 var(--space-20);
+  padding: var(--space-12) var(--space-14);
+  border: 1px solid #7a2b34;
+  border-radius: var(--radius-9);
+  color: var(--danger-bright);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  font-size: var(--text-12);
+}
+
+.account-panel-drawer__state { display: grid; gap: var(--space-24); }
+.account-panel-drawer__state[hidden] { display: none; }
+
+.account-panel-drawer__lead { margin: 0; color: var(--muted); font-size: var(--text-13); }
+
+.account-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-14);
+  padding: var(--space-18) var(--space-20);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-12);
+  background: var(--panel);
+}
+
+.account-identity__name { flex: 1; }
+.account-identity__name h3 { margin: 2px 0 0; font-size: 15px; }
+
+.account-identity__avatar {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.integration-grid { display: grid; gap: var(--space-16); }
+
+.integration-card {
+  padding: var(--space-18) var(--space-20) var(--space-20);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-12);
+  background: var(--panel);
+}
+
+.integration-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.integration-card h3 { margin: 0; font-size: var(--text-14); }
+
+.integration-card__status {
+  padding: 3px var(--space-9);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgb(255 255 255 / 6%);
+  font-size: var(--text-10);
+  font-weight: 720;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.integration-card__status.is-connected { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
+
+.integration-card__help {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-bottom: var(--space-13);
+  color: var(--accent-bright);
+  font-size: var(--text-11);
+  text-decoration: none;
+}
+
+.integration-card__help:hover { text-decoration: underline; }
+.integration-card__help .material-symbols-rounded { font-size: 14px; }
+.integration-card__help[hidden] { display: none; }
+
+.integration-card__form { display: grid; }
+.integration-card__form[hidden] { display: none; }
+
+.integration-form__error {
+  margin: -4px 0 var(--space-13);
+  color: var(--danger-bright);
+  font-size: var(--text-11);
+}
+
+.integration-card__connected p { margin: 0 0 var(--space-4); font-size: var(--text-13); }
+.integration-card__meta { color: var(--muted); font-size: var(--text-11); }
+.integration-card__connected .button { margin-top: var(--space-12); }

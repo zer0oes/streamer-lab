@@ -1,0 +1,38 @@
+// Shared reusable atoms, plus the heading-row mixin used by several
+// unrelated blocks (topbar brand row, sidebar section headings, preview
+// toolbar, console panel heading). Kept as a mixin rather than a shared
+// class so each component file only ever references its own class — no
+// component reaches into another block's selector for this layout.
+
+@mixin heading-row {
+  display: flex;
+  align-items: center;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: var(--space-3);
+  color: var(--accent-bright);
+  font-size: var(--text-10);
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.hint { color: var(--muted); font-size: var(--text-10); }
+
+.material-symbols-rounded {
+  // Vendor class (Google Material Symbols) — intentionally excluded from
+  // the BEM rename, renaming it would break the icon font hook.
+  font-family: "Material Symbols Rounded";
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "liga";
+}

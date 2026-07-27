@@ -1,0 +1,97 @@
+// Design tokens — single source of truth for colors, spacing, typography,
+// radii and durations used across the app. Kept as CSS custom properties
+// (not Sass $variables) so they stay inspectable/tweakable in devtools.
+//
+// Spacing/typography/radius steps are named by their literal px value —
+// real usage across the app is a dense, non-geometric cluster (not a clean
+// scale), so a self-documenting literal name avoids implying a design
+// progression that doesn't actually exist yet.
+
+:root {
+  color-scheme: dark;
+
+  // --- Surfaces ---------------------------------------------------------
+  --bg: #0b0c0f;
+  --panel: #111318;
+  --panel-soft: #171a20;
+  --panel-alt: #0e1014;
+  --line: #262a32;
+  --line-soft: #373d4a;
+  --shadow: #05070a;
+
+  // --- Text ---------------------------------------------------------------
+  --text: #f6f7f9;
+  --text-secondary: #d6d9e0;
+  --muted: #858b98;
+
+  // --- Brand / accent ------------------------------------------------------
+  --accent: #7447e8;
+  --accent-bright: #9f75ff;
+  --accent-gradient: linear-gradient(145deg, #9f75ff, #7447e8);
+
+  // --- Semantic status -------------------------------------------------
+  --green: #39d98a;
+  --danger: #ff5d73;
+  --danger-bright: #ff8797;
+  --warning: #f4b740;
+
+  // --- Brand: Twitch --------------------------------------------------
+  --twitch: #9146ff;
+  --twitch-border: #772ce8;
+  --twitch-hover: #a970ff;
+
+  // --- Layout --------------------------------------------------------
+  --topbar-height: 83px;
+
+  // --- Spacing (padding/margin/gap) — every value used 2+ times in the app.
+  // Sub-2px (hairline nudges) and one-off component dimensions (15/28/32/40/42px)
+  // are deliberately excluded — see component partials for those.
+  --space-2: 2px;
+  --space-3: 3px;
+  --space-4: 4px;
+  --space-5: 5px;
+  --space-6: 6px;
+  --space-7: 7px;
+  --space-8: 8px;
+  --space-9: 9px;
+  --space-10: 10px;
+  --space-11: 11px;
+  --space-12: 12px;
+  --space-13: 13px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-17: 17px;
+  --space-18: 18px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-25: 25px;
+
+  // --- Typography (text sizes only — Material Symbols icon glyphs are
+  // sized contextually per icon-button and stay literal, see components) --
+  --text-9: 9px;
+  --text-10: 10px;
+  --text-11: 11px;
+  --text-12: 12px;
+  --text-13: 13px;
+  --text-14: 14px;
+  --text-16: 16px;
+  --text-22: 22px;
+
+  // --- Radius ------------------------------------------------------------
+  --radius-5: 5px;
+  --radius-6: 6px;
+  --radius-7: 7px;
+  --radius-8: 8px;
+  --radius-9: 9px;
+  --radius-10: 10px;
+  --radius-12: 12px;
+  --radius-14: 14px;
+
+  // --- Motion --------------------------------------------------------
+  --duration-fast: 120ms;
+  --duration-base: 160ms;
+  --duration-slow: 200ms;
+  --duration-slower: 260ms;
+
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
