@@ -12,7 +12,7 @@
 // Base colors that have a -bright/-dark sibling are kept as Sass variables
 // so the siblings can be derived with color.scale() (+20%/-20% lightness)
 // instead of hand-picked hex values that can drift out of sync.
-$accent: #9f75ff;
+$accent: #8138ff;
 $accent-bright: color.scale($accent, $lightness: 20%);
 $danger: #ff5d73;
 $danger-bright: color.scale($danger, $lightness: 20%);

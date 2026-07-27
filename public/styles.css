@@ -12,9 +12,9 @@
   --text: #f6f7f9;
   --text-secondary: #d6d9e0;
   --muted: #858b98;
-  --accent: #9f75ff;
-  --accent-bright: rgb(178.2, 144.6, 255);
-  --accent-gradient: linear-gradient(145deg, rgb(178.2, 144.6, 255), #9f75ff);
+  --accent: #8138ff;
+  --accent-bright: rgb(154.2, 95.8, 255);
+  --accent-gradient: linear-gradient(145deg, rgb(154.2, 95.8, 255), #8138ff);
   --green: #39d98a;
   --danger: #ff5d73;
   --danger-bright: rgb(255, 125.4, 143);
@@ -139,6 +139,10 @@ h2 {
 .hint {
   color: var(--muted);
   font-size: var(--text-10);
+}
+
+.text-accent {
+  color: var(--accent-bright);
 }
 
 .material-symbols-rounded {

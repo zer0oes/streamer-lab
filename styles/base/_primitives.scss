@@ -20,6 +20,8 @@
 
 .hint { color: var(--muted); font-size: var(--text-10); }
 
+.text-accent { color: var(--accent-bright); }
+
 .material-symbols-rounded {
   // Vendor class (Google Material Symbols) — intentionally excluded from
   // the BEM rename, renaming it would break the icon font hook.
