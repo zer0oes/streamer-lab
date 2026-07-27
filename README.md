@@ -22,7 +22,11 @@ npm run dev
 
 Ouvrir ensuite [http://localhost:4173](http://localhost:4173).
 
-`npm run dev` compile d'abord le CSS (`styles/*.scss` → `public/styles.css`, écrit par Sass et gitignoré) puis lance le serveur et un watcher Sass en parallèle — toute modification dans `styles/` recompile automatiquement. `npm start` fait un build unique sans watcher. Le CSS source (les tokens, les partials par zone) vit dans `styles/` ; ne jamais éditer `public/styles.css` directement, il est régénéré à chaque build.
+`npm run dev` compile d'abord le CSS (`styles/*.scss` → `public/styles.css`, écrit par Sass et gitignoré) puis lance le serveur et un watcher Sass en parallèle — toute modification dans `styles/` recompile automatiquement. `npm start` fait un build unique sans watcher. Le CSS source vit dans `styles/` ; ne jamais éditer `public/styles.css` directement, il est régénéré à chaque build.
+
+`styles/` est organisé en trois dossiers : `base/` (tokens, reset, atomes partagés comme `.eyebrow`/`.hint`), `layouts/` (les régions macro de la page : topbar, sidebar, preview, dashboard) et `components/` (pièces UI autonomes : bibliothèque, éditeur, simulateur d'événements, tiroir compte, boutons/formulaires, toast). `_responsive.scss` reste à la racine, hors de ces trois dossiers, car ses règles touchent plusieurs composants par palier de largeur.
+
+Les classes suivent la convention BEM (`bloc__élément--modificateur`), avec les sélecteurs imbriqués via `&` dans chaque partial (`&__élément`, `&--modificateur`, `&:état`) plutôt qu'une liste plate de sélecteurs répétés. Deux exceptions documentées dans le code : `.material-symbols-rounded` (classe vendor de la police d'icônes) et les classes `.tok-*` du surlignage syntaxique (namespace plat façon `hljs-*`) ne suivent pas BEM et ne sont pas imbriquées.
 
 Le mode simulation fonctionne immédiatement. La bibliothèque située dans `library/` rassemble tous les widgets dans des sous-dossiers, eux-mêmes répartis entre `library/widgets/` (widgets classiques) et `library/alerts/` (alertes). Les changements apportés au widget actif déclenchent automatiquement un rechargement de l’aperçu, sans dépendre du mode `node --watch` de Node.
 

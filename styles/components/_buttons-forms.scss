@@ -1,9 +1,15 @@
 // Shared primitives: buttons, form fields, icon buttons.
 
-.field { display: grid; flex: 1; gap: var(--space-7); margin-bottom: var(--space-13); }
-.field__label { color: #adb2bd; font-size: var(--text-11); font-weight: 650; }
-.field__row { display: flex; gap: var(--space-10); }
-.field--small { max-width: 92px; }
+.field {
+  display: grid;
+  flex: 1;
+  gap: var(--space-7);
+  margin-bottom: var(--space-13);
+
+  &__label { color: #adb2bd; font-size: var(--text-11); font-weight: 650; }
+  &__row { display: flex; gap: var(--space-10); }
+  &--small { max-width: 92px; }
+}
 
 input,
 select,
@@ -23,9 +29,12 @@ textarea { resize: vertical; color: #bec5d2; font: var(--text-11)/1.5 ui-monospa
 input:focus,
 select:focus,
 textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }
-input[type="color"] { padding: var(--space-4); }
-input[type="checkbox"] { width: 15px; min-height: 15px; accent-color: var(--accent); }
-input[type="range"] { padding: 0; border: 0; background: transparent; accent-color: var(--accent); }
+
+input {
+  &[type="color"] { padding: var(--space-4); }
+  &[type="checkbox"] { width: 15px; min-height: 15px; accent-color: var(--accent); }
+  &[type="range"] { padding: 0; border: 0; background: transparent; accent-color: var(--accent); }
+}
 
 .button {
   min-height: 37px;
@@ -38,26 +47,33 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
   font-weight: 720;
   text-decoration: none;
   transition: transform var(--duration-fast), border-color var(--duration-fast), background var(--duration-fast);
+
+  &:hover { border-color: #3b404b; background: #1d2027; }
+  &:active { transform: translateY(1px); }
+
+  &--primary {
+    border-color: var(--accent);
+    background: var(--accent-gradient);
+
+    &:hover { border-color: var(--accent-bright); filter: brightness(1.08); }
+  }
+
+  &--wide { width: 100%; }
+
+  &--twitch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-9);
+    min-height: 42px;
+    border-color: var(--twitch-border);
+    color: #fff;
+    background: var(--twitch);
+
+    &:hover { border-color: var(--twitch-hover); filter: brightness(1.08); }
+  }
 }
 
-.button:hover { border-color: #3b404b; background: #1d2027; }
-.button:active { transform: translateY(1px); }
-.button--primary { border-color: var(--accent); background: var(--accent-gradient); }
-.button--primary:hover { border-color: var(--accent-bright); filter: brightness(1.08); }
-.button--wide { width: 100%; }
-
-.button--twitch {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-9);
-  min-height: 42px;
-  border-color: var(--twitch-border);
-  color: #fff;
-  background: var(--twitch);
-}
-
-.button--twitch:hover { border-color: var(--twitch-hover); filter: brightness(1.08); }
 .twitch-logo { width: 18px; height: 18px; flex: 0 0 auto; fill: currentColor; }
 
 .icon-button {
@@ -71,7 +87,7 @@ input[type="range"] { padding: 0; border: 0; background: transparent; accent-col
   cursor: pointer;
   color: var(--muted);
   background: var(--panel-soft);
-}
 
-.icon-button:hover { color: var(--text); border-color: #414753; }
-.icon-button .material-symbols-rounded { font-size: 18px; }
+  &:hover { color: var(--text); border-color: #414753; }
+  .material-symbols-rounded { font-size: 18px; }
+}
