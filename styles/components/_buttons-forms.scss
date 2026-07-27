@@ -52,7 +52,7 @@ textarea {
   transition: border-color var(--duration-base), box-shadow var(--duration-base);
 }
 
-textarea { resize: vertical; color: #bec5d2; font: var(--text-11)/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
+textarea { resize: vertical; color: #bec5d2; font: var(--text-11)/1.5 var(--font-mono); }
 input:focus,
 select:focus,
 textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }

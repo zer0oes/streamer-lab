@@ -2107,14 +2107,6 @@ for (const itemEl of eventAccordionItems) {
   });
 }
 
-for (const sectionEl of elements.sidebarSections) {
-  sectionEl.querySelector(":scope > summary").addEventListener("click", (event) => {
-    event.preventDefault();
-    if (sectionEl.open) collapseDetails(sectionEl);
-    else expandDetails(sectionEl);
-  });
-}
-
 const chatBroadcasterField = eventField(document.querySelector('.event-type-item[data-event-type="message"]'), "broadcaster");
 const chatNameField = eventField(document.querySelector('.event-type-item[data-event-type="message"]'), "name");
 chatBroadcasterField.addEventListener("change", () => {
@@ -2387,7 +2379,12 @@ function setEditingChromeVisible(editing) {
 function jumpToSidebarSection(sectionKey) {
   setSidebarCollapsed(false);
   const section = document.querySelector(`[data-sidebar-section="${sectionKey}"]`);
-  if (section && !section.open) expandDetails(section);
+  // Sets .open directly rather than routing through expandDetails() — that
+  // function drives its own separate WAAPI animation and doesn't know about
+  // the shrink/grow closure state in makeDetailsAnimatable(), which already
+  // owns click-driven open/close for these sections. Mixing the two was the
+  // cause of the reopen bug (two competing animations racing to set .open).
+  if (section && !section.open) section.open = true;
 }
 
 async function renderDashboard() {
@@ -2415,9 +2412,9 @@ async function renderDashboard() {
     : "Non connecté";
 
   const rows = [
-    dashboardConnectionRow("twitch", "Compte Twitch", authenticated, twitchDetail, { avatarUrl: user?.avatarUrl }),
-    dashboardConnectionRow("streamelements", "StreamElements", liveStatuses.streamelements === "connected", buildLiveConnectionDetail("streamelements", liveStatuses.streamelements === "connected", userIntegrationsByProvider), { linked: userIntegrations.has("streamelements") }),
-    dashboardConnectionRow("streamlabs", "Streamlabs", liveStatuses.streamlabs === "connected", buildLiveConnectionDetail("streamlabs", liveStatuses.streamlabs === "connected", userIntegrationsByProvider), { linked: userIntegrations.has("streamlabs") })
+    dashboardConnectionRow("twitch", "Compte Twitch", authenticated, twitchDetail, { avatarUrl: user?.avatarUrl, dotConnected: authenticated }),
+    dashboardConnectionRow("streamelements", "StreamElements", liveStatuses.streamelements === "connected", buildLiveConnectionDetail("streamelements", liveStatuses.streamelements === "connected", userIntegrationsByProvider), { linked: userIntegrations.has("streamelements"), dotConnected: userIntegrations.has("streamelements") }),
+    dashboardConnectionRow("streamlabs", "Streamlabs", liveStatuses.streamlabs === "connected", buildLiveConnectionDetail("streamlabs", liveStatuses.streamlabs === "connected", userIntegrationsByProvider), { linked: userIntegrations.has("streamlabs"), dotConnected: userIntegrations.has("streamlabs") })
   ];
 
   elements.dashboardConnectionList.replaceChildren(...rows);
@@ -2435,7 +2432,7 @@ function buildLiveConnectionDetail(provider, connected, integrationsByProvider) 
 }
 
 function dashboardConnectionRow(provider, label, connected, detail, options = {}) {
-  const { avatarUrl, linked } = options;
+  const { avatarUrl, linked, dotConnected } = options;
   const item = document.createElement("li");
   item.className = `dashboard-view__connections-item${connected ? " is-connected" : ""}`;
 
@@ -2493,39 +2490,52 @@ function dashboardConnectionRow(provider, label, connected, detail, options = {}
     item.append(logoutButton);
   }
 
-  if (linked !== undefined) {
-    if (linked) {
-      const disconnectButton = document.createElement("button");
-      disconnectButton.type = "button";
-      disconnectButton.className = "icon-button dashboard-view__connections-disconnect";
-      disconnectButton.setAttribute("aria-label", `Déconnecter ${label}`);
-      disconnectButton.title = `Déconnecter ${label}`;
-      disconnectButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">link_off</span>';
-      disconnectButton.addEventListener("click", async () => {
-        disconnectButton.disabled = true;
-        try {
-          await fetchAccountJson(`/api/integration?provider=${provider}`, { method: "DELETE" });
-          showToast(`${label} déconnecté`);
-          renderDashboard();
-        } catch (error) {
-          showToast(error.message);
-          disconnectButton.disabled = false;
-        }
-      });
-      item.append(disconnectButton);
-    }
+  if (linked) {
+    const disconnectButton = document.createElement("button");
+    disconnectButton.type = "button";
+    disconnectButton.className = "icon-button dashboard-view__connections-disconnect";
+    disconnectButton.setAttribute("aria-label", `Déconnecter ${label}`);
+    disconnectButton.title = `Déconnecter ${label}`;
+    disconnectButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">link_off</span>';
+    disconnectButton.addEventListener("click", async () => {
+      disconnectButton.disabled = true;
+      try {
+        await fetchAccountJson(`/api/integration?provider=${provider}`, { method: "DELETE" });
+        showToast(`${label} déconnecté`);
+        renderDashboard();
+      } catch (error) {
+        showToast(error.message);
+        disconnectButton.disabled = false;
+      }
+    });
+    item.append(disconnectButton);
+  }
 
+  if (dotConnected !== undefined) {
     const linkDot = document.createElement("i");
-    linkDot.className = `dashboard-view__connections-dot${linked ? " is-connected" : ""}`;
-    linkDot.title = linked ? `${label} lié à ton compte` : `${label} non lié à ton compte`;
+    linkDot.className = `dashboard-view__connections-dot${dotConnected ? " is-connected" : ""}`;
+    linkDot.title = dotConnected ? `${label} connecté` : `${label} non connecté`;
     item.append(linkDot);
   }
 
   return item;
 }
 
+let sidebarRailTimer;
+
+// Applying "display: none" on the same class that starts the fade would cut
+// the opacity/transform transition off before it plays — see the note on
+// .is-sidebar-collapsed in _sidebar.scss. So collapsing only removes the
+// content from layout (.is-sidebar-rail) once the CSS transition (--duration-slow, 200ms) is done;
+// expanding restores it immediately so the fade-in has something to animate.
 function setSidebarCollapsed(collapsed) {
+  clearTimeout(sidebarRailTimer);
   elements.workspace.classList.toggle("is-sidebar-collapsed", collapsed);
+  if (collapsed) {
+    sidebarRailTimer = setTimeout(() => elements.workspace.classList.add("is-sidebar-rail"), 200);
+  } else {
+    elements.workspace.classList.remove("is-sidebar-rail");
+  }
   elements.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
   elements.sidebarToggle.setAttribute("aria-label", collapsed ? "Déplier le panneau" : "Replier le panneau");
   elements.sidebarToggle.querySelector(".material-symbols-rounded").textContent = collapsed ? "chevron_right" : "chevron_left";

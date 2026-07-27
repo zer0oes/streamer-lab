@@ -50,22 +50,10 @@
   &:hover { opacity: 0.82; }
 
   &__mark {
-    display: grid;
-    place-items: center;
-    overflow: hidden;
     width: 42px;
     height: 42px;
     flex: 0 0 auto;
-    border: 1px solid color-mix(in srgb, var(--accent-bright) 48%, transparent);
-    border-radius: 50%;
-    background: var(--accent-gradient);
-    box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 32%, transparent);
-  }
-
-  &__icon {
-    overflow: visible;
-    width: 25px;
-    height: 31px;
+    object-fit: contain;
   }
 }
 

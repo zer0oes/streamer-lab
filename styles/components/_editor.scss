@@ -82,7 +82,7 @@ $editor-panel: #0f1116;
     overflow: auto;
     tab-size: 2;
     white-space: pre;
-    font: var(--text-12)/1.55 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font: var(--text-12)/1.55 var(--font-mono);
   }
 
   &__code-highlight {
@@ -150,7 +150,7 @@ $editor-panel: #0f1116;
 
     code {
       color: #aab0bc;
-      font: var(--text-10) ui-monospace, SFMono-Regular, Consolas, monospace;
+      font: var(--text-10) var(--font-mono);
     }
   }
 }
@@ -248,7 +248,7 @@ $editor-panel: #0f1116;
     height: 128px;
     padding: var(--space-9) var(--space-13);
     color: #aeb5c2;
-    font: var(--text-10)/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+    font: var(--text-10)/1.55 var(--font-mono);
   }
 
   &__line {
