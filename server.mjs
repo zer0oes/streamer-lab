@@ -1,6 +1,7 @@
 import { createReadStream, existsSync, readFileSync, watch } from "node:fs";
 import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
+import { spawn } from "node:child_process";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -87,6 +88,7 @@ let liveStatusStreamlabs = config.streamlabsToken ? "connecting" : "disabled";
 const sseClients = new Set();
 const changedWidgetFiles = new Set();
 let widgetReloadTimer;
+let publicReloadTimer;
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -438,6 +440,21 @@ watch(LIBRARY_ROOT, { persistent: true, recursive: true }, (_eventType, filename
   }, 120);
 });
 
+// Recharge la page entiere quand l'app elle-meme change (HTML/JS/CSS compile).
+watch(PUBLIC_ROOT, { persistent: true, recursive: true }, (_eventType, filename) => {
+  const file = filename ? String(filename) : "";
+  if (!/[.](html|js|css)$/i.test(file)) return;
+
+  clearTimeout(publicReloadTimer);
+  publicReloadTimer = setTimeout(() => broadcast("full-reload", { at: Date.now() }), 150);
+});
+
+function openBrowser(url) {
+  if (process.platform === "win32") spawn("cmd", ["/c", "start", "", url], { stdio: "ignore", detached: true }).unref();
+  else if (process.platform === "darwin") spawn("open", [url], { stdio: "ignore", detached: true }).unref();
+  else spawn("xdg-open", [url], { stdio: "ignore", detached: true }).unref();
+}
+
 setInterval(() => {
   for (const client of sseClients) client.write(": keep-alive\n\n");
 }, 20_000).unref();
@@ -446,6 +463,7 @@ server.listen(port, "127.0.0.1", () => {
   console.log(`Streamer Lab : http://localhost:${port}`);
   if (!config.channelId || !config.token) console.log("Mode simulation. Configurez .env pour activer les evenements reels.");
   if (!authConfigured) console.log("Connexion Twitch desactivee. Renseignez TWITCH_CLIENT_ID/SECRET et SESSION_SECRET dans .env pour l'activer.");
+  if (process.argv.includes("--open")) openBrowser(`http://localhost:${port}`);
 });
 
 if (config.channelId && config.token) connectAstro();

@@ -1854,6 +1854,7 @@ function connectEventStream() {
       void refreshWidgetPreview(change);
     }, 100);
   });
+  stream.addEventListener("full-reload", () => window.location.reload());
   stream.addEventListener("status", ({ data }) => updateLiveStatus(JSON.parse(data)));
   stream.addEventListener("widget-event", ({ data }) => {
     const payload = JSON.parse(data);

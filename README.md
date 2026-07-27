@@ -20,7 +20,7 @@ npm install
 npm run dev
 ```
 
-Ouvrir ensuite [http://localhost:4173](http://localhost:4173).
+`npm run dev` ouvre automatiquement [http://localhost:4173](http://localhost:4173) dans le navigateur par défaut. Toute modification de `public/` (HTML, JS, CSS compilé) ou de la bibliothèque `library/` recharge la page automatiquement (rechargement complet pour `public/`, rafraîchissement ciblé de l'aperçu pour un widget de `library/`). Les changements dans `server.mjs` ou `lib/` nécessitent en revanche de relancer `npm run dev` manuellement.
 
 `npm run dev` compile d'abord le CSS (`styles/*.scss` → `public/styles.css`, écrit par Sass et gitignoré) puis lance le serveur et un watcher Sass en parallèle — toute modification dans `styles/` recompile automatiquement. `npm start` fait un build unique sans watcher. Le CSS source vit dans `styles/` ; ne jamais éditer `public/styles.css` directement, il est régénéré à chaque build.
 
@@ -129,6 +129,22 @@ npm test
 ```
 
 Les tests couvrent la conversion des activités, des mises à jour de session et des messages chat Astro.
+
+## Réinstallation propre
+
+En cas de comportement étrange (dépendances corrompues, CSS obsolète, session Twitch bloquée), repartir d'un état propre :
+
+```powershell
+npm run reinstall
+npm run dev
+```
+
+`npm run reinstall` exécute `scripts/clean.mjs` (suppression de `node_modules`, du CSS compilé et de `data/app.sqlite` via l'API `fs` de Node, donc indépendant du shell) puis `npm install`.
+
+- `node_modules/` : réinstallé par `npm install` à partir de `package-lock.json`.
+- `public/styles.css` et `.map` : régénérés automatiquement au prochain `npm run dev` ou `npm run build:css` (le CSS source vit dans `styles/`).
+- `data/app.sqlite` : base SQLite locale (comptes Twitch liés, sessions). La supprimer réinitialise l'authentification et l'historique local ; elle est recréée automatiquement au démarrage du serveur.
+- `.env` n'est **pas** supprimé par cette procédure : il contient les jetons (`SE_TOKEN`, `SL_SOCKET_TOKEN`, secrets OAuth Twitch) et n'est pas versionné. Le recréer avec `Copy-Item .env.example .env` uniquement si besoin de repartir aussi de zéro sur la config.
 
 ## Références officielles
 
