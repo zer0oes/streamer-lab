@@ -20,11 +20,6 @@
   --radius: 14px;
   --row-gap: var(--pointer-gap);
   --line-height: 1.3;
-  /* Entry slide direction only — the newest message always settles at the
-     bottom of the stack (see #chat below); this just controls whether it
-     visibly drops in from above or rises in from below. Flipped by
-     #chat.is-top. */
-  --entry-y: 16px;
 }
 
 *,
@@ -61,12 +56,12 @@ body {
   overflow: visible;
 }
 
-/* Toggled by messagePosition="top" — the stack itself stays bottom-anchored
-   (the newest message is always the one nearest the bottom of the screen),
-   only the entry direction flips so new messages drop in from above instead
-   of rising from below. */
+/* Toggled by messagePosition="top" — anchors the stack to the top of the
+   screen instead of the bottom. Messages keep their normal chronological
+   order (oldest on top, newest on the bottom of the stack, still entering
+   from below) — only the anchor point of the whole group moves. */
 #chat.is-top {
-  --entry-y: -16px;
+  justify-content: flex-start;
 }
 
 .chat-row {
@@ -228,41 +223,41 @@ body {
 
 @keyframes identity-in {
   from {
-    transform: translate(-24px, var(--entry-y));
+    transform: translateX(-24px);
   }
 
   to {
-    transform: translate(0, 0);
+    transform: translateX(0);
   }
 }
 
 @keyframes identity-in-broadcaster {
   from {
-    transform: translate(24px, var(--entry-y));
+    transform: translateX(24px);
   }
 
   to {
-    transform: translate(0, 0);
+    transform: translateX(0);
   }
 }
 
 @keyframes bubble-in {
   from {
-    transform: translate(-24px, var(--entry-y));
+    transform: translateX(-24px);
   }
 
   to {
-    transform: translate(0, 0);
+    transform: translateX(0);
   }
 }
 
 @keyframes bubble-in-broadcaster {
   from {
-    transform: translate(24px, var(--entry-y));
+    transform: translateX(24px);
   }
 
   to {
-    transform: translate(0, 0);
+    transform: translateX(0);
   }
 }
 

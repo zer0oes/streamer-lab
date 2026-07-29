@@ -8,8 +8,8 @@
   {
     "id": "ms4dxy0i-irku9hbb",
     "title": "Widget Neon Chat : ",
-    "text": "- Lorsque les messages apparaissent par le haut de l'écran, il faut tout de même le plus récent en bas de l'écran",
-    "updatedAt": 1785288249954
+    "text": "",
+    "updatedAt": 1785326451410
   },
   {
     "id": "ms4dshii-5cc0buam",
@@ -20,8 +20,8 @@
   {
     "id": "ms39suq6-7avvnf3w",
     "title": "Global : ",
-    "text": "- Création d'une section \"Overlays\" avant Widgets et Alertes (icône desktop_landscape dans le menu latéral gauche) dans laquelle on aura un aperçu et la possibilité d'importer des widgets / des alertes.\n- Possibilité de déplacer les widgets / alertes en cliquer-glisser, leur définir une taille\n- - Ajouter une barre d'outils : [ Sélection ] [ Texte ] [ Image ] [ Icône ] [ Forme ]\n[ Variable ] [ Barre ] [ Groupe ]   |   [ Annuler ] [ Rétablir ] barre flottante sur aperçu, déplaçable",
-    "updatedAt": 1785284512746
+    "text": "- Quand on arrive sur la page Dashboard au chargement, on voit rapidement apparaitre la gestion des widgets ou des alertes. Il faut qu'on voit \n- Création d'une section \"Overlays\" avant Widgets et Alertes (icône desktop_landscape dans le menu latéral gauche) dans laquelle on aura un aperçu et la possibilité d'importer des widgets / des alertes.\n- Possibilité de déplacer les widgets / alertes en cliquer-glisser, leur définir une taille\n- - Ajouter une barre d'outils : [ Sélection ] [ Texte ] [ Image ] [ Icône ] [ Forme ]\n[ Variable ] [ Barre ] [ Groupe ]   |   [ Annuler ] [ Rétablir ] barre flottante sur aperçu, déplaçable",
+    "updatedAt": 1785327172781
   },
   {
     "id": "ms35umv6-mkwysiz8",
