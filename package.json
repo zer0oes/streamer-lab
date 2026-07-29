@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.4",
+    "playwright": "^1.61.1",
     "sass": "^1.99.0"
   }
 }

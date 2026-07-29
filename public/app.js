@@ -52,6 +52,7 @@ const elements = {
   dashboardAddFabAlert: document.querySelector("#dashboard-add-fab-alert"),
   dashboardConnectionList: document.querySelector("#dashboard-connection-list"),
   workspace: document.querySelector(".workspace"),
+  sidebarControls: document.querySelector(".workspace .controls"),
   sidebarToggle: document.querySelector("#sidebar-toggle"),
   topbarCenter: document.querySelector(".topbar__center"),
   footerYear: document.querySelector("#footer-year"),
@@ -757,6 +758,7 @@ async function submitContactForm() {
   const payload = {
     firstName: document.querySelector("#contact-first-name").value.trim(),
     lastName: document.querySelector("#contact-last-name").value.trim(),
+    nickname: document.querySelector("#contact-nickname").value.trim(),
     email: document.querySelector("#contact-email").value.trim(),
     subject: document.querySelector("#contact-subject").value.trim(),
     message: document.querySelector("#contact-message").value.trim()
@@ -2251,7 +2253,6 @@ function wireIntegrationCard(card) {
   const formError = card.querySelector('[data-role="form-error"]');
   const disconnectButton = card.querySelector('[data-role="disconnect"]');
   const revealButton = card.querySelector('[data-role="reveal-token"]');
-  const loadEnvButton = card.querySelector('[data-role="load-env-defaults"]');
 
   formEl.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -2288,19 +2289,20 @@ function wireIntegrationCard(card) {
     icon.textContent = revealed ? "visibility" : "visibility_off";
     revealButton.setAttribute("aria-label", revealed ? "Afficher le token" : "Masquer le token");
   });
+}
 
-  loadEnvButton?.addEventListener("click", async () => {
-    formError.hidden = true;
-    try {
-      const defaults = await fetchAccountJson(`/api/integrations/env-defaults/reveal?provider=${provider}`);
-      for (const key of ["channelId", "channelName", "tokenType", "token"]) {
-        if (formEl.elements[key] && defaults[key] != null) formEl.elements[key].value = defaults[key];
-      }
-    } catch (error) {
-      formError.textContent = error.message;
-      formError.hidden = false;
+async function applyEnvDefaults(card, provider) {
+  const formEl = card.querySelector('[data-role="form"]');
+  const formError = card.querySelector('[data-role="form-error"]');
+  try {
+    const defaults = await fetchAccountJson(`/api/integrations/env-defaults/reveal?provider=${provider}`);
+    for (const key of ["channelId", "channelName", "tokenType", "token"]) {
+      if (formEl.elements[key] && defaults[key] != null) formEl.elements[key].value = defaults[key];
     }
-  });
+  } catch (error) {
+    formError.textContent = error.message;
+    formError.hidden = false;
+  }
 }
 
 function showAccountError(message) {
@@ -2341,11 +2343,13 @@ async function initializeAccountPanel() {
     try {
       const envDefaults = await fetchAccountJson("/api/integrations/env-defaults");
       for (const card of elements.integrationCards) {
-        const loadEnvButton = card.querySelector('[data-role="load-env-defaults"]');
-        if (loadEnvButton) loadEnvButton.hidden = !envDefaults[card.dataset.provider]?.hasToken;
+        const provider = card.dataset.provider;
+        const formEl = card.querySelector('[data-role="form"]');
+        if (formEl.hidden || !envDefaults[provider]?.hasToken) continue;
+        await applyEnvDefaults(card, provider);
       }
     } catch {
-      // .env non configure ou endpoint indisponible : les boutons restent masques.
+      // .env non configure ou endpoint indisponible : rien a charger automatiquement.
     }
   } catch (error) {
     showAccountError(error.message);
@@ -2521,24 +2525,39 @@ function dashboardConnectionRow(provider, label, connected, detail, options = {}
   return item;
 }
 
-let sidebarRailTimer;
-
-// Applying "display: none" on the same class that starts the fade would cut
-// the opacity/transform transition off before it plays — see the note on
-// .is-sidebar-collapsed in _sidebar.scss. So collapsing only removes the
-// content from layout (.is-sidebar-rail) once the CSS transition (--duration-slow, 200ms) is done;
-// expanding restores it immediately so the fade-in has something to animate.
+// Collapsing is a single class toggle — the two-phase feel (buttons/icons
+// settle into their collapsed shape, then the panel narrows) comes entirely
+// from CSS: .is-sidebar-collapsed's `transition` on .controls carries an
+// extra transition-delay (see _sidebar.scss) so its width animation starts
+// only once the label-fade/padding phase has finished, all as one
+// browser-scheduled animation instead of two JS-triggered style recalcs.
+// That keeps it one continuous motion instead of a visible stop-start.
+// Only once that (delayed) width transition actually ends do we remove the
+// emptied content from layout/a11y (.is-sidebar-rail) — listening for
+// `transitionend` keeps this in sync with the real CSS timing instead of a
+// guessed setTimeout that could drift if the durations above ever change.
+// Expanding reverses everything at once: the base (undelayed) `.controls`
+// transition applies, so the panel widens immediately and the fade-in has
+// something to animate right away.
 function setSidebarCollapsed(collapsed) {
-  clearTimeout(sidebarRailTimer);
   elements.workspace.classList.toggle("is-sidebar-collapsed", collapsed);
+  elements.sidebarControls.removeEventListener("transitionend", onSidebarWidthSettled);
   if (collapsed) {
-    sidebarRailTimer = setTimeout(() => elements.workspace.classList.add("is-sidebar-rail"), 200);
+    elements.sidebarControls.addEventListener("transitionend", onSidebarWidthSettled);
   } else {
     elements.workspace.classList.remove("is-sidebar-rail");
   }
   elements.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
   elements.sidebarToggle.setAttribute("aria-label", collapsed ? "Déplier le panneau" : "Replier le panneau");
   elements.sidebarToggle.querySelector(".material-symbols-rounded").textContent = collapsed ? "chevron_right" : "chevron_left";
+}
+
+function onSidebarWidthSettled(event) {
+  if (event.propertyName !== "width") return;
+  elements.sidebarControls.removeEventListener("transitionend", onSidebarWidthSettled);
+  if (elements.workspace.classList.contains("is-sidebar-collapsed")) {
+    elements.workspace.classList.add("is-sidebar-rail");
+  }
 }
 
 elements.sidebarToggle.addEventListener("click", () => {

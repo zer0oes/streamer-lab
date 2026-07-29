@@ -617,7 +617,6 @@
                   </select>
                 </label>
                 <p class="integration-form__error" data-role="form-error" hidden></p>
-                <button class="button button--quiet button--wide" type="button" data-role="load-env-defaults" hidden>Charger depuis .env</button>
                 <button class="button button--primary button--wide" type="submit">Connecter</button>
               </form>
               <div class="integration-card__connected" data-role="connected" hidden>
@@ -651,7 +650,6 @@
                   </span>
                 </label>
                 <p class="integration-form__error" data-role="form-error" hidden></p>
-                <button class="button button--quiet button--wide" type="button" data-role="load-env-defaults" hidden>Charger depuis .env</button>
                 <button class="button button--primary button--wide" type="submit">Connecter</button>
               </form>
               <div class="integration-card__connected" data-role="connected" hidden>
@@ -724,13 +722,17 @@
           <div class="field__row">
             <label class="field">
               <span class="field__label">Prénom</span>
-              <input type="text" id="contact-first-name" name="firstName" maxlength="80" required autocomplete="given-name">
+              <input type="text" id="contact-first-name" name="firstName" maxlength="80" autocomplete="given-name">
             </label>
             <label class="field">
               <span class="field__label">Nom</span>
-              <input type="text" id="contact-last-name" name="lastName" maxlength="80" required autocomplete="family-name">
+              <input type="text" id="contact-last-name" name="lastName" maxlength="80" autocomplete="family-name">
             </label>
           </div>
+          <label class="field">
+            <span class="field__label">Pseudo</span>
+            <input type="text" id="contact-nickname" name="nickname" maxlength="80" required autocomplete="nickname">
+          </label>
           <label class="field">
             <span class="field__label">Email</span>
             <input type="email" id="contact-email" name="email" maxlength="254" required autocomplete="email">

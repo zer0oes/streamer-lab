@@ -365,6 +365,7 @@ const server = createServer(async (request, response) => {
           userId: auth?.user.id,
           firstName: typeof body.firstName === "string" ? body.firstName : "",
           lastName: typeof body.lastName === "string" ? body.lastName : "",
+          nickname: typeof body.nickname === "string" ? body.nickname : "",
           email: typeof body.email === "string" ? body.email : "",
           subject: typeof body.subject === "string" ? body.subject : "",
           message: typeof body.message === "string" ? body.message : ""
