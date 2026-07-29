@@ -256,11 +256,20 @@
   // label and the toggle button reads as part of the row but doesn't
   // respond to clicks/hover at all.
   flex: 1;
+  // Fixed to match .sidebar-toggle's own 38px exactly, so the two controls
+  // read as the same size sitting side by side — height comes from this,
+  // not from padding, so it can't drift out of sync with the toggle again.
+  height: 38px;
   gap: var(--space-12);
-  padding: var(--space-6) var(--space-9);
-  margin: calc(var(--space-6) * -1) calc(var(--space-9) * -1);
+  padding: 0 var(--space-9);
+  // No border-radius/inset margin here (unlike the plain .sidebar-nav-item
+  // pill below): this row is meant to look flush, like
+  // .sidebar-section__summary right underneath it, not like a floating
+  // button. A negative margin used to fake a larger hit area before flex:1
+  // existed — it's gone now, since it was also eating into the `gap` above
+  // and leaving an inconsistent-looking margin before the toggle.
   border: 0;
-  border-radius: var(--radius-8);
+  border-radius: 0;
   background: transparent;
   color: var(--text);
   font-size: var(--text-14);
@@ -321,11 +330,15 @@
     cursor: pointer;
     list-style: none;
     user-select: none;
-    transition: background var(--duration-fast);
+    transition: color var(--duration-fast), background var(--duration-fast);
 
     &::-webkit-details-marker { display: none; }
     .sidebar-section__heading { margin: 0; }
-    &:hover { background: color-mix(in srgb, var(--accent-bright) 8%, transparent); }
+    // Same look as #dashboard-fab right above it (accent-bright text over a
+    // 10% tint) — that row is always in this state (it's the current page),
+    // this one only reaches it on hover, but the two are meant to read as
+    // the same highlight language.
+    &:hover { color: var(--accent-bright); background: color-mix(in srgb, var(--accent-bright) 10%, transparent); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
   }
 

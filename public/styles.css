@@ -736,11 +736,11 @@ input[type=range] {
 
 .workspace:not(.is-sidebar-rail) #dashboard-fab {
   flex: 1;
+  height: 38px;
   gap: var(--space-12);
-  padding: var(--space-6) var(--space-9);
-  margin: calc(var(--space-6) * -1) calc(var(--space-9) * -1);
+  padding: 0 var(--space-9);
   border: 0;
-  border-radius: var(--radius-8);
+  border-radius: 0;
   background: transparent;
   color: var(--text);
   font-size: var(--text-14);
@@ -797,7 +797,7 @@ input[type=range] {
   cursor: pointer;
   list-style: none;
   user-select: none;
-  transition: background var(--duration-fast);
+  transition: color var(--duration-fast), background var(--duration-fast);
 }
 .sidebar-section__summary::-webkit-details-marker {
   display: none;
@@ -806,7 +806,8 @@ input[type=range] {
   margin: 0;
 }
 .sidebar-section__summary:hover {
-  background: color-mix(in srgb, var(--accent-bright) 8%, transparent);
+  color: var(--accent-bright);
+  background: color-mix(in srgb, var(--accent-bright) 10%, transparent);
 }
 .sidebar-section__summary:focus-visible {
   outline: 2px solid var(--accent-bright);
