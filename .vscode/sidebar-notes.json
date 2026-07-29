@@ -20,8 +20,8 @@
   {
     "id": "ms39suq6-7avvnf3w",
     "title": "Global : ",
-    "text": "- Création d'une section \"Overlays\" avant Widgets et Alertes (icône desktop_landscape dans le menu latéral gauche) dans laquelle on aura un aperçu et la possibilité d'importer des widgets / des alertes.\n- Possibilité de déplacer les widgets / alertes en cliquer-glisser, leur définir une taille\n- - Ajouter une barre d'outils : [ Sélection ] [ Texte ] [ Image ] [ Icône ] [ Forme ]\n[ Variable ] [ Barre ] [ Groupe ]   |   [ Annuler ] [ Rétablir ] barre flottante sur aperçu, déplaçable",
-    "updatedAt": 1785329302674
+    "text": "- Ajouter une barre d'outils : [ Sélection ] [ Texte ] [ Image ] [ Icône ] [ Forme ]\n[ Variable ] [ Barre ] [ Groupe ]   |   [ Annuler ] [ Rétablir ] barre flottante sur aperçu, déplaçable",
+    "updatedAt": 1785338545945
   },
   {
     "id": "ms35umv6-mkwysiz8",

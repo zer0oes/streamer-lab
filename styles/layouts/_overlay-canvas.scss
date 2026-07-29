@@ -1,0 +1,129 @@
+// Overlay canvas editor: composition of several widgets/alerts, positioned
+// and resized by drag/handles. Scaling mirrors layouts/preview's
+// preview-shell/preview-shell__canvas split (outer element clamps to the
+// column width, inner element stays at real overlay pixels and is scaled
+// down via CSS transform so stored x/y/w/h never need unit conversion).
+@use "../base/primitives";
+
+.overlay-editor__toolbar {
+  @include primitives.heading-row;
+  justify-content: space-between;
+  gap: var(--space-10) var(--space-18);
+  margin-bottom: var(--space-12);
+}
+
+.overlay-editor__heading { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.overlay-canvas-wrap {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-12);
+  background-color: #15171c;
+  background-image:
+    linear-gradient(45deg, #1f2229 25%, transparent 25%),
+    linear-gradient(-45deg, #1f2229 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1f2229 75%),
+    linear-gradient(-45deg, transparent 75%, #1f2229 75%);
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
+}
+
+.overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+
+  &.is-dragging { cursor: grabbing; user-select: none; }
+}
+
+.overlay-item {
+  position: absolute;
+  border: 1px solid transparent;
+  border-radius: var(--radius-6);
+  cursor: grab;
+  transition: border-color var(--duration-fast);
+
+  &:hover,
+  &.is-active { border-color: var(--accent-bright); }
+
+  &__chrome {
+    position: absolute;
+    top: -28px;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    color: var(--muted);
+    font-size: var(--text-10);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-fast);
+  }
+
+  &:hover &__chrome,
+  &.is-active &__chrome { opacity: 1; pointer-events: auto; }
+
+  &__label { font-weight: 650; color: var(--text); }
+
+  &__size {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+
+    input {
+      width: 52px;
+      height: 22px;
+      padding: 0 var(--space-6);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-5);
+      background: var(--panel-soft);
+      font-size: var(--text-10);
+    }
+  }
+
+  &__remove {
+    width: 20px;
+    height: 20px;
+
+    .material-symbols-rounded { font-size: 14px; }
+  }
+
+  &__frame {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    // Aperçu non interactif : le contenu du widget ne doit jamais capter le
+    // pointeur, sinon le glisser-déposer du parent (délégué sur
+    // #overlay-canvas) ne se déclencherait pas au clic sur l'iframe, qui
+    // couvre la quasi-totalité de la surface de l'item.
+    pointer-events: none;
+  }
+
+  &__handle {
+    position: absolute;
+    z-index: 1;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background: var(--accent-bright);
+    opacity: 0;
+    transition: opacity var(--duration-fast);
+
+    &--nw { top: -6px; left: -6px; cursor: nwse-resize; }
+    &--ne { top: -6px; right: -6px; cursor: nesw-resize; }
+    &--sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+    &--se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+  }
+
+  &:hover &__handle,
+  &.is-active &__handle { opacity: 1; }
+}

@@ -29,6 +29,14 @@ import {
   getWidgetInfo,
   bumpUpdatedAt
 } from "./lib/widgets.mjs";
+import {
+  listOverlays,
+  getOverlayInfo,
+  createOverlay,
+  updateOverlayMetadata,
+  replaceOverlayItems,
+  deleteOverlay
+} from "./lib/overlays.mjs";
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 const PUBLIC_ROOT = join(ROOT, "public");
@@ -206,6 +214,58 @@ const server = createServer(async (request, response) => {
       }
       await rm(widgetInfo.directory, { recursive: true, force: true });
       return sendJson(response, 200, { deleted: true, widgetId: widgetInfo.id });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/overlays") {
+      return sendJson(response, 200, { overlays: await listOverlays() });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/overlay") {
+      const overlayInfo = await getOverlayInfo(url.searchParams.get("id"));
+      if (!overlayInfo) return sendJson(response, 404, { error: "Overlay introuvable" });
+      return sendJson(response, 200, { overlay: overlayInfo });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/overlays") {
+      const body = await readRequestJson(request);
+      let metadata;
+      try {
+        metadata = parseWidgetMetadataInput(body);
+      } catch (error) {
+        return sendJson(response, 400, { error: error.message });
+      }
+
+      const overlays = await listOverlays();
+      const overlayId = uniqueWidgetId(slugify(metadata.name), new Set(overlays.map((entry) => entry.id)));
+      const overlay = await createOverlay({ id: overlayId, ...metadata });
+      return sendJson(response, 201, { overlay });
+    }
+
+    if (request.method === "PUT" && url.pathname === "/api/overlay/metadata") {
+      const body = await readRequestJson(request);
+      let metadata;
+      try {
+        metadata = parseWidgetMetadataInput(body);
+      } catch (error) {
+        return sendJson(response, 400, { error: error.message });
+      }
+      const overlay = await updateOverlayMetadata(body.overlayId, metadata);
+      if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
+      return sendJson(response, 200, { overlay });
+    }
+
+    if (request.method === "PUT" && url.pathname === "/api/overlay/items") {
+      const body = await readRequestJson(request);
+      if (!Array.isArray(body.items)) return sendJson(response, 400, { error: "Items invalides" });
+      const overlay = await replaceOverlayItems(body.overlayId, body.items);
+      if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
+      return sendJson(response, 200, { saved: true, overlayId: overlay.id, at: Date.now() });
+    }
+
+    if (request.method === "DELETE" && url.pathname === "/api/overlay") {
+      const deleted = await deleteOverlay(url.searchParams.get("id"));
+      if (!deleted) return sendJson(response, 404, { error: "Overlay introuvable" });
+      return sendJson(response, 200, { deleted: true, overlayId: url.searchParams.get("id") });
     }
 
     if (request.method === "GET" && url.pathname === "/api/state") {

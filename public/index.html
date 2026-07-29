@@ -99,6 +99,10 @@
             <span class="material-symbols-rounded" aria-hidden="true">dashboard</span>
             <span>Dashboard</span>
           </button>
+          <button class="sidebar-nav-item sidebar-nav-item--rail-only" id="overlays-nav" type="button" aria-label="Overlays" title="Overlays">
+            <span class="material-symbols-rounded" aria-hidden="true">desktop_landscape</span>
+            <span>Overlays</span>
+          </button>
           <button class="sidebar-nav-item sidebar-nav-item--rail-only" id="library-nav" type="button" aria-label="Ma bibliothèque" title="Ma bibliothèque">
             <span class="material-symbols-rounded" aria-hidden="true">topic</span>
             <span>Ma bibliothèque</span>
@@ -112,6 +116,27 @@
           </button>
         </div>
         <div class="controls__body">
+        <details class="sidebar-section" data-sidebar-section="overlays" open>
+          <summary class="sidebar-section__summary">
+            <div class="sidebar-section__heading">
+              <div class="sidebar-section__heading-actions">
+                <span class="sidebar-section__step material-symbols-rounded" aria-hidden="true">desktop_landscape</span>
+                <h2>Overlays</h2>
+              </div>
+              <span class="sidebar-section__meta">
+                <span class="hint" id="overlay-count-hint">0 overlay</span>
+                <span class="material-symbols-rounded sidebar-section__chevron" aria-hidden="true">expand_more</span>
+              </span>
+            </div>
+          </summary>
+          <div class="sidebar-section__body">
+            <div class="widget-library" id="overlay-list" aria-label="Bibliothèque d'overlays"></div>
+            <button class="button button--wide widget-library__add" id="add-overlay" type="button">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              <span>Ajouter un overlay</span>
+            </button>
+          </div>
+        </details>
         <details class="sidebar-section" data-sidebar-section="library" open>
           <summary class="sidebar-section__summary">
             <div class="sidebar-section__heading">
@@ -279,6 +304,7 @@
           </div>
         </div>
 
+        <div id="widget-editor-view">
         <div class="preview-toolbar">
           <div class="preview-toolbar__heading">
             <span class="preview-toolbar__title" id="preview-title">Aperçu du widget</span>
@@ -375,6 +401,23 @@
           </div>
           <div class="console-panel__output" id="console-output" aria-live="polite"></div>
         </section>
+        </div>
+
+        <div class="overlay-editor" id="overlay-editor-view" hidden>
+          <div class="overlay-editor__toolbar">
+            <div class="overlay-editor__heading">
+              <span class="eyebrow">OVERLAY</span>
+              <h2 id="overlay-editor-title">Overlay</h2>
+            </div>
+            <button class="button button--primary" id="overlay-add-item" type="button">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              <span>Ajouter un widget/alerte</span>
+            </button>
+          </div>
+          <div class="overlay-canvas-wrap" id="overlay-canvas-wrap">
+            <div class="overlay-canvas" id="overlay-canvas"></div>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -709,6 +752,57 @@
           <button class="button button--primary" id="save-widget-settings" type="submit">Enregistrer</button>
         </footer>
       </form>
+    </dialog>
+
+    <dialog class="widget-settings" id="overlay-settings-dialog" aria-labelledby="overlay-settings-title">
+      <form class="widget-settings__form" id="overlay-settings-form">
+        <header class="widget-settings__header">
+          <div>
+            <span class="eyebrow">OVERLAYS</span>
+            <h2 id="overlay-settings-title">Modifier l’overlay</h2>
+          </div>
+          <button class="icon-button" id="close-overlay-settings" type="button" aria-label="Fermer">
+            <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+          </button>
+        </header>
+        <div class="widget-settings__body">
+          <input id="overlay-settings-id" type="hidden">
+          <label class="field">
+            <span class="field__label">Nom</span>
+            <input id="overlay-settings-name" maxlength="60" required autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="field__label">Description</span>
+            <textarea id="overlay-settings-description" rows="3" maxlength="140"></textarea>
+          </label>
+          <fieldset class="widget-icon-field">
+            <legend>Icône</legend>
+            <div class="widget-icon-choices" id="overlay-icon-choices"></div>
+          </fieldset>
+          <p class="widget-settings__message" id="overlay-settings-message" role="status" aria-live="polite"></p>
+        </div>
+        <footer class="widget-settings__footer">
+          <button class="button button--quiet" id="cancel-overlay-settings" type="button">Annuler</button>
+          <button class="button button--primary" id="save-overlay-settings" type="submit">Enregistrer</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="widget-settings" id="overlay-item-picker" aria-labelledby="overlay-item-picker-title">
+      <div class="widget-settings__form">
+        <header class="widget-settings__header">
+          <div>
+            <span class="eyebrow">OVERLAY</span>
+            <h2 id="overlay-item-picker-title">Ajouter un widget ou une alerte</h2>
+          </div>
+          <button class="icon-button" id="close-overlay-item-picker" type="button" aria-label="Fermer">
+            <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+          </button>
+        </header>
+        <div class="widget-settings__body">
+          <div class="widget-library" id="overlay-item-picker-list" aria-label="Widgets et alertes disponibles"></div>
+        </div>
+      </div>
     </dialog>
 
     <dialog class="widget-settings" id="contact-dialog" aria-labelledby="contact-dialog-title">
