@@ -24,7 +24,7 @@
           <h1>Streamer <span class="text-accent">Lab</span></h1>
         </div>
       </a>
-      <div class="topbar__center">
+      <div class="topbar__center" hidden>
         <div class="platform-switch" role="group" aria-label="Plateforme simulée">
           <button
             class="platform-switch__button is-active"
@@ -92,10 +92,10 @@
       </div>
     </header>
 
-    <main class="workspace is-sidebar-collapsed is-sidebar-rail">
+    <main class="workspace is-sidebar-collapsed is-sidebar-rail is-dashboard">
       <aside class="panel controls">
         <div class="controls__toolbar">
-          <button class="sidebar-nav-item" id="dashboard-fab" type="button" aria-label="Tableau de bord" title="Tableau de bord">
+          <button class="sidebar-nav-item is-active" id="dashboard-fab" type="button" aria-label="Tableau de bord" title="Tableau de bord">
             <span class="material-symbols-rounded" aria-hidden="true">dashboard</span>
             <span>Dashboard</span>
           </button>
@@ -197,7 +197,7 @@
       </aside>
 
       <section class="preview-column">
-        <div class="dashboard-view" id="dashboard-view" hidden>
+        <div class="dashboard-view" id="dashboard-view">
           <div class="dashboard-view__hero">
             <span class="eyebrow">DASHBOARD</span>
             <h2>Bienvenue sur Streamer <span class="text-accent">Lab</span></h2>
@@ -549,6 +549,7 @@
       aria-controls="event-simulator"
       aria-expanded="false"
       title="Simuler un événement"
+      hidden
     >
       <span class="material-symbols-rounded" aria-hidden="true">alarm_on</span>
     </button>
@@ -730,21 +731,24 @@
             </label>
           </div>
           <label class="field">
-            <span class="field__label">Pseudo</span>
+            <span class="field__label">Pseudo<span class="field__required" aria-hidden="true">*</span></span>
             <input type="text" id="contact-nickname" name="nickname" maxlength="80" required autocomplete="nickname">
           </label>
           <label class="field">
-            <span class="field__label">Email</span>
+            <span class="field__label">Email<span class="field__required" aria-hidden="true">*</span></span>
             <input type="email" id="contact-email" name="email" maxlength="254" required autocomplete="email">
           </label>
           <label class="field">
-            <span class="field__label">Sujet</span>
+            <span class="field__label">Sujet<span class="field__required" aria-hidden="true">*</span></span>
             <input type="text" id="contact-subject" name="subject" maxlength="150" required autocomplete="off">
           </label>
           <label class="field">
-            <span class="field__label">Message</span>
+            <span class="field__label">Message<span class="field__required" aria-hidden="true">*</span></span>
             <textarea id="contact-message" name="message" rows="5" maxlength="4000" required></textarea>
           </label>
+          <p class="widget-settings__hint">
+            <span class="field__required" aria-hidden="true">*</span> Champs obligatoires
+          </p>
           <p class="widget-settings__message" id="contact-message-status" role="status" aria-live="polite"></p>
         </div>
         <footer class="widget-settings__footer">
@@ -755,6 +759,22 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
+    <script>
+      // The markup above defaults to the dashboard-visible state (the common
+      // case for a plain "/" visit) so there's nothing to flash from while
+      // initialize() in app.js is still fetching. For a direct widget link
+      // (?widget=...) that default is wrong, so correct it here, synchronously,
+      // before the browser paints — app.js can't run this early since it's a
+      // deferred module and its own correction only lands after the widget
+      // catalog fetch resolves.
+      if (new URLSearchParams(location.search).has("widget")) {
+        document.getElementById("dashboard-view").hidden = true;
+        document.getElementById("event-fab").hidden = false;
+        document.querySelector(".topbar__center").hidden = false;
+        document.querySelector(".workspace").classList.remove("is-dashboard");
+        document.getElementById("dashboard-fab").classList.remove("is-active");
+      }
+    </script>
     <script type="module" src="/app.js"></script>
   </body>
 </html>

@@ -184,6 +184,7 @@
   &__footer-contact.sidebar-nav-item {
     justify-content: center;
     padding: var(--space-6) var(--space-12);
+    color: var(--accent-bright);
     font-size: var(--text-11);
 
     .material-symbols-rounded { font-size: 16px; }
@@ -204,7 +205,16 @@
   font-weight: 700;
   transition: color var(--duration-fast), background var(--duration-fast), border-color var(--duration-fast), padding var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
 
-  &:hover { color: #fff; border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent); }
+  // Shared hover language across the whole sidebar: a border tint at 52%
+  // and a background tint at 8% — same two numbers everywhere a hover
+  // exists in this file, nested into whatever the resting background
+  // already was so bordered pills, flat rows, and semi-transparent panels
+  // all still land at the same effective 8% accent overlay.
+  &:hover {
+    color: #fff;
+    border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
+    background: color-mix(in srgb, var(--panel) 92%, var(--accent-bright) 8%);
+  }
   .material-symbols-rounded { font-size: 18px; color: var(--accent-bright); }
   &--rail-only { display: none; }
 
@@ -241,6 +251,11 @@
 // moment as those — once the panel has actually finished narrowing —
 // instead of firing on its own the instant the toggle is clicked.
 .workspace:not(.is-sidebar-rail) #dashboard-fab {
+  // Grows to fill the toolbar row up to the collapse toggle, instead of
+  // hugging just its icon+label content — otherwise the gap between the
+  // label and the toggle button reads as part of the row but doesn't
+  // respond to clicks/hover at all.
+  flex: 1;
   gap: var(--space-12);
   padding: var(--space-6) var(--space-9);
   margin: calc(var(--space-6) * -1) calc(var(--space-9) * -1);
@@ -250,7 +265,7 @@
   color: var(--text);
   font-size: var(--text-14);
 
-  &:hover { color: var(--text); background: color-mix(in srgb, var(--accent-bright) 4%, transparent); }
+  &:hover { color: var(--text); background: color-mix(in srgb, var(--accent-bright) 8%, transparent); }
 
   .material-symbols-rounded {
     padding-right: var(--space-12);
@@ -280,9 +295,13 @@
   color: var(--muted);
   background: var(--panel);
   cursor: pointer;
-  transition: color var(--duration-fast), background var(--duration-fast);
+  transition: color var(--duration-fast), background var(--duration-fast), border-color var(--duration-fast);
 
-  &:hover { color: #fff; background: #1d2027; }
+  &:hover {
+    color: #fff;
+    border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
+    background: color-mix(in srgb, var(--panel) 92%, var(--accent-bright) 8%);
+  }
   .material-symbols-rounded { font-size: 20px; }
 }
 
@@ -302,10 +321,11 @@
     cursor: pointer;
     list-style: none;
     user-select: none;
+    transition: background var(--duration-fast);
 
     &::-webkit-details-marker { display: none; }
     .sidebar-section__heading { margin: 0; }
-    &:hover { background: color-mix(in srgb, var(--accent-bright) 4%, transparent); }
+    &:hover { background: color-mix(in srgb, var(--accent-bright) 8%, transparent); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
   }
 
@@ -374,6 +394,10 @@
     font-weight: 750;
     letter-spacing: 0.025em;
     user-select: none;
+    transition: background var(--duration-fast);
+
+    &:hover { background: color-mix(in srgb, var(--accent-bright) 8%, transparent); }
+    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
   }
 
   &__body { padding: var(--space-13) var(--space-12) 3px; }
@@ -391,7 +415,16 @@
 }
 
 .advanced {
-  &__summary { cursor: pointer; color: #c5cad3; font-size: var(--text-12); font-weight: 700; }
+  &__summary {
+    cursor: pointer;
+    color: #c5cad3;
+    font-size: var(--text-12);
+    font-weight: 700;
+    transition: background var(--duration-fast);
+
+    &:hover { background: color-mix(in srgb, var(--accent-bright) 8%, transparent); }
+    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
+  }
 
   &[open] {
     .advanced__summary { margin-bottom: var(--space-17); }

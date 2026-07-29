@@ -25,9 +25,10 @@
     font-size: var(--text-12);
     font-weight: 650;
     user-select: none;
+    transition: color var(--duration-fast), background var(--duration-fast);
 
     &::-webkit-details-marker { display: none; }
-    &:hover { color: var(--text); }
+    &:hover { color: var(--text); background: color-mix(in srgb, var(--accent-bright) 8%, transparent); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
 
     .material-symbols-rounded:first-child { font-size: 17px; }
@@ -92,7 +93,14 @@
     color: var(--muted);
 
     &[hidden] { display: none; }
-    &:hover { color: #fff; border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent); }
+    // background is redeclared here (not just border/color) to override the
+    // shared .button:hover's flat gray — otherwise this row's hover would be
+    // the only one in the sidebar not using the accent-tint formula.
+    &:hover {
+      color: #fff;
+      border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
+      background: color-mix(in srgb, var(--panel-soft) 92%, var(--accent-bright) 8%);
+    }
     .material-symbols-rounded { font-size: 16px; color: var(--accent-bright); }
   }
 
@@ -122,9 +130,12 @@
     border: 1px solid var(--line);
     border-radius: var(--radius-9);
     background: color-mix(in srgb, var(--panel-soft) 65%, transparent);
-    transition: border-color var(--duration-base), background var(--duration-base);
+    transition: border-color var(--duration-fast), background var(--duration-fast);
 
-    &:hover { border-color: #414753; background: #1a1d24; }
+    &:hover {
+      border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
+      background: color-mix(in srgb, color-mix(in srgb, var(--panel-soft) 65%, transparent) 92%, var(--accent-bright) 8%);
+    }
     &:has(.widget-library__item:focus-visible) { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
     &:has(.widget-library__item:disabled) { cursor: wait; opacity: 0.65; }
 
@@ -150,7 +161,7 @@
     cursor: pointer;
     transition: color var(--duration-fast), background var(--duration-fast);
 
-    &:hover { color: #fff; background: color-mix(in srgb, var(--accent-bright) 14%, transparent); }
+    &:hover { color: #fff; background: color-mix(in srgb, var(--accent-bright) 8%, transparent); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
     &:disabled { cursor: wait; opacity: 0.6; }
     &[aria-expanded="true"] { color: #fff; background: color-mix(in srgb, var(--accent-bright) 18%, transparent); }
@@ -191,12 +202,12 @@
     text-align: left;
 
     .material-symbols-rounded { color: var(--accent-bright); font-size: 16px; }
-    &:hover { color: #fff; background: color-mix(in srgb, var(--accent-bright) 12%, transparent); }
+    &:hover { color: #fff; background: color-mix(in srgb, var(--accent-bright) 8%, transparent); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
 
     &.is-danger {
       .material-symbols-rounded { color: var(--danger-bright); }
-      &:hover { color: var(--danger-bright); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+      &:hover { color: var(--danger-bright); background: color-mix(in srgb, var(--danger) 8%, transparent); }
     }
   }
 
@@ -302,6 +313,12 @@
     &:empty { min-height: 0; margin-top: 0; }
     &.is-error { color: var(--danger-bright); }
     &.is-success { color: var(--green); }
+  }
+
+  &__hint {
+    margin: calc(var(--space-13) * -1) 0 var(--space-13);
+    color: var(--muted);
+    font-size: var(--text-10);
   }
 }
 

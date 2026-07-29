@@ -14,14 +14,14 @@
   {
     "id": "ms4dshii-5cc0buam",
     "title": "Contact form : ",
-    "text": "- Aligner les champs Prénom et Nom\n- Champs obligatoires : Pseudo, Email, Sujet, Message\n- \"Nous contacter\" en couleur Accent",
-    "updatedAt": 1785284723952
+    "text": "",
+    "updatedAt": 1785329273094
   },
   {
     "id": "ms39suq6-7avvnf3w",
     "title": "Global : ",
-    "text": "- Quand on arrive sur la page Dashboard au chargement, on voit rapidement apparaitre la gestion des widgets ou des alertes. Il faut qu'on voit \n- Création d'une section \"Overlays\" avant Widgets et Alertes (icône desktop_landscape dans le menu latéral gauche) dans laquelle on aura un aperçu et la possibilité d'importer des widgets / des alertes.\n- Possibilité de déplacer les widgets / alertes en cliquer-glisser, leur définir une taille\n- - Ajouter une barre d'outils : [ Sélection ] [ Texte ] [ Image ] [ Icône ] [ Forme ]\n[ Variable ] [ Barre ] [ Groupe ]   |   [ Annuler ] [ Rétablir ] barre flottante sur aperçu, déplaçable",
-    "updatedAt": 1785327172781
+    "text": "- Création d'une section \"Overlays\" avant Widgets et Alertes (icône desktop_landscape dans le menu latéral gauche) dans laquelle on aura un aperçu et la possibilité d'importer des widgets / des alertes.\n- Possibilité de déplacer les widgets / alertes en cliquer-glisser, leur définir une taille\n- - Ajouter une barre d'outils : [ Sélection ] [ Texte ] [ Image ] [ Icône ] [ Forme ]\n[ Variable ] [ Barre ] [ Groupe ]   |   [ Annuler ] [ Rétablir ] barre flottante sur aperçu, déplaçable",
+    "updatedAt": 1785329302674
   },
   {
     "id": "ms35umv6-mkwysiz8",
@@ -38,8 +38,8 @@
   {
     "id": "ms35bs07-yt3qk3o8",
     "title": "Menu latéral gauche :",
-    "text": "- Rendre la ligne Dashboard cliquable (pas juste le texte), laisser l'effet de survol tel qu'il est pour Dashboard et appliquer la même chose pour Ma Bibliothèque",
-    "updatedAt": 1785284621679
+    "text": "",
+    "updatedAt": 1785332610215
   },
   {
     "id": "ms35b1de-62sx4c79",

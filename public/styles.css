@@ -170,10 +170,28 @@ h2 {
   color: #adb2bd;
   font-size: var(--text-11);
   font-weight: 650;
+  line-height: 1.4;
+}
+.field__required {
+  margin-left: var(--space-3);
+  color: var(--danger-bright);
 }
 .field__row {
   display: flex;
   gap: var(--space-10);
+}
+.field__row .field {
+  display: flex;
+  flex-direction: column;
+}
+.field__row .field__label {
+  height: 16px;
+  min-height: 0;
+}
+.field__row input,
+.field__row select {
+  height: 38px;
+  min-height: 0;
 }
 .field--small {
   max-width: 92px;
@@ -666,6 +684,7 @@ input[type=range] {
 .controls__footer-contact.sidebar-nav-item {
   justify-content: center;
   padding: var(--space-6) var(--space-12);
+  color: var(--accent-bright);
   font-size: var(--text-11);
 }
 .controls__footer-contact.sidebar-nav-item .material-symbols-rounded {
@@ -689,6 +708,7 @@ input[type=range] {
 .sidebar-nav-item:hover {
   color: #fff;
   border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
+  background: color-mix(in srgb, var(--panel) 92%, var(--accent-bright) 8%);
 }
 .sidebar-nav-item .material-symbols-rounded {
   font-size: 18px;
@@ -715,6 +735,7 @@ input[type=range] {
 }
 
 .workspace:not(.is-sidebar-rail) #dashboard-fab {
+  flex: 1;
   gap: var(--space-12);
   padding: var(--space-6) var(--space-9);
   margin: calc(var(--space-6) * -1) calc(var(--space-9) * -1);
@@ -726,7 +747,7 @@ input[type=range] {
 }
 .workspace:not(.is-sidebar-rail) #dashboard-fab:hover {
   color: var(--text);
-  background: color-mix(in srgb, var(--accent-bright) 4%, transparent);
+  background: color-mix(in srgb, var(--accent-bright) 8%, transparent);
 }
 .workspace:not(.is-sidebar-rail) #dashboard-fab .material-symbols-rounded {
   padding-right: var(--space-12);
@@ -752,11 +773,12 @@ input[type=range] {
   color: var(--muted);
   background: var(--panel);
   cursor: pointer;
-  transition: color var(--duration-fast), background var(--duration-fast);
+  transition: color var(--duration-fast), background var(--duration-fast), border-color var(--duration-fast);
 }
 .sidebar-toggle:hover {
   color: #fff;
-  background: #1d2027;
+  border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
+  background: color-mix(in srgb, var(--panel) 92%, var(--accent-bright) 8%);
 }
 .sidebar-toggle .material-symbols-rounded {
   font-size: 20px;
@@ -775,6 +797,7 @@ input[type=range] {
   cursor: pointer;
   list-style: none;
   user-select: none;
+  transition: background var(--duration-fast);
 }
 .sidebar-section__summary::-webkit-details-marker {
   display: none;
@@ -783,7 +806,7 @@ input[type=range] {
   margin: 0;
 }
 .sidebar-section__summary:hover {
-  background: color-mix(in srgb, var(--accent-bright) 4%, transparent);
+  background: color-mix(in srgb, var(--accent-bright) 8%, transparent);
 }
 .sidebar-section__summary:focus-visible {
   outline: 2px solid var(--accent-bright);
@@ -854,6 +877,14 @@ input[type=range] {
   font-weight: 750;
   letter-spacing: 0.025em;
   user-select: none;
+  transition: background var(--duration-fast);
+}
+.field-group__summary:hover {
+  background: color-mix(in srgb, var(--accent-bright) 8%, transparent);
+}
+.field-group__summary:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: -2px;
 }
 .field-group__body {
   padding: var(--space-13) var(--space-12) 3px;
@@ -887,6 +918,14 @@ input[type=range] {
   color: #c5cad3;
   font-size: var(--text-12);
   font-weight: 700;
+  transition: background var(--duration-fast);
+}
+.advanced__summary:hover {
+  background: color-mix(in srgb, var(--accent-bright) 8%, transparent);
+}
+.advanced__summary:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: -2px;
 }
 .advanced[open] .advanced__summary {
   margin-bottom: var(--space-17);
@@ -918,12 +957,14 @@ input[type=range] {
   font-size: var(--text-12);
   font-weight: 650;
   user-select: none;
+  transition: color var(--duration-fast), background var(--duration-fast);
 }
 .library-group__summary::-webkit-details-marker {
   display: none;
 }
 .library-group__summary:hover {
   color: var(--text);
+  background: color-mix(in srgb, var(--accent-bright) 8%, transparent);
 }
 .library-group__summary:focus-visible {
   outline: 2px solid var(--accent-bright);
@@ -993,6 +1034,7 @@ input[type=range] {
 .widget-library__add:hover {
   color: #fff;
   border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
+  background: color-mix(in srgb, var(--panel-soft) 92%, var(--accent-bright) 8%);
 }
 .widget-library__add .material-symbols-rounded {
   font-size: 16px;
@@ -1014,11 +1056,11 @@ input[type=range] {
   border: 1px solid var(--line);
   border-radius: var(--radius-9);
   background: color-mix(in srgb, var(--panel-soft) 65%, transparent);
-  transition: border-color var(--duration-base), background var(--duration-base);
+  transition: border-color var(--duration-fast), background var(--duration-fast);
 }
 .widget-library__row:hover {
-  border-color: #414753;
-  background: #1a1d24;
+  border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
+  background: color-mix(in srgb, color-mix(in srgb, var(--panel-soft) 65%, transparent) 92%, var(--accent-bright) 8%);
 }
 .widget-library__row:has(.widget-library__item:focus-visible) {
   outline: 2px solid var(--accent-bright);
@@ -1051,7 +1093,7 @@ input[type=range] {
 }
 .widget-library__options:hover {
   color: #fff;
-  background: color-mix(in srgb, var(--accent-bright) 14%, transparent);
+  background: color-mix(in srgb, var(--accent-bright) 8%, transparent);
 }
 .widget-library__options:focus-visible {
   outline: 2px solid var(--accent-bright);
@@ -1107,7 +1149,7 @@ input[type=range] {
 }
 .widget-library__options-item:hover {
   color: #fff;
-  background: color-mix(in srgb, var(--accent-bright) 12%, transparent);
+  background: color-mix(in srgb, var(--accent-bright) 8%, transparent);
 }
 .widget-library__options-item:focus-visible {
   outline: 2px solid var(--accent-bright);
@@ -1118,7 +1160,7 @@ input[type=range] {
 }
 .widget-library__options-item.is-danger:hover {
   color: var(--danger-bright);
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
 }
 .widget-library__icon {
   display: grid;
@@ -1235,6 +1277,11 @@ input[type=range] {
 }
 .widget-settings__message.is-success {
   color: var(--green);
+}
+.widget-settings__hint {
+  margin: calc(var(--space-13) * -1) 0 var(--space-13);
+  color: var(--muted);
+  font-size: var(--text-10);
 }
 
 .widget-type-field {

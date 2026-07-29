@@ -6,8 +6,38 @@
   gap: var(--space-7);
   margin-bottom: var(--space-13);
 
-  &__label { color: #adb2bd; font-size: var(--text-11); font-weight: 650; }
-  &__row { display: flex; gap: var(--space-10); }
+  // line-height is explicit (not "normal") so the label's own box height
+  // is a deterministic function of font-size alone — with "normal", glyphs
+  // like the "é" in "Prénom" can round to a 1-2px taller line box than a
+  // plain "Nom" gets, which throws off the two side-by-side inputs below.
+  &__label { color: #adb2bd; font-size: var(--text-11); font-weight: 650; line-height: 1.4; }
+
+  &__required {
+    margin-left: var(--space-3);
+    color: var(--danger-bright);
+  }
+
+  &__row {
+    display: flex;
+    gap: var(--space-10);
+
+    // .field itself switches from grid to flex here: grid's "auto" row
+    // tracks size off each item's own content/glyphs even when the item
+    // has an explicit height, so a taller glyph (the "é" in "Prénom") was
+    // still inflating that field's row and pushing its input 2px out of
+    // line with "Nom". A flex column sizes strictly off the explicit
+    // heights below, no such indirection.
+    .field {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .field__label { height: 16px; min-height: 0; }
+
+    input,
+    select { height: 38px; min-height: 0; }
+  }
+
   &--small { max-width: 92px; }
 
   &__input-group {
