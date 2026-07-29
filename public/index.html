@@ -414,8 +414,47 @@
               <span>Ajouter un widget/alerte</span>
             </button>
           </div>
-          <div class="overlay-canvas-wrap" id="overlay-canvas-wrap">
-            <div class="overlay-canvas" id="overlay-canvas"></div>
+          <div class="overlay-editor__body">
+            <div class="overlay-canvas-wrap" id="overlay-canvas-wrap">
+              <div class="overlay-toolbar" id="overlay-toolbar">
+                <button class="overlay-toolbar__handle" type="button" aria-label="Déplacer la barre d'outils" title="Déplacer">
+                  <span class="material-symbols-rounded" aria-hidden="true">drag_indicator</span>
+                </button>
+                <div class="overlay-toolbar__group" role="radiogroup" aria-label="Outil">
+                  <button class="overlay-toolbar__button is-active" type="button" data-overlay-tool="select" aria-pressed="true" title="Sélection">
+                    <span class="material-symbols-rounded" aria-hidden="true">arrow_selector_tool</span><span>Sélection</span>
+                  </button>
+                  <button class="overlay-toolbar__button" type="button" data-overlay-tool="text" aria-pressed="false" title="Texte">
+                    <span class="material-symbols-rounded" aria-hidden="true">title</span><span>Texte</span>
+                  </button>
+                  <button class="overlay-toolbar__button" type="button" data-overlay-tool="image" aria-pressed="false" title="Image">
+                    <span class="material-symbols-rounded" aria-hidden="true">image</span><span>Image</span>
+                  </button>
+                  <button class="overlay-toolbar__button" type="button" data-overlay-tool="icon" aria-pressed="false" title="Icône">
+                    <span class="material-symbols-rounded" aria-hidden="true">star</span><span>Icône</span>
+                  </button>
+                  <button class="overlay-toolbar__button" type="button" data-overlay-tool="shape" aria-pressed="false" title="Forme">
+                    <span class="material-symbols-rounded" aria-hidden="true">category</span><span>Forme</span>
+                  </button>
+                </div>
+                <div class="overlay-toolbar__divider" aria-hidden="true"></div>
+                <button class="overlay-toolbar__button" type="button" id="overlay-tool-group" disabled title="Grouper la sélection">
+                  <span class="material-symbols-rounded" aria-hidden="true">select_all</span><span>Groupe</span>
+                </button>
+                <div class="overlay-toolbar__divider" aria-hidden="true"></div>
+                <button class="icon-button" type="button" id="overlay-tool-undo" disabled aria-label="Annuler" title="Annuler (Ctrl+Z)">
+                  <span class="material-symbols-rounded" aria-hidden="true">undo</span>
+                </button>
+                <button class="icon-button" type="button" id="overlay-tool-redo" disabled aria-label="Rétablir" title="Rétablir (Ctrl+Y)">
+                  <span class="material-symbols-rounded" aria-hidden="true">redo</span>
+                </button>
+              </div>
+              <div class="overlay-canvas" id="overlay-canvas"></div>
+            </div>
+            <aside class="overlay-layers" aria-label="Calques">
+              <h3 class="overlay-layers__title">Calques</h3>
+              <div class="overlay-layers__list" id="overlay-layers-list"></div>
+            </aside>
           </div>
         </div>
       </section>

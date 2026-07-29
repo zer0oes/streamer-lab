@@ -48,6 +48,13 @@ const elements = {
   overlayCanvas: document.querySelector("#overlay-canvas"),
   overlayItemPickerDialog: document.querySelector("#overlay-item-picker"),
   overlayItemPickerList: document.querySelector("#overlay-item-picker-list"),
+  overlayToolbar: document.querySelector("#overlay-toolbar"),
+  overlayToolbarHandle: document.querySelector(".overlay-toolbar__handle"),
+  overlayToolButtons: document.querySelectorAll("[data-overlay-tool]"),
+  overlayToolGroupButton: document.querySelector("#overlay-tool-group"),
+  overlayUndoButton: document.querySelector("#overlay-tool-undo"),
+  overlayRedoButton: document.querySelector("#overlay-tool-redo"),
+  overlayLayersList: document.querySelector("#overlay-layers-list"),
   widgetEditorView: document.querySelector("#widget-editor-view"),
   eventAccordion: document.querySelector("#event-type-accordion"),
   customEvent: document.querySelector("#custom-event"),
@@ -124,6 +131,11 @@ let overlayPersistTimer;
 let selectedOverlayIcon = "desktop_landscape";
 let overlaySettingsMode = "edit";
 const overlayItemBundleCache = new Map();
+let activeOverlayTool = "select";
+let selectedOverlayItemIds = new Set();
+let overlayHistory = [];
+let overlayHistoryIndex = -1;
+const overlayToolbarPositionStorageKey = "overlay-toolbar-position";
 let fieldData = {};
 let session = {};
 let channel = { id: "local-channel", username: "MaChaine" };
@@ -285,6 +297,11 @@ const overlayIconChoices = [
   ["celebration", "Célébration"]
 ];
 const DEFAULT_OVERLAY_CANVAS = { width: 1920, height: 1080 };
+// Doit rester identique au plancher MIN_ITEM_SIZE de lib/overlays.mjs : une
+// valeur differente cote client ferait "rebondir" visuellement un item a la
+// prochaine synchronisation (le serveur reclamperait a une autre taille que
+// celle affichee pendant le drag).
+const MIN_OVERLAY_ITEM_SIZE = 8;
 let previewSize = loadPreviewSize();
 let previewTheme = loadPreviewTheme();
 let previewPlatform = normalizePlatform(localStorage.getItem(previewPlatformStorageKey));
@@ -1191,25 +1208,245 @@ function initializeOverlayCanvas() {
     if (event.target === elements.overlayItemPickerDialog) closePicker();
   });
 
+  for (const button of elements.overlayToolButtons) {
+    button.addEventListener("click", () => setOverlayTool(button.dataset.overlayTool));
+  }
+  elements.overlayToolGroupButton.addEventListener("click", createOverlayGroup);
+  elements.overlayUndoButton.addEventListener("click", undoOverlay);
+  elements.overlayRedoButton.addEventListener("click", redoOverlay);
+  initializeOverlayToolbarDrag();
+
   elements.overlayCanvas.addEventListener("pointerdown", (event) => {
+    if (activeOverlayTool !== "select" && !event.target.closest("[data-handle]")) {
+      const point = canvasPointFromEvent(event);
+      placeOverlayItem(activeOverlayTool, point.x, point.y);
+      setOverlayTool("select");
+      return;
+    }
+
     const handle = event.target.closest("[data-handle]");
     const itemEl = event.target.closest(".overlay-item");
-    if (!itemEl) return;
-    setActiveOverlayItem(itemEl);
-    if (handle) {
-      startOverlayItemResize(event, itemEl, handle.dataset.handle);
-    } else if (!event.target.closest(".overlay-item__chrome")) {
-      startOverlayItemDrag(event, itemEl);
+
+    if (itemEl) {
+      if (itemEl.classList.contains("is-editing") && event.target.isContentEditable) return;
+      if (event.shiftKey && !handle) {
+        toggleOverlaySelection(itemEl.dataset.itemId);
+        return;
+      }
+      if (!selectedOverlayItemIds.has(itemEl.dataset.itemId)) {
+        selectedOverlayItemIds = new Set([itemEl.dataset.itemId]);
+        updateOverlaySelectionUI();
+      }
+      if (handle) {
+        const item = findOverlayItem(itemEl.dataset.itemId);
+        if (item?.type === "group") startOverlayGroupResize(event, itemEl, handle.dataset.handle);
+        else startOverlayItemResize(event, itemEl, handle.dataset.handle);
+      } else if (!event.target.closest(".overlay-item__chrome")) {
+        startOverlayItemDrag(event, itemEl);
+      }
+      return;
+    }
+
+    // Aucun .overlay-item touché directement : un groupe reste
+    // pointer-events:none en permanence (voir _overlay-canvas.scss), donc sa
+    // sélection se résout par un test de coordonnées sur les données plutôt
+    // que par un hit-test DOM — sinon sa zone (l'union de ses enfants)
+    // volerait des clics qui doivent atteindre les enfants eux-mêmes.
+    const point = canvasPointFromEvent(event);
+    const group = hitTestOverlayGroup(point);
+    if (group) {
+      selectedOverlayItemIds = new Set([group.id]);
+      updateOverlaySelectionUI();
+      const groupEl = elements.overlayCanvas.querySelector(`[data-item-id="${group.id}"]`);
+      if (groupEl) startOverlayItemDrag(event, groupEl);
+      return;
+    }
+
+    selectedOverlayItemIds.clear();
+    updateOverlaySelectionUI();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (elements.overlayEditorView.hidden) return;
+    // Laisse l'annuler natif du navigateur agir pendant l'édition d'un texte
+    // : sinon Ctrl+Z reviendrait sur la dernière mutation du canevas (peut-
+    // être sans rapport) au lieu de défaire la frappe en cours.
+    if (document.activeElement?.isContentEditable) return;
+    const key = event.key.toLowerCase();
+    if ((event.ctrlKey || event.metaKey) && key === "z" && !event.shiftKey) {
+      event.preventDefault();
+      undoOverlay();
+    } else if ((event.ctrlKey || event.metaKey) && (key === "y" || (key === "z" && event.shiftKey))) {
+      event.preventDefault();
+      redoOverlay();
     }
   });
 
   new ResizeObserver(updateOverlayCanvasScale).observe(elements.overlayCanvasWrap);
 }
 
-function setActiveOverlayItem(itemEl) {
-  for (const node of elements.overlayCanvas.querySelectorAll(".overlay-item")) {
-    node.classList.toggle("is-active", node === itemEl);
+function initializeOverlayToolbarDrag() {
+  const saved = loadOverlayToolbarPosition();
+  if (saved) applyOverlayToolbarPosition(saved);
+
+  elements.overlayToolbarHandle.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+    const toolbar = elements.overlayToolbar;
+    toolbar.setPointerCapture(event.pointerId);
+    toolbar.classList.add("is-dragging");
+    const wrapRect = elements.overlayCanvasWrap.getBoundingClientRect();
+    const toolbarRect = toolbar.getBoundingClientRect();
+    const offsetX = event.clientX - toolbarRect.left;
+    const offsetY = event.clientY - toolbarRect.top;
+
+    const onMove = (moveEvent) => {
+      const maxLeft = Math.max(0, wrapRect.width - toolbarRect.width);
+      const maxTop = Math.max(0, wrapRect.height - toolbarRect.height);
+      const left = Math.min(maxLeft, Math.max(0, moveEvent.clientX - wrapRect.left - offsetX));
+      const top = Math.min(maxTop, Math.max(0, moveEvent.clientY - wrapRect.top - offsetY));
+      applyOverlayToolbarPosition({ left, top });
+    };
+    const onUp = () => {
+      toolbar.releasePointerCapture(event.pointerId);
+      toolbar.removeEventListener("pointermove", onMove);
+      toolbar.removeEventListener("pointerup", onUp);
+      toolbar.classList.remove("is-dragging");
+      const rect = toolbar.getBoundingClientRect();
+      saveOverlayToolbarPosition({ left: rect.left - wrapRect.left, top: rect.top - wrapRect.top });
+    };
+    toolbar.addEventListener("pointermove", onMove);
+    toolbar.addEventListener("pointerup", onUp);
+  });
+}
+
+function applyOverlayToolbarPosition({ left, top }) {
+  elements.overlayToolbar.style.left = `${left}px`;
+  elements.overlayToolbar.style.top = `${top}px`;
+}
+
+function loadOverlayToolbarPosition() {
+  try {
+    return JSON.parse(localStorage.getItem(overlayToolbarPositionStorageKey) || "null");
+  } catch {
+    return null;
   }
+}
+
+function saveOverlayToolbarPosition(position) {
+  localStorage.setItem(overlayToolbarPositionStorageKey, JSON.stringify(position));
+}
+
+function setOverlayTool(tool) {
+  activeOverlayTool = tool;
+  for (const button of elements.overlayToolButtons) {
+    const active = button.dataset.overlayTool === tool;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
+  elements.overlayCanvas.classList.toggle("is-placing", tool !== "select");
+}
+
+function overlayCanvasScale() {
+  const canvas = activeOverlay?.canvas || DEFAULT_OVERLAY_CANVAS;
+  return (elements.overlayCanvasWrap.clientWidth || canvas.width) / canvas.width;
+}
+
+// getBoundingClientRect() sur #overlay-canvas tient déjà compte de son
+// transform:scale() (il retourne la boîte visuelle à l'écran) : on peut donc
+// en déduire un point en coordonnées "réelles" du canevas (celles stockées
+// dans overlay.json) sans dupliquer le calcul d'échelle.
+function canvasPointFromEvent(event) {
+  const rect = elements.overlayCanvas.getBoundingClientRect();
+  const scale = overlayCanvasScale();
+  return { x: (event.clientX - rect.left) / scale, y: (event.clientY - rect.top) / scale };
+}
+
+function generateOverlayItemId() {
+  return `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function placeOverlayItem(tool, x, y) {
+  if (!activeOverlay) return;
+  if (tool === "image") {
+    const src = window.prompt("URL de l'image (http/https)");
+    if (!src) return;
+    createOverlayPrimitive("image", x, y, 320, 180, { src, fit: "cover" });
+    return;
+  }
+  if (tool === "text") {
+    const item = createOverlayPrimitive("text", x, y, 320, 120, {
+      content: "Texte", fontFamily: "inherit", fontSize: 32, fontWeight: 600, color: "#ffffff", align: "left"
+    });
+    window.requestAnimationFrame(() => {
+      const el = elements.overlayCanvas.querySelector(`[data-item-id="${item.id}"]`);
+      const textEl = el?.querySelector(".overlay-item__text");
+      if (el && textEl) enterOverlayTextEdit(item.id, el, textEl);
+    });
+    return;
+  }
+  if (tool === "icon") {
+    createOverlayPrimitive("icon", x, y, 96, 96, { name: "star", color: "#ffffff" });
+    return;
+  }
+  if (tool === "shape") {
+    createOverlayPrimitive("shape", x, y, 200, 200, {
+      shape: "rectangle", fill: "#7c5cff", stroke: "transparent", strokeWidth: 0, radius: 0
+    });
+  }
+}
+
+function createOverlayPrimitive(type, x, y, w, h, props) {
+  const nextZ = activeOverlay.items.reduce((max, item) => Math.max(max, item.z), 0) + 1;
+  const item = { id: generateOverlayItemId(), type, x: Math.round(x - w / 2), y: Math.round(y - h / 2), w, h, z: nextZ, props };
+  activeOverlay.items = [...activeOverlay.items, item];
+  renderOverlayCanvas();
+  selectedOverlayItemIds = new Set([item.id]);
+  updateOverlaySelectionUI();
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+  return item;
+}
+
+function updateOverlaySelectionUI() {
+  for (const node of elements.overlayCanvas.querySelectorAll(".overlay-item")) {
+    node.classList.toggle("is-active", selectedOverlayItemIds.has(node.dataset.itemId));
+  }
+  elements.overlayToolGroupButton.disabled = selectedOverlayItemIds.size < 2;
+  renderOverlayLayers();
+}
+
+function toggleOverlaySelection(itemId) {
+  if (selectedOverlayItemIds.has(itemId)) selectedOverlayItemIds.delete(itemId);
+  else selectedOverlayItemIds.add(itemId);
+  updateOverlaySelectionUI();
+}
+
+function hitTestOverlayGroup(point) {
+  if (!activeOverlay) return null;
+  const groups = activeOverlay.items.filter((item) => item.type === "group").sort((a, b) => b.z - a.z);
+  return groups.find((group) =>
+    point.x >= group.x && point.x <= group.x + group.w &&
+    point.y >= group.y && point.y <= group.y + group.h
+  ) || null;
+}
+
+function createOverlayGroup() {
+  if (!activeOverlay) return;
+  const ids = [...selectedOverlayItemIds];
+  const members = ids.map(findOverlayItem).filter(Boolean);
+  if (members.length < 2) return;
+  const x = Math.min(...members.map((member) => member.x));
+  const y = Math.min(...members.map((member) => member.y));
+  const w = Math.max(...members.map((member) => member.x + member.w)) - x;
+  const h = Math.max(...members.map((member) => member.y + member.h)) - y;
+  const z = Math.min(...members.map((member) => member.z)) - 1;
+  const group = { id: generateOverlayItemId(), type: "group", x, y, w, h, z, props: { children: ids } };
+  activeOverlay.items = [...activeOverlay.items, group];
+  renderOverlayCanvas();
+  selectedOverlayItemIds = new Set([group.id]);
+  updateOverlaySelectionUI();
+  pushOverlayHistory();
+  scheduleOverlayPersist();
 }
 
 async function openOverlayEditor(overlayId) {
@@ -1222,10 +1459,13 @@ async function openOverlayEditor(overlayId) {
     const { overlay } = await response.json();
     activeOverlay = overlay;
     activeOverlayId = overlay.id;
+    selectedOverlayItemIds = new Set();
+    setOverlayTool("select");
     elements.overlayEditorTitle.textContent = overlay.name;
     showOverlayEditor();
     renderOverlayLibrary();
     renderOverlayCanvas();
+    resetOverlayHistory();
   } catch (error) {
     showToast(`Overlay introuvable : ${error.message}`);
   }
@@ -1242,6 +1482,7 @@ function renderOverlayCanvas() {
   for (const item of activeOverlay.items) {
     elements.overlayCanvas.append(buildOverlayItemElement(item));
   }
+  updateOverlaySelectionUI();
 }
 
 function updateOverlayCanvasScale() {
@@ -1257,9 +1498,20 @@ function findOverlayItem(itemId) {
   return activeOverlay?.items.find((item) => item.id === itemId);
 }
 
+function overlayItemDefaultLabel(item) {
+  switch (item.type) {
+    case "text": return "Texte";
+    case "image": return "Image";
+    case "icon": return "Icône";
+    case "shape": return "Forme";
+    case "group": return `Groupe (${item.props.children.length})`;
+    default: return item.widgetId;
+  }
+}
+
 function buildOverlayItemElement(item) {
   const el = document.createElement("div");
-  el.className = "overlay-item";
+  el.className = `overlay-item overlay-item--${item.type}`;
   el.dataset.itemId = item.id;
   applyOverlayItemStyle(el, item);
 
@@ -1268,23 +1520,18 @@ function buildOverlayItemElement(item) {
 
   const label = document.createElement("span");
   label.className = "overlay-item__label";
-  label.textContent = item.widgetId;
+  label.textContent = overlayItemDefaultLabel(item);
+  chrome.append(label);
 
-  const sizeLabel = document.createElement("label");
-  sizeLabel.className = "overlay-item__size";
-  const widthInput = document.createElement("input");
-  widthInput.type = "number";
-  widthInput.min = "20";
-  widthInput.value = String(item.w);
-  widthInput.dataset.dim = "w";
-  const separator = document.createElement("span");
-  separator.textContent = "×";
-  const heightInput = document.createElement("input");
-  heightInput.type = "number";
-  heightInput.min = "20";
-  heightInput.value = String(item.h);
-  heightInput.dataset.dim = "h";
-  sizeLabel.append(widthInput, separator, heightInput);
+  if (item.type === "text") chrome.append(buildTextInspector(item, el));
+  else if (item.type === "icon") chrome.append(buildIconInspector(item, el));
+  else if (item.type === "shape") chrome.append(buildShapeInspector(item, el));
+  else if (item.type === "image") chrome.append(buildImageInspector(item, el));
+
+  // Un groupe se redimensionne uniquement par ses poignées (mise à l'échelle
+  // proportionnelle de ses enfants) : des champs largeur/hauteur libres
+  // casseraient cette garantie sans re-répercuter la mise à l'échelle.
+  if (item.type !== "group") chrome.append(buildOverlaySizeInputs(item, el));
 
   const removeButton = document.createElement("button");
   removeButton.type = "button";
@@ -1295,15 +1542,51 @@ function buildOverlayItemElement(item) {
     event.stopPropagation();
     removeOverlayItem(item.id);
   });
+  chrome.append(removeButton);
 
-  chrome.append(label, sizeLabel, removeButton);
+  el.append(chrome);
+
+  if (item.type === "widget" || item.type === "alert") buildWidgetItemContent(item, el, label);
+  else if (item.type === "text") buildTextItemContent(item, el);
+  else if (item.type === "image") buildImageItemContent(item, el);
+  else if (item.type === "icon") buildIconItemContent(item, el);
+  else if (item.type === "shape") buildShapeItemContent(item, el);
+  else if (item.type === "group") buildGroupItemContent(item, el);
+
+  for (const position of ["nw", "ne", "sw", "se"]) {
+    const handle = document.createElement("div");
+    handle.className = `overlay-item__handle overlay-item__handle--${position}`;
+    handle.dataset.handle = position;
+    el.append(handle);
+  }
+
+  return el;
+}
+
+function buildOverlaySizeInputs(item, el) {
+  const sizeLabel = document.createElement("label");
+  sizeLabel.className = "overlay-item__size";
+  const widthInput = document.createElement("input");
+  widthInput.type = "number";
+  widthInput.min = String(MIN_OVERLAY_ITEM_SIZE);
+  widthInput.value = String(item.w);
+  widthInput.dataset.dim = "w";
+  const separator = document.createElement("span");
+  separator.textContent = "×";
+  const heightInput = document.createElement("input");
+  heightInput.type = "number";
+  heightInput.min = String(MIN_OVERLAY_ITEM_SIZE);
+  heightInput.value = String(item.h);
+  heightInput.dataset.dim = "h";
+  sizeLabel.append(widthInput, separator, heightInput);
 
   const onSizeChange = () => {
     const target = findOverlayItem(item.id);
     if (!target) return;
-    target.w = Math.max(20, Number(widthInput.value) || target.w);
-    target.h = Math.max(20, Number(heightInput.value) || target.h);
+    target.w = Math.max(MIN_OVERLAY_ITEM_SIZE, Number(widthInput.value) || target.w);
+    target.h = Math.max(MIN_OVERLAY_ITEM_SIZE, Number(heightInput.value) || target.h);
     applyOverlayItemStyle(el, target);
+    pushOverlayHistory();
     scheduleOverlayPersist();
   };
   widthInput.addEventListener("change", onSizeChange);
@@ -1311,19 +1594,15 @@ function buildOverlayItemElement(item) {
   for (const input of [widthInput, heightInput]) {
     input.addEventListener("pointerdown", (event) => event.stopPropagation());
   }
+  return sizeLabel;
+}
 
+function buildWidgetItemContent(item, el, label) {
   const frame = document.createElement("iframe");
   frame.className = "overlay-item__frame";
   frame.setAttribute("sandbox", "allow-scripts");
   frame.title = item.widgetId;
-
-  el.append(chrome, frame);
-  for (const position of ["nw", "ne", "sw", "se"]) {
-    const handle = document.createElement("div");
-    handle.className = `overlay-item__handle overlay-item__handle--${position}`;
-    handle.dataset.handle = position;
-    el.append(handle);
-  }
+  el.append(frame);
 
   void loadOverlayItemBundle(item.widgetId).then((bundle) => {
     if (!bundle) {
@@ -1353,8 +1632,208 @@ function buildOverlayItemElement(item) {
       }, "*");
     };
   });
+}
 
-  return el;
+function applyOverlayTextStyle(el, props) {
+  el.style.fontFamily = props.fontFamily;
+  el.style.fontSize = `${props.fontSize}px`;
+  el.style.fontWeight = String(props.fontWeight);
+  el.style.color = props.color;
+  el.style.textAlign = props.align;
+}
+
+function buildTextItemContent(item, el) {
+  const text = document.createElement("div");
+  text.className = "overlay-item__text";
+  text.contentEditable = "false";
+  text.textContent = item.props.content;
+  applyOverlayTextStyle(text, item.props);
+  text.addEventListener("dblclick", (event) => {
+    event.stopPropagation();
+    enterOverlayTextEdit(item.id, el, text);
+  });
+  el.append(text);
+}
+
+function enterOverlayTextEdit(itemId, el, textEl) {
+  el.classList.add("is-editing");
+  textEl.contentEditable = "true";
+  textEl.focus();
+  const range = document.createRange();
+  range.selectNodeContents(textEl);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+
+  const commit = () => {
+    textEl.contentEditable = "false";
+    el.classList.remove("is-editing");
+    const target = findOverlayItem(itemId);
+    if (target) {
+      target.props.content = textEl.textContent.slice(0, 500) || "Texte";
+      pushOverlayHistory();
+      scheduleOverlayPersist();
+    }
+    textEl.removeEventListener("blur", commit);
+  };
+  textEl.addEventListener("blur", commit);
+}
+
+function buildTextInspector(item, el) {
+  const wrap = document.createElement("span");
+  wrap.className = "overlay-item__text-inspector";
+  const colorInput = document.createElement("input");
+  colorInput.type = "color";
+  colorInput.value = item.props.color;
+  const sizeInput = document.createElement("input");
+  sizeInput.type = "number";
+  sizeInput.min = "6";
+  sizeInput.max = "400";
+  sizeInput.value = String(item.props.fontSize);
+
+  const commit = () => {
+    const target = findOverlayItem(item.id);
+    if (!target) return;
+    target.props.color = colorInput.value;
+    target.props.fontSize = Math.max(6, Number(sizeInput.value) || target.props.fontSize);
+    const textEl = el.querySelector(".overlay-item__text");
+    if (textEl) applyOverlayTextStyle(textEl, target.props);
+    pushOverlayHistory();
+    scheduleOverlayPersist();
+  };
+  colorInput.addEventListener("change", commit);
+  sizeInput.addEventListener("change", commit);
+  for (const input of [colorInput, sizeInput]) input.addEventListener("pointerdown", (event) => event.stopPropagation());
+  wrap.append(colorInput, sizeInput);
+  return wrap;
+}
+
+function buildImageItemContent(item, el) {
+  const img = document.createElement("img");
+  img.className = "overlay-item__image";
+  img.src = item.props.src;
+  img.style.objectFit = item.props.fit;
+  img.alt = "";
+  el.append(img);
+}
+
+function buildImageInspector(item, el) {
+  const wrap = document.createElement("span");
+  wrap.className = "overlay-item__image-inspector";
+  const editButton = document.createElement("button");
+  editButton.type = "button";
+  editButton.className = "text-button";
+  editButton.textContent = "URL";
+  editButton.addEventListener("pointerdown", (event) => event.stopPropagation());
+  editButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const target = findOverlayItem(item.id);
+    if (!target) return;
+    const nextUrl = window.prompt("URL de l'image", target.props.src);
+    if (!nextUrl) return;
+    target.props.src = nextUrl;
+    const img = el.querySelector(".overlay-item__image");
+    if (img) img.src = nextUrl;
+    pushOverlayHistory();
+    scheduleOverlayPersist();
+  });
+  wrap.append(editButton);
+  return wrap;
+}
+
+function buildIconItemContent(item, el) {
+  const glyph = document.createElement("span");
+  glyph.className = "material-symbols-rounded overlay-item__icon-glyph";
+  glyph.setAttribute("aria-hidden", "true");
+  glyph.textContent = item.props.name;
+  glyph.style.color = item.props.color;
+  el.append(glyph);
+}
+
+function buildIconInspector(item, el) {
+  const wrap = document.createElement("span");
+  wrap.className = "overlay-item__icon-inspector";
+  const select = document.createElement("select");
+  for (const [iconName, iconLabel] of widgetIconChoices) {
+    const option = document.createElement("option");
+    option.value = iconName;
+    option.textContent = iconLabel;
+    option.selected = iconName === item.props.name;
+    select.append(option);
+  }
+  const colorInput = document.createElement("input");
+  colorInput.type = "color";
+  colorInput.value = item.props.color;
+
+  const commit = () => {
+    const target = findOverlayItem(item.id);
+    if (!target) return;
+    target.props.name = select.value;
+    target.props.color = colorInput.value;
+    const glyph = el.querySelector(".overlay-item__icon-glyph");
+    if (glyph) {
+      glyph.textContent = target.props.name;
+      glyph.style.color = target.props.color;
+    }
+    pushOverlayHistory();
+    scheduleOverlayPersist();
+  };
+  select.addEventListener("change", commit);
+  colorInput.addEventListener("change", commit);
+  for (const input of [select, colorInput]) input.addEventListener("pointerdown", (event) => event.stopPropagation());
+  wrap.append(select, colorInput);
+  return wrap;
+}
+
+function applyOverlayShapeStyle(el, props) {
+  el.style.background = props.fill;
+  el.style.border = props.strokeWidth > 0 ? `${props.strokeWidth}px solid ${props.stroke}` : "none";
+  el.style.borderRadius = props.shape === "ellipse" ? "50%" : `${props.radius}px`;
+}
+
+function buildShapeItemContent(item, el) {
+  const shape = document.createElement("div");
+  shape.className = "overlay-item__shape";
+  applyOverlayShapeStyle(shape, item.props);
+  el.append(shape);
+}
+
+function buildShapeInspector(item, el) {
+  const wrap = document.createElement("span");
+  wrap.className = "overlay-item__shape-inspector";
+  const select = document.createElement("select");
+  for (const [value, optionLabel] of [["rectangle", "Rectangle"], ["ellipse", "Ellipse"]]) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = optionLabel;
+    option.selected = value === item.props.shape;
+    select.append(option);
+  }
+  const fillInput = document.createElement("input");
+  fillInput.type = "color";
+  fillInput.value = item.props.fill;
+
+  const commit = () => {
+    const target = findOverlayItem(item.id);
+    if (!target) return;
+    target.props.shape = select.value;
+    target.props.fill = fillInput.value;
+    const shapeEl = el.querySelector(".overlay-item__shape");
+    if (shapeEl) applyOverlayShapeStyle(shapeEl, target.props);
+    pushOverlayHistory();
+    scheduleOverlayPersist();
+  };
+  select.addEventListener("change", commit);
+  fillInput.addEventListener("change", commit);
+  for (const input of [select, fillInput]) input.addEventListener("pointerdown", (event) => event.stopPropagation());
+  wrap.append(select, fillInput);
+  return wrap;
+}
+
+function buildGroupItemContent(item, el) {
+  const frame = document.createElement("div");
+  frame.className = "overlay-item__group-frame";
+  el.append(frame);
 }
 
 async function loadOverlayItemBundle(widgetId) {
@@ -1378,6 +1857,162 @@ function applyOverlayItemStyle(el, item) {
   el.style.width = `${item.w}px`;
   el.style.height = `${item.h}px`;
   el.style.zIndex = String(item.z);
+  if (item.type === "icon") {
+    const glyph = el.querySelector(".overlay-item__icon-glyph");
+    if (glyph) glyph.style.fontSize = `${Math.min(item.w, item.h) * 0.7}px`;
+  }
+}
+
+// --- Overlays : historique annuler/rétablir ---
+
+function resetOverlayHistory() {
+  if (!activeOverlay) return;
+  overlayHistory = [structuredClone(activeOverlay.items)];
+  overlayHistoryIndex = 0;
+  updateOverlayHistoryButtons();
+}
+
+function pushOverlayHistory() {
+  if (!activeOverlay) return;
+  overlayHistory = overlayHistory.slice(0, overlayHistoryIndex + 1);
+  overlayHistory.push(structuredClone(activeOverlay.items));
+  if (overlayHistory.length > 100) overlayHistory.shift();
+  overlayHistoryIndex = overlayHistory.length - 1;
+  updateOverlayHistoryButtons();
+}
+
+function undoOverlay() {
+  if (!activeOverlay || overlayHistoryIndex <= 0) return;
+  overlayHistoryIndex--;
+  applyOverlayHistoryState();
+}
+
+function redoOverlay() {
+  if (!activeOverlay || overlayHistoryIndex >= overlayHistory.length - 1) return;
+  overlayHistoryIndex++;
+  applyOverlayHistoryState();
+}
+
+function applyOverlayHistoryState() {
+  activeOverlay.items = structuredClone(overlayHistory[overlayHistoryIndex]);
+  const ids = new Set(activeOverlay.items.map((item) => item.id));
+  selectedOverlayItemIds = new Set([...selectedOverlayItemIds].filter((id) => ids.has(id)));
+  renderOverlayCanvas();
+  updateOverlayHistoryButtons();
+  scheduleOverlayPersist();
+}
+
+function updateOverlayHistoryButtons() {
+  elements.overlayUndoButton.disabled = overlayHistoryIndex <= 0;
+  elements.overlayRedoButton.disabled = overlayHistoryIndex >= overlayHistory.length - 1;
+}
+
+// --- Overlays : panneau de calques ---
+
+function renderOverlayLayers() {
+  if (!activeOverlay) return;
+  elements.overlayLayersList.replaceChildren();
+  if (!activeOverlay.items.length) {
+    elements.overlayLayersList.append(buildLibraryEmptyState("Aucun élément."));
+    return;
+  }
+  const sorted = [...activeOverlay.items].sort((a, b) => b.z - a.z);
+  for (const item of sorted) elements.overlayLayersList.append(buildOverlayLayerRow(item));
+}
+
+function overlayLayerIcon(item) {
+  switch (item.type) {
+    case "alert": return "campaign";
+    case "text": return "title";
+    case "image": return "image";
+    case "icon": return "star";
+    case "shape": return "category";
+    case "group": return "select_all";
+    default: return widgetCatalog.find((entry) => entry.id === item.widgetId)?.icon || "widgets";
+  }
+}
+
+function overlayLayerLabel(item) {
+  switch (item.type) {
+    case "text": return item.props.content || "Texte";
+    case "image": return "Image";
+    case "icon": return `Icône (${item.props.name})`;
+    case "shape": return item.props.shape === "ellipse" ? "Forme (ellipse)" : "Forme (rectangle)";
+    case "group": return `Groupe (${item.props.children.length})`;
+    default: return widgetCatalog.find((entry) => entry.id === item.widgetId)?.name || item.widgetId;
+  }
+}
+
+function buildOverlayLayerRow(item) {
+  const row = document.createElement("div");
+  row.className = `overlay-layers__item${selectedOverlayItemIds.has(item.id) ? " is-active" : ""}`;
+  row.dataset.itemId = item.id;
+
+  const handle = document.createElement("span");
+  handle.className = "material-symbols-rounded overlay-layers__handle";
+  handle.setAttribute("aria-hidden", "true");
+  handle.textContent = "drag_indicator";
+
+  const icon = document.createElement("span");
+  icon.className = "material-symbols-rounded";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = overlayLayerIcon(item);
+
+  const label = document.createElement("span");
+  label.className = "overlay-layers__label";
+  label.textContent = overlayLayerLabel(item);
+
+  const deleteButton = document.createElement("button");
+  deleteButton.type = "button";
+  deleteButton.className = "icon-button";
+  deleteButton.setAttribute("aria-label", "Supprimer");
+  deleteButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">close_small</span>';
+  deleteButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    removeOverlayItem(item.id);
+  });
+
+  row.append(handle, icon, label, deleteButton);
+  row.addEventListener("click", (event) => {
+    if (event.target === deleteButton || deleteButton.contains(event.target) || event.target === handle) return;
+    selectedOverlayItemIds = new Set([item.id]);
+    updateOverlaySelectionUI();
+  });
+  handle.addEventListener("pointerdown", (event) => startOverlayLayerReorder(event, row));
+  return row;
+}
+
+function startOverlayLayerReorder(event, row) {
+  event.stopPropagation();
+  const list = elements.overlayLayersList;
+  row.setPointerCapture(event.pointerId);
+  row.classList.add("is-dragging");
+
+  const onMove = (moveEvent) => {
+    const rows = [...list.querySelectorAll(".overlay-layers__item")].filter((candidate) => candidate !== row);
+    const after = rows.find((candidate) => moveEvent.clientY < candidate.getBoundingClientRect().top + candidate.offsetHeight / 2);
+    list.insertBefore(row, after || null);
+  };
+  const onUp = () => {
+    row.releasePointerCapture(event.pointerId);
+    row.removeEventListener("pointermove", onMove);
+    row.removeEventListener("pointerup", onUp);
+    row.classList.remove("is-dragging");
+    commitOverlayLayerOrder();
+  };
+  row.addEventListener("pointermove", onMove);
+  row.addEventListener("pointerup", onUp);
+}
+
+function commitOverlayLayerOrder() {
+  const orderedIds = [...elements.overlayLayersList.querySelectorAll(".overlay-layers__item")].map((row) => row.dataset.itemId);
+  orderedIds.forEach((id, index) => {
+    const item = findOverlayItem(id);
+    if (item) item.z = orderedIds.length - index;
+  });
+  renderOverlayCanvas();
+  pushOverlayHistory();
+  scheduleOverlayPersist();
 }
 
 function openOverlayItemPicker() {
@@ -1413,25 +2048,41 @@ function openOverlayItemPicker() {
 function addOverlayItem(entry) {
   if (!activeOverlay) return;
   const nextZ = activeOverlay.items.reduce((max, item) => Math.max(max, item.z), 0) + 1;
+  // Décale chaque nouvel item en cascade (comme des fenêtres qui s'empilent
+  // en escalier) : sans ça, deux ajouts successifs atterrissent exactement
+  // au même x/y/largeur/hauteur et se superposent totalement, rendant l'un
+  // des deux invisible sur le canevas.
+  const cascade = (activeOverlay.items.length % 8) * 32;
+  // Point de départ décalé sous la barre d'outils flottante (positionnée par
+  // défaut en haut à gauche du canevas) : sans ce décalage vertical, le tout
+  // premier widget ajouté atterrit exactement sous elle et devient difficile
+  // à sélectionner/glisser tant qu'on n'a pas déplacé la barre.
   const item = {
-    id: `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    id: generateOverlayItemId(),
     widgetId: entry.id,
     type: entry.type === "alert" ? "alert" : "widget",
-    x: 40,
-    y: 40,
+    x: 40 + cascade,
+    y: 220 + cascade,
     w: 320,
     h: 180,
-    z: nextZ
+    z: nextZ,
+    props: {}
   };
   activeOverlay.items = [...activeOverlay.items, item];
   renderOverlayCanvas();
+  pushOverlayHistory();
   scheduleOverlayPersist();
 }
 
+// Supprimer un groupe ne supprime jamais ses enfants en cascade : ils
+// redeviennent de simples items indépendants (équivaut à un "dégrouper"
+// implicite, pas de commande dédiée nécessaire pour ça).
 function removeOverlayItem(itemId) {
   if (!activeOverlay) return;
   activeOverlay.items = activeOverlay.items.filter((item) => item.id !== itemId);
+  selectedOverlayItemIds.delete(itemId);
   renderOverlayCanvas();
+  pushOverlayHistory();
   scheduleOverlayPersist();
 }
 
@@ -1462,22 +2113,33 @@ function startOverlayItemDrag(event, itemEl) {
   if (!item) return;
   itemEl.setPointerCapture(event.pointerId);
   elements.overlayCanvas.classList.add("is-dragging");
-  const canvas = activeOverlay.canvas || DEFAULT_OVERLAY_CANVAS;
-  const scale = (elements.overlayCanvasWrap.clientWidth || canvas.width) / canvas.width;
+  const scale = overlayCanvasScale();
   const startX = event.clientX;
   const startY = event.clientY;
-  const originX = item.x;
-  const originY = item.y;
+  // Un groupe déplace aussi tous ses enfants du même delta ; un item normal
+  // ne déplace que lui-même (tableau à un seul id).
+  const movingIds = item.type === "group" ? [item.id, ...item.props.children] : [item.id];
+  const origins = new Map(movingIds.map((id) => [id, { ...findOverlayItem(id) }]));
 
   const onMove = (moveEvent) => {
-    item.x = Math.round(originX + (moveEvent.clientX - startX) / scale);
-    item.y = Math.round(originY + (moveEvent.clientY - startY) / scale);
-    applyOverlayItemStyle(itemEl, item);
+    const dx = (moveEvent.clientX - startX) / scale;
+    const dy = (moveEvent.clientY - startY) / scale;
+    for (const id of movingIds) {
+      const target = findOverlayItem(id);
+      const origin = origins.get(id);
+      if (!target || !origin) continue;
+      target.x = Math.round(origin.x + dx);
+      target.y = Math.round(origin.y + dy);
+      const el = elements.overlayCanvas.querySelector(`[data-item-id="${id}"]`);
+      if (el) applyOverlayItemStyle(el, target);
+    }
   };
   const onUp = () => {
+    itemEl.releasePointerCapture(event.pointerId);
     itemEl.removeEventListener("pointermove", onMove);
     itemEl.removeEventListener("pointerup", onUp);
     elements.overlayCanvas.classList.remove("is-dragging");
+    pushOverlayHistory();
     scheduleOverlayPersist();
   };
   itemEl.addEventListener("pointermove", onMove);
@@ -1490,8 +2152,7 @@ function startOverlayItemResize(event, itemEl, handlePosition) {
   if (!item) return;
   itemEl.setPointerCapture(event.pointerId);
   elements.overlayCanvas.classList.add("is-dragging");
-  const canvas = activeOverlay.canvas || DEFAULT_OVERLAY_CANVAS;
-  const scale = (elements.overlayCanvasWrap.clientWidth || canvas.width) / canvas.width;
+  const scale = overlayCanvasScale();
   const startX = event.clientX;
   const startY = event.clientY;
   const origin = { x: item.x, y: item.y, w: item.w, h: item.h };
@@ -1500,14 +2161,14 @@ function startOverlayItemResize(event, itemEl, handlePosition) {
     const dx = (moveEvent.clientX - startX) / scale;
     const dy = (moveEvent.clientY - startY) / scale;
 
-    if (handlePosition.includes("e")) item.w = Math.max(20, Math.round(origin.w + dx));
-    if (handlePosition.includes("s")) item.h = Math.max(20, Math.round(origin.h + dy));
+    if (handlePosition.includes("e")) item.w = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(origin.w + dx));
+    if (handlePosition.includes("s")) item.h = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(origin.h + dy));
     if (handlePosition.includes("w")) {
-      item.w = Math.max(20, Math.round(origin.w - dx));
+      item.w = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(origin.w - dx));
       item.x = Math.round(origin.x + origin.w - item.w);
     }
     if (handlePosition.includes("n")) {
-      item.h = Math.max(20, Math.round(origin.h - dy));
+      item.h = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(origin.h - dy));
       item.y = Math.round(origin.y + origin.h - item.h);
     }
     applyOverlayItemStyle(itemEl, item);
@@ -1517,9 +2178,72 @@ function startOverlayItemResize(event, itemEl, handlePosition) {
     if (heightInput) heightInput.value = String(item.h);
   };
   const onUp = () => {
+    itemEl.releasePointerCapture(event.pointerId);
     itemEl.removeEventListener("pointermove", onMove);
     itemEl.removeEventListener("pointerup", onUp);
     elements.overlayCanvas.classList.remove("is-dragging");
+    pushOverlayHistory();
+    scheduleOverlayPersist();
+  };
+  itemEl.addEventListener("pointermove", onMove);
+  itemEl.addEventListener("pointerup", onUp);
+}
+
+// Redimensionnement proportionnel d'un groupe : capture la position/taille
+// d'origine du groupe ET de chaque enfant au pointerdown, puis à chaque
+// pointermove calcule un facteur d'échelle scaleX/scaleY à partir du delta
+// de la poignée et le réapplique à chaque enfant relativement au coin fixe
+// (transformation classique à origine fixe, comme un redimensionnement
+// proportionnel dans un éditeur graphique).
+function startOverlayGroupResize(event, itemEl, handlePosition) {
+  event.stopPropagation();
+  const group = findOverlayItem(itemEl.dataset.itemId);
+  if (!group) return;
+  itemEl.setPointerCapture(event.pointerId);
+  elements.overlayCanvas.classList.add("is-dragging");
+  const scale = overlayCanvasScale();
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const groupOrigin = { ...group };
+  const childOrigins = new Map(group.props.children.map((id) => [id, { ...findOverlayItem(id) }]));
+
+  const onMove = (moveEvent) => {
+    const dx = (moveEvent.clientX - startX) / scale;
+    const dy = (moveEvent.clientY - startY) / scale;
+    let { x, y, w, h } = groupOrigin;
+    if (handlePosition.includes("e")) w = Math.max(MIN_OVERLAY_ITEM_SIZE, groupOrigin.w + dx);
+    if (handlePosition.includes("s")) h = Math.max(MIN_OVERLAY_ITEM_SIZE, groupOrigin.h + dy);
+    if (handlePosition.includes("w")) {
+      w = Math.max(MIN_OVERLAY_ITEM_SIZE, groupOrigin.w - dx);
+      x = groupOrigin.x + groupOrigin.w - w;
+    }
+    if (handlePosition.includes("n")) {
+      h = Math.max(MIN_OVERLAY_ITEM_SIZE, groupOrigin.h - dy);
+      y = groupOrigin.y + groupOrigin.h - h;
+    }
+    const scaleX = w / groupOrigin.w;
+    const scaleY = h / groupOrigin.h;
+
+    Object.assign(group, { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
+    applyOverlayItemStyle(itemEl, group);
+
+    for (const [id, childOrigin] of childOrigins) {
+      const child = findOverlayItem(id);
+      if (!child) continue;
+      child.x = Math.round(x + (childOrigin.x - groupOrigin.x) * scaleX);
+      child.y = Math.round(y + (childOrigin.y - groupOrigin.y) * scaleY);
+      child.w = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(childOrigin.w * scaleX));
+      child.h = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(childOrigin.h * scaleY));
+      const childEl = elements.overlayCanvas.querySelector(`[data-item-id="${id}"]`);
+      if (childEl) applyOverlayItemStyle(childEl, child);
+    }
+  };
+  const onUp = () => {
+    itemEl.releasePointerCapture(event.pointerId);
+    itemEl.removeEventListener("pointermove", onMove);
+    itemEl.removeEventListener("pointerup", onUp);
+    elements.overlayCanvas.classList.remove("is-dragging");
+    pushOverlayHistory();
     scheduleOverlayPersist();
   };
   itemEl.addEventListener("pointermove", onMove);
@@ -2360,13 +3084,19 @@ function substituteFields(source, values) {
 }
 
 function dispatchToWidget(eventType, detail, eventTarget = "window") {
-  elements.frame.contentWindow?.postMessage({
-    source: "se-lab",
-    kind: "dispatch",
-    eventType,
-    eventTarget,
-    detail
-  }, "*");
+  const message = { source: "se-lab", kind: "dispatch", eventType, eventTarget, detail };
+  // Sur la vue overlay, il n'y a pas un widget "actif" unique : le bouton de
+  // déclenchement d'événements diffuse à tous les iframes widget/alerte
+  // posés sur le canevas simultanément (le sélecteur .overlay-item__frame
+  // n'existe que sur ces items-là, texte/image/icône/forme/groupe n'ont pas
+  // d'iframe et sont donc ignorés sans test de type explicite).
+  if (!elements.overlayEditorView.hidden) {
+    for (const frame of document.querySelectorAll("#overlay-canvas .overlay-item__frame")) {
+      frame.contentWindow?.postMessage(message, "*");
+    }
+    return;
+  }
+  elements.frame.contentWindow?.postMessage(message, "*");
 }
 
 function dispatchPlatformEvent(detail) {
@@ -3009,7 +3739,11 @@ function setActiveView(view) {
   elements.dashboardView.hidden = view !== "dashboard";
   elements.widgetEditorView.hidden = view !== "editor";
   elements.overlayEditorView.hidden = view !== "overlay";
-  elements.eventFab.hidden = view !== "editor";
+  // Le bouton de test d'événements a du sens à la fois en édition d'un
+  // widget/alerte unique et sur le canevas overlay (où il diffuse à tous les
+  // items, voir dispatchToWidget) — seul le dashboard, où rien n'est
+  // sélectionné/composé, ne l'affiche pas.
+  elements.eventFab.hidden = view !== "editor" && view !== "overlay";
   elements.topbarCenter.hidden = view !== "editor";
   // .is-dashboard masque aussi la section "Champs" (styles/layouts/_sidebar.scss) :
   // non pertinente hors édition d'un widget/alerte précis, donc sur dashboard

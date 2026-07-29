@@ -7,9 +7,9 @@
   },
   {
     "id": "ms4dxy0i-irku9hbb",
-    "title": "Widget Neon Chat : ",
-    "text": "",
-    "updatedAt": 1785326451410
+    "title": "Overlays :",
+    "text": "- Ajouter une barre d'outils : [ Sélection ] [ Texte ] [ Image ] [ Icône ] [ Forme ]\n[ Variable ] [ Barre ] [ Groupe ]   |   [ Annuler ] [ Rétablir ] barre flottante sur aperçu, déplaçable\n- Aperçu des widgets / alertes importés\n- Menu de gestion des widgets / alertes ajoutés (système de calques, superposition)\n- Ajouter le bouton déclencheur d'événements flottant en bas à droite de l'écran, comme widgets / alertes",
+    "updatedAt": 1785342398286
   },
   {
     "id": "ms4dshii-5cc0buam",
@@ -20,8 +20,8 @@
   {
     "id": "ms39suq6-7avvnf3w",
     "title": "Global : ",
-    "text": "- Ajouter une barre d'outils : [ Sélection ] [ Texte ] [ Image ] [ Icône ] [ Forme ]\n[ Variable ] [ Barre ] [ Groupe ]   |   [ Annuler ] [ Rétablir ] barre flottante sur aperçu, déplaçable",
-    "updatedAt": 1785338545945
+    "text": "",
+    "updatedAt": 1785342229433
   },
   {
     "id": "ms35umv6-mkwysiz8",
