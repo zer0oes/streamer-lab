@@ -11,16 +11,17 @@
   },
   "items": [
     {
-      "id": "item-ms6alfb9-3haf3",
-      "widgetId": "zer0oes-neon-chat",
+      "id": "item-ms6opcyw-dpzv4",
       "type": "widget",
-      "x": 40,
-      "y": 40,
-      "w": 521,
-      "h": 1010,
-      "z": 1
+      "widgetId": "zer0oes-goal-bar",
+      "x": 676,
+      "y": 673,
+      "w": 656,
+      "h": 151,
+      "z": 1,
+      "props": {}
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1785342570182
+  "updatedAt": 1785365849226
 }

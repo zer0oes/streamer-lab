@@ -1597,41 +1597,49 @@ function buildOverlaySizeInputs(item, el) {
   return sizeLabel;
 }
 
-function buildWidgetItemContent(item, el, label) {
+async function buildWidgetItemContent(item, el, label) {
+  // Le bundle est résolu AVANT toute insertion dans le DOM, pour attacher
+  // l'iframe avec son srcdoc final dès sa première navigation plutôt que de
+  // la laisser d'abord commiter un document vide (about:blank implicite) et
+  // naviguer une seconde fois une fois le bundle arrivé.
+  const bundle = await loadOverlayItemBundle(item.widgetId);
+
   const frame = document.createElement("iframe");
   frame.className = "overlay-item__frame";
   frame.setAttribute("sandbox", "allow-scripts");
   frame.title = item.widgetId;
-  el.append(frame);
 
-  void loadOverlayItemBundle(item.widgetId).then((bundle) => {
-    if (!bundle) {
-      frame.srcdoc = "<!doctype html><body></body>";
-      return;
-    }
-    label.textContent = bundle.widgetMeta?.name || item.widgetId;
-    frame.title = bundle.widgetMeta?.name || item.widgetId;
-    const defaults = Object.fromEntries(Object.entries(bundle.fields).map(([key, field]) => [key, field.value]));
-    frame.srcdoc = buildWidgetSrcdoc(bundle, defaults, { platform: PLATFORM_STREAM_ELEMENTS });
-    // Dispatché directement depuis le parent (comme dispatchToWidget pour
-    // l'aperçu principal) plutôt que baké dans le bootstrap du srcdoc, pour
-    // rester cohérent avec le seul mécanisme d'initialisation déjà en place.
-    frame.onload = () => {
-      frame.contentWindow?.postMessage({
-        source: "se-lab",
-        kind: "dispatch",
-        eventType: "onWidgetLoad",
-        eventTarget: "window",
-        detail: {
-          session: { data: structuredClone(session) },
-          recents: buildRecents(session),
-          currency: { code: "EUR", name: "Euro", symbol: "€" },
-          channel: { ...channel, apiToken: "" },
-          fieldData: structuredClone(defaults)
-        }
-      }, "*");
-    };
-  });
+  if (!bundle) {
+    el.append(frame);
+    frame.srcdoc = "<!doctype html><body></body>";
+    return;
+  }
+
+  label.textContent = bundle.widgetMeta?.name || item.widgetId;
+  frame.title = bundle.widgetMeta?.name || item.widgetId;
+  const defaults = Object.fromEntries(Object.entries(bundle.fields).map(([key, field]) => [key, field.value]));
+  const srcdoc = buildWidgetSrcdoc(bundle, defaults, { platform: PLATFORM_STREAM_ELEMENTS, transparent: true });
+
+  el.append(frame);
+  frame.srcdoc = srcdoc;
+  // Dispatché directement depuis le parent (comme dispatchToWidget pour
+  // l'aperçu principal) plutôt que baké dans le bootstrap du srcdoc, pour
+  // rester cohérent avec le seul mécanisme d'initialisation déjà en place.
+  frame.onload = () => {
+    frame.contentWindow?.postMessage({
+      source: "se-lab",
+      kind: "dispatch",
+      eventType: "onWidgetLoad",
+      eventTarget: "window",
+      detail: {
+        session: { data: structuredClone(session) },
+        recents: buildRecents(session),
+        currency: { code: "EUR", name: "Euro", symbol: "€" },
+        channel: { ...channel, apiToken: "" },
+        fieldData: structuredClone(defaults)
+      }
+    }, "*");
+  };
 }
 
 function applyOverlayTextStyle(el, props) {
@@ -2982,16 +2990,19 @@ function renderWidget() {
 // Extrait de renderWidget() : fonction pure (aucun effet de bord sur
 // elements.frame) afin d'être réutilisable pour composer plusieurs aperçus
 // de widgets/alertes sur le canevas d'un overlay, un par iframe.
-function buildWidgetSrcdoc(bundle, values, { checkerClass = "", themeClass = "", platform = PLATFORM_STREAM_ELEMENTS } = {}) {
+function buildWidgetSrcdoc(bundle, values, { checkerClass = "", themeClass = "", platform = PLATFORM_STREAM_ELEMENTS, transparent = false } = {}) {
   const html = substituteFields(bundle.html, values);
   const css = substituteFields(bundle.css, values);
   const js = substituteFields(bundle.js, values);
   const executableJs = JSON.stringify(js).replaceAll("<", "\\u003c");
 
-  return `<!doctype html>
-<html class="se-lab-preview${checkerClass}${themeClass}"><head><meta charset="utf-8"><style>${css}</style>
-<style id="se-lab-surface">
-  html.se-lab-preview { background: #11141a !important; }
+  // Sur le canevas d'overlay, chaque widget est un item parmi d'autres posés
+  // sur le damier de .overlay-canvas-wrap : son iframe ne doit jamais peindre
+  // sa propre surface, sinon on voit un rectangle opaque plutôt que le widget
+  // composité sur le fond commun.
+  const surfaceCss = transparent
+    ? `html.se-lab-preview, html.se-lab-preview body { background: transparent !important; }`
+    : `html.se-lab-preview { background: #11141a !important; }
   html.se-lab-preview.se-lab-light { background: #f2f4f7 !important; }
   html.se-lab-preview body { background: transparent !important; }
   html.se-lab-preview.se-lab-checker {
@@ -3011,7 +3022,12 @@ function buildWidgetSrcdoc(bundle, values, { checkerClass = "", themeClass = "",
       linear-gradient(-45deg, #dfe3e9 25%, transparent 25%),
       linear-gradient(45deg, transparent 75%, #dfe3e9 75%),
       linear-gradient(-45deg, transparent 75%, #dfe3e9 75%) !important;
-  }
+  }`;
+
+  return `<!doctype html>
+<html class="se-lab-preview${transparent ? "" : checkerClass}${transparent ? "" : themeClass}"><head><meta charset="utf-8"><style>${css}</style>
+<style id="se-lab-surface">
+  ${surfaceCss}
 </style><script src="/vendor/jquery.min.js"></script></head>
 <body>${html}
 <script>
