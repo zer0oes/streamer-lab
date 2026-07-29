@@ -1,0 +1,9 @@
+{
+  "id": "zer0oes-neon-chat",
+  "name": "zer0oes - Neon Chat",
+  "description": "Widget de chat personnalisé",
+  "icon": "forum",
+  "order": 40,
+  "createdAt": 1784910851431,
+  "updatedAt": 1785322715483
+}

@@ -1,0 +1,236 @@
+{
+  "widgetName": {
+    "type": "hidden",
+    "value": "Nova Goal Bar",
+    "group": "Barre générale"
+  },
+  "font_family": {
+    "type": "dropdown",
+    "label": "Police",
+    "value": "Poppins",
+    "options": {
+      "Poppins": "Poppins",
+      "Inter": "Inter",
+      "Montserrat": "Montserrat",
+      "Roboto": "Roboto"
+    },
+    "group": "Barre générale"
+  },
+  "font_weight": {
+    "type": "dropdown",
+    "label": "Graisse",
+    "value": "500",
+    "options": {
+      "400": "Regular (400)",
+      "500": "Medium (500)",
+      "600": "SemiBold (600)",
+      "700": "Bold (700)",
+      "800": "ExtraBold (800)"
+    },
+    "group": "Barre générale"
+  },
+  "text_size": {
+    "type": "number",
+    "label": "Taille des textes (px)",
+    "value": 14,
+    "min": 8,
+    "max": 40,
+    "step": 1,
+    "group": "Barre générale",
+    "steps": 1
+  },
+  "width": {
+    "type": "number",
+    "label": "Largeur de la barre (0 = responsive)",
+    "value": 400,
+    "min": 0,
+    "max": 1920,
+    "step": 10,
+    "group": "Barre générale",
+    "steps": 10
+  },
+  "height": {
+    "type": "number",
+    "label": "Hauteur de la barre (px)",
+    "value": 46,
+    "min": 24,
+    "max": 120,
+    "step": 2,
+    "group": "Barre générale",
+    "steps": 2
+  },
+  "border_color": {
+    "type": "colorpicker",
+    "label": "Couleur du contour",
+    "value": "#FFFFFF",
+    "group": "Barre générale"
+  },
+  "border_width": {
+    "type": "number",
+    "label": "Épaisseur du contour (px)",
+    "value": 1,
+    "min": 0,
+    "max": 10,
+    "step": 1,
+    "group": "Barre générale",
+    "steps": 1
+  },
+  "border_opacity": {
+    "type": "number",
+    "label": "Opacité du contour (0 = invisible)",
+    "value": 1,
+    "min": 0,
+    "max": 1,
+    "step": 0.05,
+    "group": "Barre générale",
+    "steps": 0.05
+  },
+  "background_type": {
+    "type": "dropdown",
+    "label": "Type de fond",
+    "value": "gradient",
+    "options": {
+      "solid": "Uni",
+      "gradient": "Dégradé"
+    },
+    "group": "Barre générale"
+  },
+  "background_color1": {
+    "type": "colorpicker",
+    "label": "Fond : couleur 1",
+    "value": "#161225",
+    "group": "Barre générale"
+  },
+  "background_color2": {
+    "type": "colorpicker",
+    "label": "Fond : couleur 2 (si dégradé)",
+    "value": "#231A3D",
+    "group": "Barre générale"
+  },
+  "background_opacity": {
+    "type": "number",
+    "label": "Opacité du fond (0 = version assombrie)",
+    "value": 1,
+    "min": 0,
+    "max": 1,
+    "step": 0.05,
+    "group": "Barre générale",
+    "steps": 0.05
+  },
+  "follows_color_type": {
+    "type": "dropdown",
+    "label": "Follow : type",
+    "value": "solid",
+    "options": {
+      "solid": "Uni",
+      "gradient": "Dégradé"
+    },
+    "group": "Couleurs progression"
+  },
+  "follows_color1": {
+    "type": "colorpicker",
+    "label": "Follow : couleur 1",
+    "value": "#FF4D8D",
+    "group": "Couleurs progression"
+  },
+  "follows_color2": {
+    "type": "colorpicker",
+    "label": "Follow : couleur 2 (si dégradé)",
+    "value": "#FF4D8D",
+    "group": "Couleurs progression"
+  },
+  "subs_color_type": {
+    "type": "dropdown",
+    "label": "Sub : type",
+    "value": "solid",
+    "options": {
+      "solid": "Uni",
+      "gradient": "Dégradé"
+    },
+    "group": "Couleurs progression"
+  },
+  "subs_color1": {
+    "type": "colorpicker",
+    "label": "Sub : couleur 1",
+    "value": "#2ABDFF",
+    "group": "Couleurs progression"
+  },
+  "subs_color2": {
+    "type": "colorpicker",
+    "label": "Sub : couleur 2 (si dégradé)",
+    "value": "#2ABDFF",
+    "group": "Couleurs progression"
+  },
+  "cheers_color_type": {
+    "type": "dropdown",
+    "label": "Cheer : type",
+    "value": "solid",
+    "options": {
+      "solid": "Uni",
+      "gradient": "Dégradé"
+    },
+    "group": "Couleurs progression"
+  },
+  "cheers_color1": {
+    "type": "colorpicker",
+    "label": "Cheer : couleur 1",
+    "value": "#FF1BDF",
+    "group": "Couleurs progression"
+  },
+  "cheers_color2": {
+    "type": "colorpicker",
+    "label": "Cheer : couleur 2 (si dégradé)",
+    "value": "#FF1BDF",
+    "group": "Couleurs progression"
+  },
+  "tips_color_type": {
+    "type": "dropdown",
+    "label": "Tips : type",
+    "value": "solid",
+    "options": {
+      "solid": "Uni",
+      "gradient": "Dégradé"
+    },
+    "group": "Couleurs progression"
+  },
+  "tips_color1": {
+    "type": "colorpicker",
+    "label": "Tips : couleur 1",
+    "value": "#571BC3",
+    "group": "Couleurs progression"
+  },
+  "tips_color2": {
+    "type": "colorpicker",
+    "label": "Tips : couleur 2 (si dégradé)",
+    "value": "#571BC3",
+    "group": "Couleurs progression"
+  },
+  "goal_type": {
+    "type": "dropdown",
+    "label": "Type de goal",
+    "value": "tips",
+    "options": {
+      "follows": "Follows",
+      "subs": "Subs",
+      "cheers": "Cheer (bits)",
+      "tips": "Tip (donations)"
+    },
+    "group": "Réglages"
+  },
+  "title": {
+    "type": "textfield",
+    "label": "Titre",
+    "value": "Donation goal",
+    "group": "Réglages"
+  },
+  "goal_total": {
+    "type": "number",
+    "label": "Objectif",
+    "value": 500,
+    "min": 1,
+    "max": 999999,
+    "step": 1,
+    "group": "Réglages",
+    "steps": 1
+  }
+}

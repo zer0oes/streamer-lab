@@ -1,0 +1,293 @@
+{
+  "widgetName": {
+    "type": "hidden",
+    "value": "Neon chat",
+    "group": "Aperçu"
+  },
+  "testMessage": {
+    "type": "button",
+    "label": "Tester un message",
+    "value": "Envoyer un message test",
+    "group": "Aperçu"
+  },
+  "fontFamily": {
+    "type": "fontpicker",
+    "label": "Police",
+    "value": "Poppins",
+    "group": "Design global"
+  },
+  "fontSize": {
+    "type": "slider",
+    "label": "Taille du texte (px)",
+    "value": 15,
+    "min": 10,
+    "max": 24,
+    "step": 1,
+    "group": "Design global",
+    "steps": 1
+  },
+  "fontWeight": {
+    "type": "dropdown",
+    "label": "Graisse",
+    "value": "500",
+    "options": {
+      "300": "Light (300)",
+      "400": "Regular (400)",
+      "500": "Medium (500)",
+      "600": "Semi-bold (600)"
+    },
+    "group": "Design global"
+  },
+  "textColor": {
+    "type": "colorpicker",
+    "label": "Couleur du texte",
+    "value": "#FFFFFF",
+    "group": "Design global"
+  },
+  "bubbleBackground": {
+    "type": "colorpicker",
+    "label": "Fond des messages - gauche",
+    "value": "#161225",
+    "group": "Design global"
+  },
+  "bubbleBackground2": {
+    "type": "colorpicker",
+    "label": "Fond des messages - droite",
+    "value": "#231A3D",
+    "group": "Design global"
+  },
+  "identityBackgroundOpacity": {
+    "type": "slider",
+    "label": "Opacité du fond des pseudos (%)",
+    "value": 70,
+    "min": 20,
+    "max": 100,
+    "step": 1,
+    "group": "Design global",
+    "steps": 1
+  },
+  "messageBackgroundOpacity": {
+    "type": "slider",
+    "label": "Opacité du fond des messages (%)",
+    "value": 70,
+    "min": 20,
+    "max": 100,
+    "step": 1,
+    "group": "Design global",
+    "steps": 1
+  },
+  "identityBorderOpacity": {
+    "type": "slider",
+    "label": "Opacité du contour des pseudos (%)",
+    "value": 76,
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "group": "Design global",
+    "steps": 1
+  },
+  "messageBorderOpacity": {
+    "type": "slider",
+    "label": "Opacité du contour des messages (%)",
+    "value": 76,
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "group": "Design global",
+    "steps": 1
+  },
+  "glowSize": {
+    "type": "slider",
+    "label": "Taille de la lueur (px)",
+    "value": 16,
+    "min": 0,
+    "max": 48,
+    "step": 1,
+    "group": "Design global",
+    "steps": 1
+  },
+  "glowOpacity": {
+    "type": "slider",
+    "label": "Opacité de la lueur (%)",
+    "value": 45,
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "group": "Design global",
+    "steps": 1
+  },
+  "messageSpacing": {
+    "type": "slider",
+    "label": "Espace entre les messages (px)",
+    "value": 12,
+    "min": 0,
+    "max": 32,
+    "step": 1,
+    "group": "Design global",
+    "steps": 1
+  },
+  "pointerGap": {
+    "type": "slider",
+    "label": "Espace pointe / pseudo (px)",
+    "value": 6,
+    "min": 0,
+    "max": 20,
+    "step": 1,
+    "group": "Design global",
+    "steps": 1
+  },
+  "viewerColor": {
+    "type": "colorpicker",
+    "label": "Viewer - début",
+    "value": "#5900FF",
+    "group": "Couleurs des rôles"
+  },
+  "viewerColor2": {
+    "type": "colorpicker",
+    "label": "Viewer - fin",
+    "value": "#FF1BDF",
+    "group": "Couleurs des rôles"
+  },
+  "moderatorColor": {
+    "type": "colorpicker",
+    "label": "Modérateur - début",
+    "value": "#2ABDFF",
+    "group": "Couleurs des rôles"
+  },
+  "moderatorColor2": {
+    "type": "colorpicker",
+    "label": "Modérateur - fin",
+    "value": "#00FE9F",
+    "group": "Couleurs des rôles"
+  },
+  "vipColor": {
+    "type": "colorpicker",
+    "label": "VIP - début",
+    "value": "#FF1BDF",
+    "group": "Couleurs des rôles"
+  },
+  "vipColor2": {
+    "type": "colorpicker",
+    "label": "VIP - fin",
+    "value": "#FF4D9D",
+    "group": "Couleurs des rôles"
+  },
+  "artistColor": {
+    "type": "colorpicker",
+    "label": "Artiste - début",
+    "value": "#2ABDFF",
+    "group": "Couleurs des rôles"
+  },
+  "artistColor2": {
+    "type": "colorpicker",
+    "label": "Artiste - fin",
+    "value": "#78BEFF",
+    "group": "Couleurs des rôles"
+  },
+  "broadcasterColor": {
+    "type": "colorpicker",
+    "label": "Broadcaster - début",
+    "value": "#E91916",
+    "group": "Couleurs des rôles"
+  },
+  "broadcasterColor2": {
+    "type": "colorpicker",
+    "label": "Broadcaster - fin",
+    "value": "#FF4D6D",
+    "group": "Couleurs des rôles"
+  },
+  "showBadges": {
+    "type": "dropdown",
+    "label": "Afficher les badges Twitch",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Contenu"
+  },
+  "hideCommands": {
+    "type": "dropdown",
+    "label": "Masquer les commandes commençant par !",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Contenu"
+  },
+  "ignoredUsers": {
+    "type": "textfield",
+    "label": "Utilisateurs ignorés (séparés par une virgule)",
+    "value": "StreamElements,OtherBot",
+    "group": "Contenu"
+  },
+  "maxMessages": {
+    "type": "number",
+    "label": "Nombre maximum de messages",
+    "value": 20,
+    "min": 1,
+    "max": 100,
+    "step": 1,
+    "group": "Contenu",
+    "steps": 1
+  },
+  "hideAfter": {
+    "type": "number",
+    "label": "Masquer après X secondes (999 = jamais)",
+    "value": 999,
+    "min": 1,
+    "max": 999,
+    "step": 1,
+    "group": "Contenu",
+    "steps": 1
+  },
+  "showTone": {
+    "type": "dropdown",
+    "label": "Afficher les images ! ? !?",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Ponctuation"
+  },
+  "exclamationImage": {
+    "type": "imagepicker",
+    "label": "Image d'exclamation",
+    "value": "https://cdn.streamlabs.com/users/140067/library/exclaim.png",
+    "group": "Ponctuation"
+  },
+  "questionImage": {
+    "type": "imagepicker",
+    "label": "Image d'interrogation",
+    "value": "https://cdn.streamlabs.com/users/140067/library/question.png",
+    "group": "Ponctuation"
+  },
+  "mixedMarksImage": {
+    "type": "imagepicker",
+    "label": "Image !? ou ?!",
+    "value": "https://cdn.streamlabs.com/users/140067/library/exclaimquestion.png",
+    "group": "Ponctuation"
+  },
+  "animationDuration": {
+    "type": "slider",
+    "label": "Durée d'animation (ms)",
+    "value": 400,
+    "min": 0,
+    "max": 1200,
+    "step": 10,
+    "group": "Animation",
+    "steps": 10
+  },
+  "messagePosition": {
+    "type": "dropdown",
+    "label": "Les messages apparaissent par le",
+    "value": "bottom",
+    "options": {
+      "bottom": "Bas de l'écran",
+      "top": "Haut de l'écran"
+    },
+    "group": "Animation"
+  }
+}

@@ -1,0 +1,238 @@
+{
+  "widgetName": {
+    "type": "hidden",
+    "value": "zer0oes Alerts",
+    "group": "Texte & police"
+  },
+  "font_family": {
+    "type": "fontpicker",
+    "label": "Police",
+    "value": "Poppins",
+    "group": "Texte & police"
+  },
+  "font_weight": {
+    "type": "dropdown",
+    "label": "Graisse",
+    "value": "900",
+    "options": {
+      "700": "Bold (700)",
+      "800": "ExtraBold (800)",
+      "900": "Black (900)"
+    },
+    "group": "Texte & police"
+  },
+  "line1_size": {
+    "type": "number",
+    "label": "Taille du titre (px)",
+    "value": 34,
+    "min": 14,
+    "max": 80,
+    "step": 1,
+    "group": "Texte & police"
+  },
+  "name_size": {
+    "type": "number",
+    "label": "Taille du pseudo géant (px)",
+    "value": 58,
+    "min": 18,
+    "max": 140,
+    "step": 1,
+    "group": "Texte & police"
+  },
+  "text_size": {
+    "type": "number",
+    "label": "Taille du message (px)",
+    "value": 15,
+    "min": 8,
+    "max": 32,
+    "step": 1,
+    "group": "Texte & police"
+  },
+  "text_color": {
+    "type": "colorpicker",
+    "label": "Couleur du message",
+    "value": "#FFFFFF",
+    "group": "Texte & police"
+  },
+  "max_width": {
+    "type": "number",
+    "label": "Largeur max en px (0 = illimitée)",
+    "value": 640,
+    "min": 0,
+    "max": 1400,
+    "step": 10,
+    "group": "Texte & police"
+  },
+  "follow_color": {
+    "type": "colorpicker",
+    "label": "Follow",
+    "value": "#FF4D8D",
+    "group": "Couleurs par type"
+  },
+  "sub_color": {
+    "type": "colorpicker",
+    "label": "Sub",
+    "value": "#2ABDFF",
+    "group": "Couleurs par type"
+  },
+  "cheer_color": {
+    "type": "colorpicker",
+    "label": "Cheer (bits)",
+    "value": "#FF1BDF",
+    "group": "Couleurs par type"
+  },
+  "tip_color": {
+    "type": "colorpicker",
+    "label": "Tip (dons)",
+    "value": "#5900FF",
+    "group": "Couleurs par type"
+  },
+  "raid_color": {
+    "type": "colorpicker",
+    "label": "Raid",
+    "value": "#FFB020",
+    "group": "Couleurs par type"
+  },
+  "host_color": {
+    "type": "colorpicker",
+    "label": "Host",
+    "value": "#00FE9F",
+    "group": "Couleurs par type"
+  },
+  "follow_line1": {
+    "type": "textfield",
+    "label": "Follow : titre",
+    "value": "Nouveau follow",
+    "group": "Textes par type"
+  },
+  "follow_line2": {
+    "type": "textfield",
+    "label": "Follow : sous-titre",
+    "value": "Bienvenue",
+    "group": "Textes par type"
+  },
+  "sub_line1": {
+    "type": "textfield",
+    "label": "Sub : titre",
+    "value": "Nouvel abonné",
+    "group": "Textes par type"
+  },
+  "sub_line2": {
+    "type": "textfield",
+    "label": "Sub : sous-titre",
+    "value": "Merci",
+    "group": "Textes par type"
+  },
+  "cheer_line1": {
+    "type": "textfield",
+    "label": "Cheer : titre",
+    "value": "Nouveau cheer",
+    "group": "Textes par type"
+  },
+  "cheer_line2": {
+    "type": "textfield",
+    "label": "Cheer : sous-titre ({amount})",
+    "value": "{amount} bits de",
+    "group": "Textes par type"
+  },
+  "tip_line1": {
+    "type": "textfield",
+    "label": "Tip : titre",
+    "value": "Nouveau don",
+    "group": "Textes par type"
+  },
+  "tip_line2": {
+    "type": "textfield",
+    "label": "Tip : sous-titre ({amount})",
+    "value": "{amount} € de",
+    "group": "Textes par type"
+  },
+  "raid_line1": {
+    "type": "textfield",
+    "label": "Raid : titre",
+    "value": "Raid",
+    "group": "Textes par type"
+  },
+  "raid_line2": {
+    "type": "textfield",
+    "label": "Raid : sous-titre ({amount})",
+    "value": "{amount} viewers de",
+    "group": "Textes par type"
+  },
+  "host_line1": {
+    "type": "textfield",
+    "label": "Host : titre",
+    "value": "Host",
+    "group": "Textes par type"
+  },
+  "host_line2": {
+    "type": "textfield",
+    "label": "Host : sous-titre",
+    "value": "Bienvenue à",
+    "group": "Textes par type"
+  },
+  "show_message": {
+    "type": "dropdown",
+    "label": "Afficher le message du viewer",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Comportement"
+  },
+  "glitch_enabled": {
+    "type": "dropdown",
+    "label": "Effet de décodage \"bug\" à l'apparition",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Comportement"
+  },
+  "display_duration": {
+    "type": "number",
+    "label": "Durée d'affichage (ms)",
+    "value": 6000,
+    "min": 1000,
+    "max": 30000,
+    "step": 500,
+    "group": "Comportement"
+  },
+  "animation_duration": {
+    "type": "number",
+    "label": "Durée d'animation (ms)",
+    "value": 600,
+    "min": 100,
+    "max": 2000,
+    "step": 50,
+    "group": "Comportement"
+  },
+  "sound_enabled": {
+    "type": "dropdown",
+    "label": "Activer le son",
+    "value": "no",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Son"
+  },
+  "sound_url": {
+    "type": "soundpicker",
+    "label": "Fichier son",
+    "value": "",
+    "group": "Son"
+  },
+  "sound_volume": {
+    "type": "slider",
+    "label": "Volume (%)",
+    "value": 70,
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "steps": 1,
+    "group": "Son"
+  }
+}

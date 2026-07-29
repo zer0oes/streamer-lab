@@ -1,0 +1,56 @@
+[
+  {
+    "id": "ms4dzspb-a33h6gt6",
+    "title": "Widgets / Alertes :",
+    "text": "",
+    "updatedAt": 1785282539532
+  },
+  {
+    "id": "ms4dxy0i-irku9hbb",
+    "title": "Widget Neon Chat : ",
+    "text": "- Lorsque les messages apparaissent par le haut de l'écran, il faut tout de même le plus récent en bas de l'écran",
+    "updatedAt": 1785288249954
+  },
+  {
+    "id": "ms4dshii-5cc0buam",
+    "title": "Contact form : ",
+    "text": "- Aligner les champs Prénom et Nom\n- Champs obligatoires : Pseudo, Email, Sujet, Message\n- \"Nous contacter\" en couleur Accent",
+    "updatedAt": 1785284723952
+  },
+  {
+    "id": "ms39suq6-7avvnf3w",
+    "title": "Global : ",
+    "text": "- Création d'une section \"Overlays\" avant Widgets et Alertes (icône desktop_landscape dans le menu latéral gauche) dans laquelle on aura un aperçu et la possibilité d'importer des widgets / des alertes.\n- Possibilité de déplacer les widgets / alertes en cliquer-glisser, leur définir une taille\n- - Ajouter une barre d'outils : [ Sélection ] [ Texte ] [ Image ] [ Icône ] [ Forme ]\n[ Variable ] [ Barre ] [ Groupe ]   |   [ Annuler ] [ Rétablir ] barre flottante sur aperçu, déplaçable",
+    "updatedAt": 1785284512746
+  },
+  {
+    "id": "ms35umv6-mkwysiz8",
+    "title": "Header :",
+    "text": "",
+    "updatedAt": 1785158798377
+  },
+  {
+    "id": "ms35f3wi-955q1toy",
+    "title": "Dashboard :",
+    "text": "",
+    "updatedAt": 1785165248614
+  },
+  {
+    "id": "ms35bs07-yt3qk3o8",
+    "title": "Menu latéral gauche :",
+    "text": "- Rendre la ligne Dashboard cliquable (pas juste le texte), laisser l'effet de survol tel qu'il est pour Dashboard et appliquer la même chose pour Ma Bibliothèque",
+    "updatedAt": 1785284621679
+  },
+  {
+    "id": "ms35b1de-62sx4c79",
+    "title": "Mon Compte :",
+    "text": "",
+    "updatedAt": 1785226649006
+  },
+  {
+    "id": "ms2jyz5x-z5hborxv",
+    "title": "Footer :",
+    "text": "",
+    "updatedAt": 1785159350534
+  }
+]
