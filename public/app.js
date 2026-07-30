@@ -55,6 +55,12 @@ const elements = {
   overlayUndoButton: document.querySelector("#overlay-tool-undo"),
   overlayRedoButton: document.querySelector("#overlay-tool-redo"),
   overlayLayersList: document.querySelector("#overlay-layers-list"),
+  overlayItemSettingsPanel: document.querySelector("#overlay-item-settings"),
+  overlayItemSettingsTitle: document.querySelector("#overlay-item-settings-title"),
+  overlayItemSettingsFields: document.querySelector("#overlay-item-settings-fields"),
+  overlayItemSettingsClose: document.querySelector("#overlay-item-settings-close"),
+  overlayAlignButtons: document.querySelectorAll("[data-overlay-align]"),
+  overlayDistributeButtons: document.querySelectorAll("[data-overlay-distribute]"),
   widgetEditorView: document.querySelector("#widget-editor-view"),
   eventAccordion: document.querySelector("#event-type-accordion"),
   customEvent: document.querySelector("#custom-event"),
@@ -72,6 +78,7 @@ const elements = {
   dashboardView: document.querySelector("#dashboard-view"),
   dashboardWidgetList: document.querySelector("#dashboard-widget-list"),
   dashboardAlertList: document.querySelector("#dashboard-alert-list"),
+  dashboardOverlayList: document.querySelector("#dashboard-overlay-list"),
   dashboardLibrarySearch: document.querySelector("#dashboard-library-search"),
   dashboardLibrarySuggestions: document.querySelector("#dashboard-library-suggestions"),
   dashboardFilterTriggers: document.querySelectorAll('[data-role="filter-trigger"]'),
@@ -119,7 +126,7 @@ let eventSimulatorCloseTimer;
 let widgetCatalog = [];
 let activeWidgetId = "";
 let librarySearchTerm = "";
-let librarySortMode = { widget: "name-asc", alert: "name-asc" };
+let librarySortMode = { widget: "name-asc", alert: "name-asc", overlay: "name-asc" };
 let widgetSwitching = false;
 let selectedWidgetIcon = "widgets";
 let selectedWidgetType = "widget";
@@ -133,6 +140,7 @@ let overlaySettingsMode = "edit";
 const overlayItemBundleCache = new Map();
 let activeOverlayTool = "select";
 let selectedOverlayItemIds = new Set();
+let overlaySettingsItemId = null;
 let overlayHistory = [];
 let overlayHistoryIndex = -1;
 const overlayToolbarPositionStorageKey = "overlay-toolbar-position";
@@ -745,6 +753,7 @@ function initializeDashboardLibraryControls() {
   elements.dashboardLibrarySearch.addEventListener("input", () => {
     librarySearchTerm = elements.dashboardLibrarySearch.value;
     renderWidgetLibrary();
+    renderOverlayLibrary();
   });
 
   for (const trigger of elements.dashboardFilterTriggers) {
@@ -764,6 +773,7 @@ function initializeDashboardLibraryControls() {
         updateFilterPanelChecks(panel, librarySortMode[scope]);
         closeAllDropdowns();
         renderWidgetLibrary();
+        renderOverlayLibrary();
       });
     }
   }
@@ -988,9 +998,19 @@ function renderOverlayLibrary() {
   } else {
     elements.overlayList.append(buildLibraryEmptyState("Aucun overlay pour l’instant."));
   }
+
+  const filteredOverlays = filterAndSortLibraryEntries(overlayCatalog, "overlay");
+  elements.dashboardOverlayList.replaceChildren();
+  if (filteredOverlays.length) {
+    for (const entry of filteredOverlays) elements.dashboardOverlayList.append(buildOverlayLibraryRow(entry, { showMeta: true }));
+  } else {
+    elements.dashboardOverlayList.append(buildLibraryEmptyState(dashboardLibraryEmptyMessage("Aucun overlay pour l’instant.")));
+  }
+
+  updateDashboardLibrarySuggestions();
 }
 
-function buildOverlayLibraryRow(entry) {
+function buildOverlayLibraryRow(entry, { showMeta = false } = {}) {
   const row = document.createElement("div");
   row.className = "widget-library__row";
 
@@ -1014,6 +1034,13 @@ function buildOverlayLibraryRow(entry) {
   const description = document.createElement("small");
   description.textContent = entry.description;
   copy.append(name, description);
+
+  if (showMeta && entry.updatedAt) {
+    const meta = document.createElement("small");
+    meta.className = "widget-library__meta";
+    meta.textContent = `Modifié le ${formatAccountDate(entry.updatedAt)}`;
+    copy.append(meta);
+  }
 
   const status = document.createElement("span");
   if (isActive) {
@@ -1214,6 +1241,16 @@ function initializeOverlayCanvas() {
   elements.overlayToolGroupButton.addEventListener("click", createOverlayGroup);
   elements.overlayUndoButton.addEventListener("click", undoOverlay);
   elements.overlayRedoButton.addEventListener("click", redoOverlay);
+  for (const button of elements.overlayAlignButtons) {
+    button.addEventListener("click", () => alignOverlaySelection(button.dataset.overlayAlign));
+  }
+  for (const button of elements.overlayDistributeButtons) {
+    button.addEventListener("click", () => distributeOverlaySelection(button.dataset.overlayDistribute));
+  }
+  elements.overlayItemSettingsClose.addEventListener("click", () => {
+    overlaySettingsItemId = null;
+    renderOverlayItemSettings();
+  });
   initializeOverlayToolbarDrag();
 
   elements.overlayCanvas.addEventListener("pointerdown", (event) => {
@@ -1411,8 +1448,15 @@ function updateOverlaySelectionUI() {
   for (const node of elements.overlayCanvas.querySelectorAll(".overlay-item")) {
     node.classList.toggle("is-active", selectedOverlayItemIds.has(node.dataset.itemId));
   }
-  elements.overlayToolGroupButton.disabled = selectedOverlayItemIds.size < 2;
+  const selectionCount = selectedOverlayItemIds.size;
+  elements.overlayToolGroupButton.disabled = selectionCount < 2;
+  for (const button of elements.overlayAlignButtons) button.disabled = selectionCount < 2;
+  for (const button of elements.overlayDistributeButtons) button.disabled = selectionCount < 3;
+  if (overlaySettingsItemId && !(selectionCount === 1 && selectedOverlayItemIds.has(overlaySettingsItemId))) {
+    overlaySettingsItemId = null;
+  }
   renderOverlayLayers();
+  renderOverlayItemSettings();
 }
 
 function toggleOverlaySelection(itemId) {
@@ -1449,6 +1493,82 @@ function createOverlayGroup() {
   scheduleOverlayPersist();
 }
 
+// Items sélectionnés au premier niveau uniquement : si un groupe sélectionné
+// a aussi l'un de ses propres enfants directement sélectionné (possible,
+// chaque enfant reste cliquable/shift-sélectionnable indépendamment), cet
+// enfant est exclu ici pour ne jamais être déplacé deux fois par
+// moveOverlayItemTo (une fois via le delta du groupe, une fois pour lui-même).
+function selectedOverlayItemsList() {
+  const items = [...selectedOverlayItemIds].map(findOverlayItem).filter(Boolean);
+  const childIdsOfSelectedGroups = new Set(
+    items.filter((entry) => entry.type === "group").flatMap((group) => group.props.children)
+  );
+  return items.filter((entry) => !childIdsOfSelectedGroups.has(entry.id));
+}
+
+function moveOverlayItemTo(item, newX, newY) {
+  const dx = newX - item.x;
+  const dy = newY - item.y;
+  if (dx === 0 && dy === 0) return;
+  // Un groupe déplace aussi tous ses enfants du même delta, comme pour un
+  // glisser-déposer (voir startOverlayItemDrag).
+  const movingIds = item.type === "group" ? [item.id, ...item.props.children] : [item.id];
+  for (const id of movingIds) {
+    const target = findOverlayItem(id);
+    if (!target) continue;
+    target.x += dx;
+    target.y += dy;
+    const el = elements.overlayCanvas.querySelector(`[data-item-id="${id}"]`);
+    if (el) applyOverlayItemStyle(el, target);
+  }
+}
+
+function alignOverlaySelection(mode) {
+  const items = selectedOverlayItemsList();
+  if (items.length < 2) return;
+  const minX = Math.min(...items.map((entry) => entry.x));
+  const maxX = Math.max(...items.map((entry) => entry.x + entry.w));
+  const minY = Math.min(...items.map((entry) => entry.y));
+  const maxY = Math.max(...items.map((entry) => entry.y + entry.h));
+  for (const item of items) {
+    if (mode === "left") moveOverlayItemTo(item, Math.round(minX), item.y);
+    else if (mode === "center") moveOverlayItemTo(item, Math.round(minX + (maxX - minX) / 2 - item.w / 2), item.y);
+    else if (mode === "right") moveOverlayItemTo(item, Math.round(maxX - item.w), item.y);
+    else if (mode === "top") moveOverlayItemTo(item, item.x, Math.round(minY));
+    else if (mode === "middle") moveOverlayItemTo(item, item.x, Math.round(minY + (maxY - minY) / 2 - item.h / 2));
+    else if (mode === "bottom") moveOverlayItemTo(item, item.x, Math.round(maxY - item.h));
+  }
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+}
+
+// Distribution à espacement égal entre les bords des boîtes englobantes
+// (pas un espacement centre-à-centre naïf) : le premier et le dernier item
+// (selon l'axe trié) restent fixes, les items intermédiaires sont replacés
+// avec un intervalle constant entre eux.
+function distributeOverlaySelection(axis) {
+  const items = selectedOverlayItemsList();
+  if (items.length < 3) return;
+  const sizeKey = axis === "vertical" ? "h" : "w";
+  const posKey = axis === "vertical" ? "y" : "x";
+  const sorted = [...items].sort((a, b) => a[posKey] - b[posKey]);
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const span = (last[posKey] + last[sizeKey]) - first[posKey];
+  const totalSize = sorted.reduce((sum, entry) => sum + entry[sizeKey], 0);
+  const gap = (span - totalSize) / (sorted.length - 1);
+  let cursor = first[posKey] + first[sizeKey] + gap;
+  for (let i = 1; i < sorted.length - 1; i++) {
+    const item = sorted[i];
+    const newPos = Math.round(cursor);
+    if (axis === "vertical") moveOverlayItemTo(item, item.x, newPos);
+    else moveOverlayItemTo(item, newPos, item.y);
+    cursor += item[sizeKey] + gap;
+  }
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+}
+
 async function openOverlayEditor(overlayId) {
   try {
     const response = await fetch(`/api/overlay?id=${encodeURIComponent(overlayId)}`);
@@ -1460,6 +1580,7 @@ async function openOverlayEditor(overlayId) {
     activeOverlay = overlay;
     activeOverlayId = overlay.id;
     selectedOverlayItemIds = new Set();
+    overlaySettingsItemId = null;
     setOverlayTool("select");
     elements.overlayEditorTitle.textContent = overlay.name;
     showOverlayEditor();
@@ -1617,11 +1738,41 @@ async function buildWidgetItemContent(item, el, label) {
 
   label.textContent = bundle.widgetMeta?.name || item.widgetId;
   frame.title = bundle.widgetMeta?.name || item.widgetId;
-  const defaults = Object.fromEntries(Object.entries(bundle.fields).map(([key, field]) => [key, field.value]));
-  const srcdoc = buildWidgetSrcdoc(bundle, defaults, { platform: PLATFORM_STREAM_ELEMENTS, transparent: true });
-
   el.append(frame);
-  frame.srcdoc = srcdoc;
+  renderOverlayItemFrame(frame, bundle, resolveOverlayItemFieldData(bundle, item));
+}
+
+// Fusionne les valeurs par défaut du widget avec les overrides propres à cet
+// item d'overlay (item.props.fieldData), en ignorant silencieusement toute
+// clé devenue invalide (dropdown dont l'option a disparu, nombre hors bornes,
+// etc.) — mêmes garde-fous que loadFieldData pour l'aperçu widget seul.
+function resolveOverlayItemFieldData(bundle, item) {
+  const defaults = Object.fromEntries(Object.entries(bundle.fields).map(([key, field]) => [key, field.value]));
+  const saved = item.props?.fieldData && typeof item.props.fieldData === "object" ? item.props.fieldData : {};
+  const merged = { ...defaults };
+  for (const [key, definition] of Object.entries(bundle.fields)) {
+    if (!Object.hasOwn(saved, key)) continue;
+    if (definition.type === "dropdown" && !Object.hasOwn(definition.options || {}, saved[key])) continue;
+    if (["number", "slider"].includes(definition.type)) {
+      const numericValue = Number(saved[key]);
+      if (!Number.isFinite(numericValue)) continue;
+      merged[key] = Math.min(definition.max ?? numericValue, Math.max(definition.min ?? numericValue, numericValue));
+      continue;
+    }
+    merged[key] = saved[key];
+  }
+  return merged;
+}
+
+// Seul point d'entrée qui (re)navigue l'iframe d'un item d'overlay : partagé
+// entre la construction initiale et chaque changement de champ dans le
+// panneau de réglages, pour ne jamais diverger. Un rechargement complet du
+// srcdoc (plutôt qu'un postMessage "onWidgetUpdate" en direct) est
+// nécessaire ici : certains widgets de la bibliothèque (ex. zer0oes-neon-chat,
+// zer0oes-animated-labels) n'écoutent pas onWidgetUpdate, alors que
+// onWidgetLoad est géré par tous (c'est leur seul point d'initialisation).
+function renderOverlayItemFrame(frame, bundle, fieldData) {
+  frame.srcdoc = buildWidgetSrcdoc(bundle, fieldData, { platform: PLATFORM_STREAM_ELEMENTS, transparent: true });
   // Dispatché directement depuis le parent (comme dispatchToWidget pour
   // l'aperçu principal) plutôt que baké dans le bootstrap du srcdoc, pour
   // rester cohérent avec le seul mécanisme d'initialisation déjà en place.
@@ -1636,10 +1787,165 @@ async function buildWidgetItemContent(item, el, label) {
         recents: buildRecents(session),
         currency: { code: "EUR", name: "Euro", symbol: "€" },
         channel: { ...channel, apiToken: "" },
-        fieldData: structuredClone(defaults)
+        fieldData: structuredClone(fieldData)
       }
     }, "*");
   };
+}
+
+// Envoi ciblé vers l'iframe d'UN SEUL item d'overlay : ne jamais réutiliser
+// dispatchToWidget ici, qui diffuse volontairement à tous les iframes de la
+// vue overlay (un bouton "Tester" dans le panneau de réglages d'un item ne
+// doit déclencher que cet item-là, pas toutes ses copies sur le canevas).
+function dispatchToOverlayItemFrame(itemId, eventType, detail, eventTarget = "window") {
+  const frame = elements.overlayCanvas.querySelector(`[data-item-id="${itemId}"] .overlay-item__frame`);
+  frame?.contentWindow?.postMessage({ source: "se-lab", kind: "dispatch", eventType, eventTarget, detail }, "*");
+}
+
+async function commitOverlayItemField(itemId, key, value) {
+  const item = findOverlayItem(itemId);
+  if (!item) return;
+  item.props = item.props && typeof item.props === "object" ? item.props : {};
+  item.props.fieldData = { ...(item.props.fieldData || {}), [key]: value };
+
+  const bundle = await loadOverlayItemBundle(item.widgetId);
+  const frame = elements.overlayCanvas.querySelector(`[data-item-id="${itemId}"] .overlay-item__frame`);
+  if (bundle && frame) renderOverlayItemFrame(frame, bundle, resolveOverlayItemFieldData(bundle, item));
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+}
+
+// Équivalent paramétré de createFieldInput (aperçu widget seul) : celui-ci
+// est couplé aux globales fieldData/updateField/activeWidgetId, inutilisable
+// tel quel pour une valeur/callback arbitraires par item d'overlay.
+function createOverlayItemFieldInput(key, definition, value, onCommit) {
+  let input;
+  if (definition.type === "dropdown") {
+    input = document.createElement("select");
+    for (const [optionValue, optionLabel] of Object.entries(definition.options || {})) {
+      const option = document.createElement("option");
+      option.value = optionValue;
+      option.textContent = optionLabel;
+      input.append(option);
+    }
+  } else {
+    input = document.createElement("input");
+    input.type = ({
+      colorpicker: "color",
+      slider: "range",
+      googleFont: "text",
+      fontpicker: "text",
+      textfield: "text",
+      imagepicker: "url",
+      soundpicker: "url",
+      videopicker: "url"
+    })[definition.type] ||
+      (["number", "text"].includes(definition.type) ? definition.type : "url");
+    for (const attribute of ["min", "max", "step"]) {
+      if (definition[attribute] !== undefined) input[attribute] = definition[attribute];
+    }
+    if (definition.steps !== undefined && definition.step === undefined) input.step = definition.steps;
+  }
+  input.value = value ?? "";
+  input.addEventListener("change", () => {
+    onCommit(["number", "slider"].includes(definition.type) ? Number(input.value) : input.value);
+  });
+  return input;
+}
+
+async function renderOverlayItemSettings() {
+  const item = overlaySettingsItemId ? findOverlayItem(overlaySettingsItemId) : null;
+  if (!item || (item.type !== "widget" && item.type !== "alert")) {
+    elements.overlayItemSettingsPanel.hidden = true;
+    return;
+  }
+
+  const bundle = await loadOverlayItemBundle(item.widgetId);
+  elements.overlayItemSettingsPanel.hidden = false;
+  elements.overlayItemSettingsTitle.textContent = bundle?.widgetMeta?.name || item.widgetId;
+  elements.overlayItemSettingsFields.replaceChildren();
+
+  if (!bundle) {
+    elements.overlayItemSettingsFields.append(buildLibraryEmptyState("Widget introuvable."));
+    return;
+  }
+
+  const fieldData = resolveOverlayItemFieldData(bundle, item);
+  const groups = new Map();
+  const getContainer = (definition) => {
+    if (!definition.group) return elements.overlayItemSettingsFields;
+    if (groups.has(definition.group)) return groups.get(definition.group);
+
+    const details = document.createElement("details");
+    details.className = "field-group";
+    const summary = document.createElement("summary");
+    summary.className = "field-group__summary";
+    summary.textContent = definition.group;
+    summary.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (details.open) collapseDetails(details);
+      else expandDetails(details);
+    });
+    const body = document.createElement("div");
+    body.className = "field-group__body";
+    details.append(summary, body);
+    elements.overlayItemSettingsFields.append(details);
+    groups.set(definition.group, body);
+    return body;
+  };
+
+  for (const [key, definition] of Object.entries(bundle.fields)) {
+    if (definition.type === "hidden") continue;
+    const container = getContainer(definition);
+
+    if (definition.type === "button") {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "button button--quiet button--wide";
+      button.textContent = definition.value || definition.label || key;
+      button.addEventListener("click", () => dispatchToOverlayItemFrame(item.id, "onEventReceived", {
+        listener: "widget-button",
+        event: { field: key, value: definition.value }
+      }));
+      container.append(button);
+      continue;
+    }
+
+    if (definition.type === "checkbox") {
+      const label = document.createElement("label");
+      label.className = "checkbox-field";
+      label.innerHTML = `<span class="checkbox-field__label">${escapeHtml(definition.label || key)}</span>`;
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = Boolean(fieldData[key]);
+      input.addEventListener("change", () => commitOverlayItemField(item.id, key, input.checked));
+      label.append(input);
+      container.append(label);
+      continue;
+    }
+
+    const label = document.createElement("label");
+    label.className = "field";
+    const caption = document.createElement("span");
+    caption.className = "field__label";
+    caption.textContent = definition.label || key;
+    label.append(caption);
+    const input = createOverlayItemFieldInput(key, definition, fieldData[key], (value) => commitOverlayItemField(item.id, key, value));
+
+    if (definition.type === "slider") {
+      const row = document.createElement("div");
+      row.className = "field-group__control-row";
+      const output = document.createElement("output");
+      output.className = "field-group__control-output";
+      output.textContent = fieldData[key];
+      input.addEventListener("input", () => { output.textContent = input.value; });
+      row.append(input, output);
+      label.append(row);
+    } else {
+      label.append(input);
+    }
+    container.append(label);
+  }
 }
 
 function applyOverlayTextStyle(el, props) {
@@ -1970,6 +2276,22 @@ function buildOverlayLayerRow(item) {
   label.className = "overlay-layers__label";
   label.textContent = overlayLayerLabel(item);
 
+  let settingsButton = null;
+  if (item.type === "widget" || item.type === "alert") {
+    settingsButton = document.createElement("button");
+    settingsButton.type = "button";
+    settingsButton.className = "icon-button";
+    settingsButton.setAttribute("aria-label", "Réglages");
+    settingsButton.title = "Réglages";
+    settingsButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">tune</span>';
+    settingsButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      selectedOverlayItemIds = new Set([item.id]);
+      overlaySettingsItemId = item.id;
+      updateOverlaySelectionUI();
+    });
+  }
+
   const deleteButton = document.createElement("button");
   deleteButton.type = "button";
   deleteButton.className = "icon-button";
@@ -1980,9 +2302,15 @@ function buildOverlayLayerRow(item) {
     removeOverlayItem(item.id);
   });
 
-  row.append(handle, icon, label, deleteButton);
+  row.append(handle, icon, label, ...(settingsButton ? [settingsButton] : []), deleteButton);
   row.addEventListener("click", (event) => {
-    if (event.target === deleteButton || deleteButton.contains(event.target) || event.target === handle) return;
+    if (event.target === deleteButton || deleteButton.contains(event.target)) return;
+    if (settingsButton && (event.target === settingsButton || settingsButton.contains(event.target))) return;
+    if (event.target === handle) return;
+    if (event.shiftKey) {
+      toggleOverlaySelection(item.id);
+      return;
+    }
     selectedOverlayItemIds = new Set([item.id]);
     updateOverlaySelectionUI();
   });
@@ -2029,9 +2357,12 @@ function openOverlayItemPicker() {
     elements.overlayItemPickerList.append(buildLibraryEmptyState("Aucun widget ni alerte disponible."));
   } else {
     for (const entry of widgetCatalog) {
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = "widget-library__item";
+      const row = document.createElement("div");
+      row.className = "widget-library__row";
+
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "widget-library__item";
       const icon = document.createElement("span");
       icon.className = "widget-library__icon";
       icon.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${escapeHtml(entry.icon || "widgets")}</span>`;
@@ -2042,11 +2373,12 @@ function openOverlayItemPicker() {
       const description = document.createElement("small");
       description.textContent = entry.type === "alert" ? "Alerte" : "Widget";
       copy.append(name, description);
-      row.append(icon, copy);
-      row.addEventListener("click", () => {
+      item.append(icon, copy);
+      item.addEventListener("click", () => {
         addOverlayItem(entry);
         elements.overlayItemPickerDialog.close();
       });
+      row.append(item);
       elements.overlayItemPickerList.append(row);
     }
   }
@@ -2331,13 +2663,16 @@ function dashboardLibraryEmptyMessage(defaultMessage) {
   return term ? `Aucun résultat pour « ${term} ».` : defaultMessage;
 }
 
-function filterAndSortLibraryEntries(entries, scope) {
+function filterLibraryEntriesBySearch(entries) {
   const term = librarySearchTerm.trim().toLowerCase();
-  const filtered = term
-    ? entries.filter((entry) =>
-        entry.name.toLowerCase().includes(term) ||
-        (entry.description || "").toLowerCase().includes(term))
-    : entries;
+  if (!term) return entries;
+  return entries.filter((entry) =>
+    entry.name.toLowerCase().includes(term) ||
+    (entry.description || "").toLowerCase().includes(term));
+}
+
+function filterAndSortLibraryEntries(entries, scope) {
+  const filtered = filterLibraryEntriesBySearch(entries);
 
   const byName = (a, b) => a.name.localeCompare(b.name, "fr");
   const sorters = {
@@ -2352,7 +2687,7 @@ function filterAndSortLibraryEntries(entries, scope) {
 }
 
 function updateDashboardLibrarySuggestions() {
-  const names = [...new Set(widgetCatalog.map((entry) => entry.name))].sort((a, b) => a.localeCompare(b, "fr"));
+  const names = [...new Set([...widgetCatalog, ...overlayCatalog].map((entry) => entry.name))].sort((a, b) => a.localeCompare(b, "fr"));
   elements.dashboardLibrarySuggestions.innerHTML = names.map((name) => `<option value="${escapeHtml(name)}"></option>`).join("");
 }
 

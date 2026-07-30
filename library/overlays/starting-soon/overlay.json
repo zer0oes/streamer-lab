@@ -14,14 +14,59 @@
       "id": "item-ms6opcyw-dpzv4",
       "type": "widget",
       "widgetId": "zer0oes-goal-bar",
-      "x": 676,
+      "x": 720,
       "y": 673,
       "w": 656,
       "h": 151,
       "z": 1,
-      "props": {}
+      "props": {
+        "fieldData": {}
+      }
+    },
+    {
+      "id": "item-ms79ho5h-vlt1x",
+      "type": "alert",
+      "widgetId": "zer0oes-alerts",
+      "x": 767,
+      "y": 147,
+      "w": 835,
+      "h": 433,
+      "z": 2,
+      "props": {
+        "fieldData": {}
+      }
+    },
+    {
+      "id": "item-ms79ig8n-dl7jb",
+      "type": "text",
+      "x": 170,
+      "y": 295,
+      "w": 320,
+      "h": 120,
+      "z": 3,
+      "props": {
+        "content": "Kikoo je teste",
+        "fontFamily": "inherit",
+        "fontSize": 32,
+        "fontWeight": 600,
+        "color": "#ffffff",
+        "align": "left"
+      }
+    },
+    {
+      "id": "item-ms79j2ol-7fj3g",
+      "type": "icon",
+      "x": 77,
+      "y": 295,
+      "w": 96,
+      "h": 96,
+      "z": 4,
+      "props": {
+        "name": "sports_esports",
+        "color": "#ffffff"
+      }
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1785365849226
+  "updatedAt": 1785403356767
 }

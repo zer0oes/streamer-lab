@@ -8,8 +8,8 @@
   {
     "id": "ms4dxy0i-irku9hbb",
     "title": "Overlays :",
-    "text": "- Ajouter une barre d'outils : [ Sélection ] [ Texte ] [ Image ] [ Icône ] [ Forme ]\n[ Variable ] [ Barre ] [ Groupe ]   |   [ Annuler ] [ Rétablir ] barre flottante sur aperçu, déplaçable\n- Aperçu des widgets / alertes importés\n- Menu de gestion des widgets / alertes ajoutés (système de calques, superposition)\n- Ajouter le bouton déclencheur d'événements flottant en bas à droite de l'écran, comme widgets / alertes",
-    "updatedAt": 1785342398286
+    "text": "- Le fond des widgets ou alertes doit être transparent\n- Lors de la création d'un overlay, on doit pouvoir choisir ses dimensions et/ou son ratio (16:9 ou 9:16). \n- Le bouton pour déplacer la barre d'outils doit être aligné à gauche et ne pas avoir de fond différent.\n- Dans les réglages des widgets / alertes, il faut ajouter une section \"Position et taille\" dans laquelle on peut indiquer des valeurs en px.\n- Pour l'alignement, si un seul calque est sélectionné, l'alignement doit être fait par rapport à la surface de l'overlay. \n",
+    "updatedAt": 1785403534381
   },
   {
     "id": "ms4dshii-5cc0buam",
@@ -32,8 +32,8 @@
   {
     "id": "ms35f3wi-955q1toy",
     "title": "Dashboard :",
-    "text": "- Ajouter Overlays dans Ma Bibliothèque, sur 2 colones entre la barre de recherche et les widgets. \n- La barre de recherche doit prendre les overlays en compte",
-    "updatedAt": 1785349245921
+    "text": "- Afficher un aperçu de l'overlay dans les dimensions définies. ",
+    "updatedAt": 1785403594239
   },
   {
     "id": "ms35bs07-yt3qk3o8",

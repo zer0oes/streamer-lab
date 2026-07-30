@@ -234,9 +234,28 @@
               <label class="dashboard-view__search" for="dashboard-library-search">
                 <span class="material-symbols-rounded" aria-hidden="true">search</span>
                 <input id="dashboard-library-search" type="search" list="dashboard-library-suggestions"
-                       placeholder="Rechercher un widget ou une alerte…" autocomplete="off">
+                       placeholder="Rechercher un widget, une alerte ou un overlay…" autocomplete="off">
               </label>
               <datalist id="dashboard-library-suggestions"></datalist>
+              <div class="dashboard-view__overlays">
+                <div class="dashboard-view__column-header">
+                  <h4 class="dashboard-view__column-title">Overlays</h4>
+                  <button class="icon-button dashboard-view__filter-trigger" type="button"
+                          data-dropdown-trigger data-role="filter-trigger" data-scope="overlay"
+                          aria-haspopup="menu" aria-expanded="false" aria-label="Trier les overlays">
+                    <span class="material-symbols-rounded" aria-hidden="true">filter_list</span>
+                  </button>
+                  <div class="dashboard-view__filter-panel" role="menu" hidden>
+                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="name-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Nom (A→Z)</span></button>
+                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="name-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Nom (Z→A)</span></button>
+                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="updated-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Modifié (récent d'abord)</span></button>
+                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="updated-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Modifié (ancien d'abord)</span></button>
+                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="created-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Créé (récent d'abord)</span></button>
+                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="created-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Créé (ancien d'abord)</span></button>
+                  </div>
+                </div>
+                <div class="widget-library dashboard-view__overlays-grid" id="dashboard-overlay-list" aria-label="Overlays"></div>
+              </div>
               <div class="dashboard-view__group-columns">
                 <div class="dashboard-view__column">
                   <div class="dashboard-view__column-header">
@@ -409,7 +428,7 @@
               <span class="eyebrow">OVERLAY</span>
               <h2 id="overlay-editor-title">Overlay</h2>
             </div>
-            <button class="button button--primary" id="overlay-add-item" type="button">
+            <button class="button button--primary overlay-editor__add-button" id="overlay-add-item" type="button">
               <span class="material-symbols-rounded" aria-hidden="true">add</span>
               <span>Ajouter un widget/alerte</span>
             </button>
@@ -442,6 +461,36 @@
                   <span class="material-symbols-rounded" aria-hidden="true">select_all</span><span>Groupe</span>
                 </button>
                 <div class="overlay-toolbar__divider" aria-hidden="true"></div>
+                <div class="overlay-toolbar__group" role="group" aria-label="Alignement">
+                  <button class="icon-button" type="button" data-overlay-align="left" disabled aria-label="Aligner à gauche" title="Aligner à gauche">
+                    <span class="material-symbols-rounded" aria-hidden="true">align_horizontal_left</span>
+                  </button>
+                  <button class="icon-button" type="button" data-overlay-align="center" disabled aria-label="Centrer horizontalement" title="Centrer horizontalement">
+                    <span class="material-symbols-rounded" aria-hidden="true">align_horizontal_center</span>
+                  </button>
+                  <button class="icon-button" type="button" data-overlay-align="right" disabled aria-label="Aligner à droite" title="Aligner à droite">
+                    <span class="material-symbols-rounded" aria-hidden="true">align_horizontal_right</span>
+                  </button>
+                  <button class="icon-button" type="button" data-overlay-align="top" disabled aria-label="Aligner en haut" title="Aligner en haut">
+                    <span class="material-symbols-rounded" aria-hidden="true">align_vertical_top</span>
+                  </button>
+                  <button class="icon-button" type="button" data-overlay-align="middle" disabled aria-label="Centrer verticalement" title="Centrer verticalement">
+                    <span class="material-symbols-rounded" aria-hidden="true">align_vertical_center</span>
+                  </button>
+                  <button class="icon-button" type="button" data-overlay-align="bottom" disabled aria-label="Aligner en bas" title="Aligner en bas">
+                    <span class="material-symbols-rounded" aria-hidden="true">align_vertical_bottom</span>
+                  </button>
+                </div>
+                <div class="overlay-toolbar__divider" aria-hidden="true"></div>
+                <div class="overlay-toolbar__group" role="group" aria-label="Distribution">
+                  <button class="icon-button" type="button" data-overlay-distribute="horizontal" disabled aria-label="Distribuer horizontalement" title="Distribuer horizontalement">
+                    <span class="material-symbols-rounded" aria-hidden="true">horizontal_distribute</span>
+                  </button>
+                  <button class="icon-button" type="button" data-overlay-distribute="vertical" disabled aria-label="Distribuer verticalement" title="Distribuer verticalement">
+                    <span class="material-symbols-rounded" aria-hidden="true">vertical_distribute</span>
+                  </button>
+                </div>
+                <div class="overlay-toolbar__divider" aria-hidden="true"></div>
                 <button class="icon-button" type="button" id="overlay-tool-undo" disabled aria-label="Annuler" title="Annuler (Ctrl+Z)">
                   <span class="material-symbols-rounded" aria-hidden="true">undo</span>
                 </button>
@@ -454,6 +503,15 @@
             <aside class="overlay-layers" aria-label="Calques">
               <h3 class="overlay-layers__title">Calques</h3>
               <div class="overlay-layers__list" id="overlay-layers-list"></div>
+              <div class="overlay-item-settings" id="overlay-item-settings" hidden>
+                <div class="overlay-item-settings__header">
+                  <span class="overlay-item-settings__title" id="overlay-item-settings-title"></span>
+                  <button type="button" class="icon-button" id="overlay-item-settings-close" aria-label="Fermer les réglages" title="Fermer">
+                    <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+                  </button>
+                </div>
+                <div class="overlay-item-settings__fields" id="overlay-item-settings-fields"></div>
+              </div>
             </aside>
           </div>
         </div>
