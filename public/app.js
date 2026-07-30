@@ -28,9 +28,8 @@ const elements = {
   widgetIconChoices: document.querySelector("#widget-icon-choices"),
   widgetSettingsMessage: document.querySelector("#widget-settings-message"),
   saveWidgetSettings: document.querySelector("#save-widget-settings"),
-  overlaysNav: document.querySelector("#overlays-nav"),
   overlayList: document.querySelector("#overlay-list"),
-  overlayCountHint: document.querySelector("#overlay-count-hint"),
+  overlayCount: document.querySelector("#overlay-count"),
   addOverlayButton: document.querySelector("#add-overlay"),
   overlaySettingsDialog: document.querySelector("#overlay-settings-dialog"),
   overlaySettingsForm: document.querySelector("#overlay-settings-form"),
@@ -38,6 +37,9 @@ const elements = {
   overlaySettingsId: document.querySelector("#overlay-settings-id"),
   overlaySettingsName: document.querySelector("#overlay-settings-name"),
   overlaySettingsDescription: document.querySelector("#overlay-settings-description"),
+  overlaySettingsWidth: document.querySelector("#overlay-settings-width"),
+  overlaySettingsHeight: document.querySelector("#overlay-settings-height"),
+  overlayRatioButtons: document.querySelectorAll("[data-overlay-ratio]"),
   overlayIconChoices: document.querySelector("#overlay-icon-choices"),
   overlaySettingsMessage: document.querySelector("#overlay-settings-message"),
   saveOverlaySettings: document.querySelector("#save-overlay-settings"),
@@ -988,10 +990,14 @@ function initializeOverlaySettings() {
     void saveOverlayMetadata();
   });
   elements.addOverlayButton.addEventListener("click", () => openOverlayCreation());
+
+  for (const button of elements.overlayRatioButtons) {
+    button.addEventListener("click", () => applyOverlayRatio(button.dataset.overlayRatio));
+  }
 }
 
 function renderOverlayLibrary() {
-  elements.overlayCountHint.textContent = overlayCatalog.length === 1 ? "1 overlay" : `${overlayCatalog.length} overlays`;
+  elements.overlayCount.textContent = String(overlayCatalog.length);
   elements.overlayList.replaceChildren();
   if (overlayCatalog.length) {
     for (const entry of overlayCatalog) elements.overlayList.append(buildOverlayLibraryRow(entry));
@@ -1002,7 +1008,7 @@ function renderOverlayLibrary() {
   const filteredOverlays = filterAndSortLibraryEntries(overlayCatalog, "overlay");
   elements.dashboardOverlayList.replaceChildren();
   if (filteredOverlays.length) {
-    for (const entry of filteredOverlays) elements.dashboardOverlayList.append(buildOverlayLibraryRow(entry, { showMeta: true }));
+    for (const entry of filteredOverlays) elements.dashboardOverlayList.append(buildOverlayLibraryRow(entry, { showMeta: true, showPreview: true }));
   } else {
     elements.dashboardOverlayList.append(buildLibraryEmptyState(dashboardLibraryEmptyMessage("Aucun overlay pour l’instant.")));
   }
@@ -1010,7 +1016,7 @@ function renderOverlayLibrary() {
   updateDashboardLibrarySuggestions();
 }
 
-function buildOverlayLibraryRow(entry, { showMeta = false } = {}) {
+function buildOverlayLibraryRow(entry, { showMeta = false, showPreview = false } = {}) {
   const row = document.createElement("div");
   row.className = "widget-library__row";
 
@@ -1080,6 +1086,16 @@ function buildOverlayLibraryRow(entry, { showMeta = false } = {}) {
     openOverlaySettings(entry);
   });
 
+  const duplicateItem = document.createElement("button");
+  duplicateItem.type = "button";
+  duplicateItem.className = "widget-library__options-item";
+  duplicateItem.setAttribute("role", "menuitem");
+  duplicateItem.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">content_copy</span><span>Dupliquer</span>';
+  duplicateItem.addEventListener("click", () => {
+    closeAllDropdowns();
+    void duplicateOverlayEntry(entry);
+  });
+
   const deleteItem = document.createElement("button");
   deleteItem.type = "button";
   deleteItem.className = "widget-library__options-item is-danger";
@@ -1090,7 +1106,7 @@ function buildOverlayLibraryRow(entry, { showMeta = false } = {}) {
     void deleteOverlayEntry(entry);
   });
 
-  menuPanel.append(editItem, deleteItem);
+  menuPanel.append(editItem, duplicateItem, deleteItem);
   menuTrigger.addEventListener("click", (event) => {
     event.stopPropagation();
     toggleDropdown(menuTrigger);
@@ -1098,7 +1114,53 @@ function buildOverlayLibraryRow(entry, { showMeta = false } = {}) {
   menu.append(menuTrigger, menuPanel);
 
   row.append(button, menu);
-  return row;
+  if (!showPreview) return row;
+
+  const card = document.createElement("div");
+  card.className = "overlay-preview-card";
+  card.append(buildOverlayPreviewThumb(entry), row);
+  return card;
+}
+
+function overlayPreviewItemIcon(item) {
+  if (item.type === "icon" && item.props?.name) return item.props.name;
+  return overlayLayerIcon(item);
+}
+
+// Miniature de la composition d'un overlay : chaque item est représenté par
+// un petit rectangle positionné/dimensionné proportionnellement à x/y/w/h
+// (jamais un rendu live des widgets — trop coûteux à multiplier sur une
+// grille de cartes du dashboard). Les formes reprennent leur vraie couleur
+// de remplissage pour rester fidèles à l'aperçu réel ; tout le reste utilise
+// une teinte neutre + une icône, juste pour indiquer le type et la position.
+function buildOverlayPreviewThumb(entry) {
+  const canvas = entry.canvas || DEFAULT_OVERLAY_CANVAS;
+  const thumb = document.createElement("button");
+  thumb.type = "button";
+  thumb.className = "overlay-preview-card__thumb";
+  thumb.style.aspectRatio = `${canvas.width} / ${canvas.height}`;
+  thumb.setAttribute("aria-label", `Ouvrir l’overlay ${entry.name}`);
+
+  for (const item of entry.items) {
+    if (item.type === "group") continue;
+    const mini = document.createElement("span");
+    mini.className = "overlay-preview-card__item";
+    mini.style.left = `${(item.x / canvas.width) * 100}%`;
+    mini.style.top = `${(item.y / canvas.height) * 100}%`;
+    mini.style.width = `${(item.w / canvas.width) * 100}%`;
+    mini.style.height = `${(item.h / canvas.height) * 100}%`;
+    if (item.type === "shape") {
+      mini.style.background = item.props.fill || "#7c5cff";
+      mini.style.borderColor = item.props.stroke && item.props.stroke !== "transparent" ? item.props.stroke : "transparent";
+      if (item.props.shape === "ellipse") mini.style.borderRadius = "50%";
+    } else {
+      mini.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${escapeHtml(overlayPreviewItemIcon(item))}</span>`;
+    }
+    thumb.append(mini);
+  }
+
+  thumb.addEventListener("click", () => void openOverlayEditor(entry.id));
+  return thumb;
 }
 
 function openOverlaySettings(entry) {
@@ -1106,6 +1168,9 @@ function openOverlaySettings(entry) {
   elements.overlaySettingsId.value = entry.id;
   elements.overlaySettingsName.value = entry.name;
   elements.overlaySettingsDescription.value = entry.description || "";
+  const canvas = entry.canvas || DEFAULT_OVERLAY_CANVAS;
+  elements.overlaySettingsWidth.value = canvas.width;
+  elements.overlaySettingsHeight.value = canvas.height;
   setOverlaySettingsMessage("");
   selectOverlayIcon(entry.icon || "desktop_landscape");
   elements.overlaySettingsTitle.textContent = "Modifier l’overlay";
@@ -1120,12 +1185,20 @@ function openOverlayCreation() {
   elements.overlaySettingsId.value = "";
   elements.overlaySettingsName.value = "";
   elements.overlaySettingsDescription.value = "";
+  elements.overlaySettingsWidth.value = DEFAULT_OVERLAY_CANVAS.width;
+  elements.overlaySettingsHeight.value = DEFAULT_OVERLAY_CANVAS.height;
   setOverlaySettingsMessage("");
   selectOverlayIcon("desktop_landscape");
   elements.overlaySettingsTitle.textContent = "Nouvel overlay";
   elements.saveOverlaySettings.textContent = "Créer";
   elements.overlaySettingsDialog.showModal();
   elements.overlaySettingsName.focus();
+}
+
+function applyOverlayRatio(ratio) {
+  const [w, h] = ratio === "9:16" ? [1080, 1920] : [1920, 1080];
+  elements.overlaySettingsWidth.value = w;
+  elements.overlaySettingsHeight.value = h;
 }
 
 function selectOverlayIcon(iconName) {
@@ -1147,6 +1220,8 @@ async function saveOverlayMetadata() {
   const overlayId = elements.overlaySettingsId.value;
   const name = elements.overlaySettingsName.value.trim();
   const description = elements.overlaySettingsDescription.value.trim();
+  const width = Number(elements.overlaySettingsWidth.value);
+  const height = Number(elements.overlaySettingsHeight.value);
   if (!name) {
     elements.overlaySettingsName.focus();
     return;
@@ -1160,12 +1235,12 @@ async function saveOverlayMetadata() {
       ? await fetch("/api/overlays", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, description, icon: selectedOverlayIcon })
+          body: JSON.stringify({ name, description, icon: selectedOverlayIcon, width, height })
         })
       : await fetch("/api/overlay/metadata", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ overlayId, name, description, icon: selectedOverlayIcon })
+          body: JSON.stringify({ overlayId, name, description, icon: selectedOverlayIcon, width, height })
         });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
@@ -1189,6 +1264,7 @@ async function saveOverlayMetadata() {
     if (activeOverlayId === updatedOverlay.id && activeOverlay) {
       activeOverlay = { ...activeOverlay, ...updatedOverlay };
       elements.overlayEditorTitle.textContent = activeOverlay.name;
+      renderOverlayCanvas();
     }
     renderOverlayLibrary();
     setOverlaySettingsMessage("Informations enregistrées.", "success");
@@ -1199,6 +1275,26 @@ async function saveOverlayMetadata() {
   } finally {
     elements.saveOverlaySettings.disabled = false;
     elements.saveOverlaySettings.textContent = isCreating ? "Créer" : "Enregistrer";
+  }
+}
+
+async function duplicateOverlayEntry(entry) {
+  try {
+    const response = await fetch("/api/overlay/duplicate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ overlayId: entry.id })
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `Erreur HTTP ${response.status}`);
+    }
+    const { overlay: duplicated } = await response.json();
+    overlayCatalog = [...overlayCatalog, duplicated];
+    renderOverlayLibrary();
+    showToast(`${duplicated.name} créé`);
+  } catch (error) {
+    showToast(`Duplication impossible : ${error.message}`);
   }
 }
 
@@ -1450,7 +1546,7 @@ function updateOverlaySelectionUI() {
   }
   const selectionCount = selectedOverlayItemIds.size;
   elements.overlayToolGroupButton.disabled = selectionCount < 2;
-  for (const button of elements.overlayAlignButtons) button.disabled = selectionCount < 2;
+  for (const button of elements.overlayAlignButtons) button.disabled = selectionCount < 1;
   for (const button of elements.overlayDistributeButtons) button.disabled = selectionCount < 3;
   if (overlaySettingsItemId && !(selectionCount === 1 && selectedOverlayItemIds.has(overlaySettingsItemId))) {
     overlaySettingsItemId = null;
@@ -1524,12 +1620,22 @@ function moveOverlayItemTo(item, newX, newY) {
 }
 
 function alignOverlaySelection(mode) {
+  if (!activeOverlay) return;
   const items = selectedOverlayItemsList();
-  if (items.length < 2) return;
-  const minX = Math.min(...items.map((entry) => entry.x));
-  const maxX = Math.max(...items.map((entry) => entry.x + entry.w));
-  const minY = Math.min(...items.map((entry) => entry.y));
-  const maxY = Math.max(...items.map((entry) => entry.y + entry.h));
+  if (items.length < 1) return;
+  // Un seul item sélectionné : sa propre boîte englobante vaudrait tout
+  // seul, ce qui rendrait l'alignement un no-op — on aligne alors par
+  // rapport à la surface entière de l'overlay plutôt qu'à la sélection.
+  const canvas = activeOverlay.canvas || DEFAULT_OVERLAY_CANVAS;
+  const bounds = items.length === 1
+    ? { minX: 0, maxX: canvas.width, minY: 0, maxY: canvas.height }
+    : {
+        minX: Math.min(...items.map((entry) => entry.x)),
+        maxX: Math.max(...items.map((entry) => entry.x + entry.w)),
+        minY: Math.min(...items.map((entry) => entry.y)),
+        maxY: Math.max(...items.map((entry) => entry.y + entry.h))
+      };
+  const { minX, maxX, minY, maxY } = bounds;
   for (const item of items) {
     if (mode === "left") moveOverlayItemTo(item, Math.round(minX), item.y);
     else if (mode === "center") moveOverlayItemTo(item, Math.round(minX + (maxX - minX) / 2 - item.w / 2), item.y);
@@ -1853,6 +1959,64 @@ function createOverlayItemFieldInput(key, definition, value, onCommit) {
   return input;
 }
 
+function commitOverlayItemPosition(itemId, key, rawValue) {
+  const item = findOverlayItem(itemId);
+  const value = Number(rawValue);
+  if (!item || !Number.isFinite(value)) return;
+  item[key] = (key === "w" || key === "h") ? Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(value)) : Math.round(value);
+
+  const el = elements.overlayCanvas.querySelector(`[data-item-id="${itemId}"]`);
+  if (el) {
+    applyOverlayItemStyle(el, item);
+    // Les inputs w/h du chrome de l'item (au-dessus de lui sur le canevas)
+    // affichent aussi w/h : les garder synchronisés pour ne pas laisser une
+    // valeur périmée si l'utilisateur rouvre ce chrome ensuite.
+    const widthInput = el.querySelector('[data-dim="w"]');
+    const heightInput = el.querySelector('[data-dim="h"]');
+    if (widthInput) widthInput.value = String(item.w);
+    if (heightInput) heightInput.value = String(item.h);
+  }
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+}
+
+function buildOverlayItemPositionFields(item) {
+  const details = document.createElement("details");
+  details.className = "field-group";
+  details.open = true;
+  const summary = document.createElement("summary");
+  summary.className = "field-group__summary";
+  summary.textContent = "Position et taille";
+  summary.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (details.open) collapseDetails(details);
+    else expandDetails(details);
+  });
+
+  const body = document.createElement("div");
+  body.className = "field-group__body overlay-item-position";
+
+  const buildInput = (labelText, key) => {
+    const label = document.createElement("label");
+    label.className = "field";
+    const caption = document.createElement("span");
+    caption.className = "field__label";
+    caption.textContent = labelText;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = "1";
+    if (key === "w" || key === "h") input.min = String(MIN_OVERLAY_ITEM_SIZE);
+    input.value = String(Math.round(item[key]));
+    input.addEventListener("change", () => commitOverlayItemPosition(item.id, key, input.value));
+    label.append(caption, input);
+    return label;
+  };
+
+  body.append(buildInput("X", "x"), buildInput("Y", "y"), buildInput("Largeur", "w"), buildInput("Hauteur", "h"));
+  details.append(summary, body);
+  return details;
+}
+
 async function renderOverlayItemSettings() {
   const item = overlaySettingsItemId ? findOverlayItem(overlaySettingsItemId) : null;
   if (!item || (item.type !== "widget" && item.type !== "alert")) {
@@ -1864,6 +2028,7 @@ async function renderOverlayItemSettings() {
   elements.overlayItemSettingsPanel.hidden = false;
   elements.overlayItemSettingsTitle.textContent = bundle?.widgetMeta?.name || item.widgetId;
   elements.overlayItemSettingsFields.replaceChildren();
+  elements.overlayItemSettingsFields.append(buildOverlayItemPositionFields(item));
 
   if (!bundle) {
     elements.overlayItemSettingsFields.append(buildLibraryEmptyState("Widget introuvable."));
@@ -4307,7 +4472,6 @@ elements.sidebarToggle.addEventListener("click", () => {
 elements.dashboardFab.addEventListener("click", () => showDashboard());
 document.querySelector("#library-nav").addEventListener("click", () => jumpToSidebarSection("library"));
 document.querySelector("#fields-nav").addEventListener("click", () => jumpToSidebarSection("fields"));
-elements.overlaysNav.addEventListener("click", () => jumpToSidebarSection("overlays"));
 
 if (new URLSearchParams(window.location.search).get("account") === "open") {
   setAccountPanelOpen(true);

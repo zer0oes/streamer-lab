@@ -5,7 +5,11 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-9);
   background: var(--panel-alt);
-  overflow: hidden;
+  // Pas de overflow:hidden permanent ici : makeDetailsAnimatable() bascule
+  // déjà cette valeur en inline style le temps de l'animation d'ouverture/
+  // fermeture (voir app.js) puis la retire — une règle statique ferait la
+  // même chose en continu et couperait tout menu déroulant ("⋮" d'un item)
+  // qui dépasse la boîte du groupe une fois ouvert.
 
   &:last-child { margin-bottom: var(--space-12); }
 
@@ -412,5 +416,35 @@
     }
 
     .material-symbols-rounded { font-size: 20px; }
+  }
+}
+
+.overlay-canvas-size {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-bottom: var(--space-17);
+
+  &__ratios { display: flex; gap: var(--space-8); }
+
+  &__inputs {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    color: var(--muted);
+    font-size: var(--text-11);
+
+    label { display: flex; align-items: center; gap: var(--space-4); }
+
+    input {
+      width: 72px;
+      height: 32px;
+      padding: 0 var(--space-8);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-6);
+      color: var(--text);
+      background: var(--panel-soft);
+      font-size: var(--text-11);
+    }
   }
 }

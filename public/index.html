@@ -99,10 +99,6 @@
             <span class="material-symbols-rounded" aria-hidden="true">dashboard</span>
             <span>Dashboard</span>
           </button>
-          <button class="sidebar-nav-item sidebar-nav-item--rail-only" id="overlays-nav" type="button" aria-label="Overlays" title="Overlays">
-            <span class="material-symbols-rounded" aria-hidden="true">desktop_landscape</span>
-            <span>Overlays</span>
-          </button>
           <button class="sidebar-nav-item sidebar-nav-item--rail-only" id="library-nav" type="button" aria-label="Ma bibliothèque" title="Ma bibliothèque">
             <span class="material-symbols-rounded" aria-hidden="true">topic</span>
             <span>Ma bibliothèque</span>
@@ -116,27 +112,6 @@
           </button>
         </div>
         <div class="controls__body">
-        <details class="sidebar-section" data-sidebar-section="overlays" open>
-          <summary class="sidebar-section__summary">
-            <div class="sidebar-section__heading">
-              <div class="sidebar-section__heading-actions">
-                <span class="sidebar-section__step material-symbols-rounded" aria-hidden="true">desktop_landscape</span>
-                <h2>Overlays</h2>
-              </div>
-              <span class="sidebar-section__meta">
-                <span class="hint" id="overlay-count-hint">0 overlay</span>
-                <span class="material-symbols-rounded sidebar-section__chevron" aria-hidden="true">expand_more</span>
-              </span>
-            </div>
-          </summary>
-          <div class="sidebar-section__body">
-            <div class="widget-library" id="overlay-list" aria-label="Bibliothèque d'overlays"></div>
-            <button class="button button--wide widget-library__add" id="add-overlay" type="button">
-              <span class="material-symbols-rounded" aria-hidden="true">add</span>
-              <span>Ajouter un overlay</span>
-            </button>
-          </div>
-        </details>
         <details class="sidebar-section" data-sidebar-section="library" open>
           <summary class="sidebar-section__summary">
             <div class="sidebar-section__heading">
@@ -150,6 +125,21 @@
             </div>
           </summary>
           <div class="sidebar-section__body">
+            <details class="library-group" data-library-group="overlay" open>
+              <summary class="library-group__summary">
+                <span class="material-symbols-rounded" aria-hidden="true">desktop_landscape</span>
+                <span class="library-group__label">Overlays</span>
+                <span class="library-group__count" id="overlay-count">0</span>
+                <span class="material-symbols-rounded library-group__chevron" aria-hidden="true">expand_more</span>
+              </summary>
+              <div class="library-group__body">
+                <div class="widget-library" id="overlay-list" aria-label="Bibliothèque d'overlays"></div>
+                <button class="button button--wide widget-library__add" id="add-overlay" type="button">
+                  <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                  <span>Ajouter un overlay</span>
+                </button>
+              </div>
+            </details>
             <details class="library-group" data-library-group="widget" open>
               <summary class="library-group__summary">
                 <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
@@ -872,6 +862,27 @@
             <span class="field__label">Description</span>
             <textarea id="overlay-settings-description" rows="3" maxlength="140"></textarea>
           </label>
+          <fieldset class="widget-icon-field">
+            <legend>Dimensions</legend>
+            <div class="overlay-canvas-size">
+              <div class="overlay-canvas-size__ratios">
+                <button type="button" class="button button--quiet" data-overlay-ratio="16:9">16:9</button>
+                <button type="button" class="button button--quiet" data-overlay-ratio="9:16">9:16</button>
+              </div>
+              <div class="overlay-canvas-size__inputs">
+                <label>
+                  <span>L</span>
+                  <input id="overlay-settings-width" type="number" min="100" max="7680" step="1" required>
+                </label>
+                <span aria-hidden="true">×</span>
+                <label>
+                  <span>H</span>
+                  <input id="overlay-settings-height" type="number" min="100" max="7680" step="1" required>
+                </label>
+                <span>px</span>
+              </div>
+            </div>
+          </fieldset>
           <fieldset class="widget-icon-field">
             <legend>Icône</legend>
             <div class="widget-icon-choices" id="overlay-icon-choices"></div>

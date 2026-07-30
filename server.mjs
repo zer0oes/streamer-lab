@@ -35,7 +35,8 @@ import {
   createOverlay,
   updateOverlayMetadata,
   replaceOverlayItems,
-  deleteOverlay
+  deleteOverlay,
+  duplicateOverlay
 } from "./lib/overlays.mjs";
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
@@ -237,7 +238,7 @@ const server = createServer(async (request, response) => {
 
       const overlays = await listOverlays();
       const overlayId = uniqueWidgetId(slugify(metadata.name), new Set(overlays.map((entry) => entry.id)));
-      const overlay = await createOverlay({ id: overlayId, ...metadata });
+      const overlay = await createOverlay({ id: overlayId, ...metadata, canvas: { width: body.width, height: body.height } });
       return sendJson(response, 201, { overlay });
     }
 
@@ -249,7 +250,7 @@ const server = createServer(async (request, response) => {
       } catch (error) {
         return sendJson(response, 400, { error: error.message });
       }
-      const overlay = await updateOverlayMetadata(body.overlayId, metadata);
+      const overlay = await updateOverlayMetadata(body.overlayId, { ...metadata, canvas: { width: body.width, height: body.height } });
       if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
       return sendJson(response, 200, { overlay });
     }
@@ -266,6 +267,18 @@ const server = createServer(async (request, response) => {
       const deleted = await deleteOverlay(url.searchParams.get("id"));
       if (!deleted) return sendJson(response, 404, { error: "Overlay introuvable" });
       return sendJson(response, 200, { deleted: true, overlayId: url.searchParams.get("id") });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/overlay/duplicate") {
+      const body = await readRequestJson(request);
+      const overlayInfo = await getOverlayInfo(body.overlayId);
+      if (!overlayInfo) return sendJson(response, 404, { error: "Overlay introuvable" });
+      const overlays = await listOverlays();
+      const newName = `${overlayInfo.name} (copie)`;
+      const newId = uniqueWidgetId(slugify(newName), new Set(overlays.map((entry) => entry.id)));
+      const overlay = await duplicateOverlay(body.overlayId, newId, newName);
+      if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
+      return sendJson(response, 201, { overlay });
     }
 
     if (request.method === "GET" && url.pathname === "/api/state") {

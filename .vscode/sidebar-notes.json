@@ -8,8 +8,8 @@
   {
     "id": "ms4dxy0i-irku9hbb",
     "title": "Overlays :",
-    "text": "- Le fond des widgets ou alertes doit être transparent\n- Lors de la création d'un overlay, on doit pouvoir choisir ses dimensions et/ou son ratio (16:9 ou 9:16). \n- Le bouton pour déplacer la barre d'outils doit être aligné à gauche et ne pas avoir de fond différent.\n- Dans les réglages des widgets / alertes, il faut ajouter une section \"Position et taille\" dans laquelle on peut indiquer des valeurs en px.\n- Pour l'alignement, si un seul calque est sélectionné, l'alignement doit être fait par rapport à la surface de l'overlay. \n",
-    "updatedAt": 1785403534381
+    "text": "- Le fond des widgets ou alertes doit être transparent\n",
+    "updatedAt": 1785405679081
   },
   {
     "id": "ms4dshii-5cc0buam",
@@ -32,14 +32,14 @@
   {
     "id": "ms35f3wi-955q1toy",
     "title": "Dashboard :",
-    "text": "- Afficher un aperçu de l'overlay dans les dimensions définies. ",
-    "updatedAt": 1785403594239
+    "text": "- Possibilité de dupliquer un overlay",
+    "updatedAt": 1785407313447
   },
   {
     "id": "ms35bs07-yt3qk3o8",
     "title": "Menu latéral gauche :",
-    "text": "",
-    "updatedAt": 1785332610215
+    "text": "- Overlays doit faire partie de ma Bibliothèque et doit se trouver au dessus des Widgets et des Alertes\n- Possibilité de dupliquer un overlay",
+    "updatedAt": 1785407317728
   },
   {
     "id": "ms35b1de-62sx4c79",

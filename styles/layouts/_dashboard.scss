@@ -64,7 +64,7 @@
   }
 
   &__overlays-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   &__group-columns {
@@ -233,6 +233,69 @@
 @keyframes dashboard-connections-dot-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(1.35); }
+}
+
+.overlay-preview-card {
+  display: flex;
+  flex-direction: column;
+  // Cadre unique autour de la miniature ET de la cartouche : les deux
+  // doivent se lire comme un seul bloc, pas deux cartes empilées avec un
+  // espace entre elles. Pas de overflow:hidden ici — ce serait la même
+  // erreur que sur .library-group : ça couperait le menu "⋮" de la
+  // cartouche dès qu'il dépasse la boîte de la carte. Chaque partie
+  // (miniature, cartouche) arrondit donc ses propres coins extérieurs à la
+  // place.
+  border: 1px solid var(--line);
+  border-radius: var(--radius-9);
+  transition: border-color var(--duration-fast);
+
+  &:hover { border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent); }
+
+  // La cartouche (.widget-library__row) porte normalement sa propre bordure
+  // arrondie sur les 4 coins : ici elle n'a plus qu'un simple séparateur en
+  // haut, et arrondit seulement ses coins bas pour épouser la forme de la
+  // carte (le cadre extérieur du bloc fait déjà tout le reste).
+  .widget-library__row {
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0 0 var(--radius-9) var(--radius-9);
+  }
+}
+
+.overlay-preview-card__thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  // Coins hauts arrondis pour épouser la carte ; overflow:hidden reste ici
+  // (sur la miniature elle-même, pas sur la carte entière) pour clipper les
+  // mini-rectangles d'items proches des bords sans jamais toucher au menu
+  // déroulant de la cartouche, qui vit ailleurs dans l'arborescence.
+  border-radius: var(--radius-9) var(--radius-9) 0 0;
+  overflow: hidden;
+  cursor: pointer;
+  background-color: #15171c;
+  background-image:
+    linear-gradient(45deg, #1f2229 25%, transparent 25%),
+    linear-gradient(-45deg, #1f2229 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1f2229 75%),
+    linear-gradient(-45deg, transparent 75%, #1f2229 75%);
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
+}
+
+.overlay-preview-card__item {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent-bright) 45%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent-bright) 18%, transparent);
+  color: #fff;
+
+  .material-symbols-rounded { font-size: clamp(8px, 40%, 18px); }
 }
 
 .dashboard-add-fab {
