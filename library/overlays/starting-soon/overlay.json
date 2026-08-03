@@ -43,8 +43,23 @@
       "props": {
         "fieldData": {}
       }
+    },
+    {
+      "id": "item-ms7iunxo-cqtul",
+      "type": "widget",
+      "widgetId": "zer0oes-animated-labels",
+      "x": 0,
+      "y": 884,
+      "w": 802,
+      "h": 121,
+      "z": 3,
+      "props": {
+        "fieldData": {
+          "orderCustom": "follow,sub,tip"
+        }
+      }
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1785415926535
+  "updatedAt": 1785767573177
 }

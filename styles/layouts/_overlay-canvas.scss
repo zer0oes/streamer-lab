@@ -214,6 +214,13 @@
     // l'aperçu widget seul) : sans ça le navigateur peint parfois la surface
     // de l'iframe en blanc opaque même quand son html/body est transparent.
     background: transparent;
+    // Ces iframes sont créées dynamiquement (document.createElement), donc
+    // elles héritent color-scheme: dark posé sur :root — et Chrome peint
+    // alors leur surface (sandboxée, hors process) en blanc opaque au lieu
+    // de transparent, malgré le background transparent ci-dessus. Un iframe
+    // statique du HTML initial n'a pas ce souci (cf. .preview-shell__frame),
+    // seuls ceux créés en JS après coup en héritent. On casse l'héritage.
+    color-scheme: normal;
     // Aperçu non interactif : le contenu du widget ne doit jamais capter le
     // pointeur, sinon le glisser-déposer du parent (délégué sur
     // #overlay-canvas) ne se déclencherait pas au clic sur l'iframe, qui

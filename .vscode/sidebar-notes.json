@@ -8,8 +8,8 @@
   {
     "id": "ms4dxy0i-irku9hbb",
     "title": "Overlays :",
-    "text": "- Le fond des widgets ou alertes doit être transparent\n",
-    "updatedAt": 1785405679081
+    "text": "- Sur la barre d'outils, regrouper \"Texte\", \"Image\" \"Icone\" et \"Formes\" dans un menu déroulant \"+ Ajouter\"\n- \n",
+    "updatedAt": 1785767552974
   },
   {
     "id": "ms4dshii-5cc0buam",
@@ -32,14 +32,14 @@
   {
     "id": "ms35f3wi-955q1toy",
     "title": "Dashboard :",
-    "text": "- Possibilité de dupliquer un overlay",
-    "updatedAt": 1785407313447
+    "text": "",
+    "updatedAt": 1785755217703
   },
   {
     "id": "ms35bs07-yt3qk3o8",
     "title": "Menu latéral gauche :",
-    "text": "- Overlays doit faire partie de ma Bibliothèque et doit se trouver au dessus des Widgets et des Alertes\n- Possibilité de dupliquer un overlay",
-    "updatedAt": 1785407317728
+    "text": "",
+    "updatedAt": 1785755212258
   },
   {
     "id": "ms35b1de-62sx4c79",

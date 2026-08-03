@@ -1999,6 +1999,7 @@ input[type=range] {
   height: 100%;
   border: 0;
   background: transparent;
+  color-scheme: normal;
   pointer-events: none;
 }
 .overlay-item__handle {
