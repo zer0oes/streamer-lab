@@ -11,7 +11,6 @@
   &[hidden] { display: none; }
 
   &__hero {
-    max-width: 480px;
     margin-bottom: 28px;
 
     h2 { margin: var(--space-6) 0 var(--space-8); font-size: clamp(20px, 2.4vw, 26px); }

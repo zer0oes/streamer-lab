@@ -5,5 +5,7 @@
   "icon": "monitoring",
   "order": 10,
   "createdAt": 1784910851245,
-  "updatedAt": 1784910851250
+  "updatedAt": 1785773184385,
+  "width": 500,
+  "height": 100
 }

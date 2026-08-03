@@ -43,6 +43,25 @@
 
   &__body { padding: var(--space-24); }
 
+  // Pied de panneau persistant : sticky sur .account-panel-drawer lui-même
+  // (c'est lui qui scroll, pas __body), donc toujours visible en bas quel
+  // que soit l'état connecté/déconnecté ou la longueur du contenu au-dessus.
+  &__footer {
+    position: sticky;
+    z-index: 1;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-14);
+    padding: var(--space-14) clamp(var(--space-18), 3vw, 42px);
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    backdrop-filter: blur(14px);
+  }
+
+  &__footer-label { color: var(--muted); font-size: var(--text-12); font-weight: 650; }
+
   &__error {
     margin: 0 0 var(--space-20);
     padding: var(--space-12) var(--space-14);
@@ -61,6 +80,44 @@
   }
 
   &__lead { margin: 0; color: var(--muted); font-size: var(--text-13); }
+}
+
+// Même schéma que .platform-switch (styles/layouts/_topbar.scss) : deux
+// boutons segmentés, l'actif porté par .is-active — repris ici plutôt que
+// partagé pour rester autonome de la topbar (contexte différent : pied de
+// panneau, pas en-tête).
+.theme-switch {
+  display: flex;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-9);
+  background: var(--panel-alt);
+
+  &__button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    padding: var(--space-5) var(--space-10);
+    border: 0;
+    border-radius: var(--radius-6);
+    color: var(--muted);
+    background: transparent;
+    cursor: pointer;
+    font-size: var(--text-10);
+    font-weight: 720;
+    transition: color var(--duration-base), background var(--duration-base), box-shadow var(--duration-base);
+
+    .material-symbols-rounded { font-size: 15px; }
+
+    &:hover { color: var(--text); }
+    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+
+    &.is-active {
+      color: #fff;
+      background: var(--accent-gradient);
+      box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 24%, transparent);
+    }
+  }
 }
 
 .account-identity {

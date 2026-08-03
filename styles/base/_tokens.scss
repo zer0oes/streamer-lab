@@ -110,3 +110,28 @@ $danger-bright: color.scale($danger, $lightness: 20%);
 
   font-family: var(--font-body);
 }
+
+// Thème clair de l'interface (bascule dans le panneau "Mon compte") : ne
+// touche qu'aux surfaces/texte, tout le reste (accent, statuts, marque
+// Twitch, espacements, typo) reste partagé — c'est le contrat implicite des
+// tokens ci-dessus ("single source of truth"), donc tout composant qui les
+// utilise déjà se re-thème sans changement. `[data-theme="light"]` est posé
+// sur <html> par app.js ; :root seul seul suffirait normalement, mais un
+// sélecteur d'attribut sur :root a la même spécificité que le bloc :root
+// au-dessus et gagne par ordre de cascade (déclaré après), donc pas besoin
+// de !important.
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f3f4f7;
+  --panel: #ffffff;
+  --panel-soft: #eef0f4;
+  --panel-alt: #f7f8fa;
+  --line: #e0e2e8;
+  --line-soft: #c7cbd4;
+  --shadow: #c7cad1;
+
+  --text: #14161a;
+  --text-secondary: #3c4048;
+  --muted: #6b7180;
+}

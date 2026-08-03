@@ -216,7 +216,7 @@
           <div class="dashboard-view__hero">
             <span class="eyebrow">DASHBOARD</span>
             <h2>Bienvenue sur Streamer <span class="text-accent">Lab</span></h2>
-            <p>Choisis un widget dans ta bibliothèque pour l’éditer, ou connecte tes comptes pour passer en mode live.</p>
+            <p>Ton bac à sable local pour créer, tester et peaufiner tes widgets, alertes et overlays StreamElements ou Streamlabs en aperçu temps réel — sans jamais toucher à ce qui est déjà en ligne.</p>
           </div>
           <div class="dashboard-view__columns">
             <section class="dashboard-view__group">
@@ -425,6 +425,7 @@
           </div>
           <div class="overlay-editor__body">
             <div class="overlay-canvas-wrap" id="overlay-canvas-wrap">
+              <div class="overlay-canvas-stage" id="overlay-canvas-stage">
               <div class="overlay-toolbar" id="overlay-toolbar">
                 <button class="overlay-toolbar__handle" type="button" aria-label="Déplacer la barre d'outils" title="Déplacer">
                   <span class="material-symbols-rounded" aria-hidden="true">drag_indicator</span>
@@ -433,18 +434,40 @@
                   <button class="overlay-toolbar__button is-active" type="button" data-overlay-tool="select" aria-pressed="true" title="Sélection">
                     <span class="material-symbols-rounded" aria-hidden="true">arrow_selector_tool</span><span>Sélection</span>
                   </button>
-                  <button class="overlay-toolbar__button" type="button" data-overlay-tool="text" aria-pressed="false" title="Texte">
-                    <span class="material-symbols-rounded" aria-hidden="true">title</span><span>Texte</span>
-                  </button>
-                  <button class="overlay-toolbar__button" type="button" data-overlay-tool="image" aria-pressed="false" title="Image">
-                    <span class="material-symbols-rounded" aria-hidden="true">image</span><span>Image</span>
-                  </button>
-                  <button class="overlay-toolbar__button" type="button" data-overlay-tool="icon" aria-pressed="false" title="Icône">
-                    <span class="material-symbols-rounded" aria-hidden="true">star</span><span>Icône</span>
-                  </button>
-                  <button class="overlay-toolbar__button" type="button" data-overlay-tool="shape" aria-pressed="false" title="Forme">
-                    <span class="material-symbols-rounded" aria-hidden="true">category</span><span>Forme</span>
-                  </button>
+                  <div class="overlay-toolbar__add">
+                    <button
+                      class="overlay-toolbar__button"
+                      type="button"
+                      id="overlay-add-tool-trigger"
+                      data-dropdown-trigger
+                      aria-haspopup="menu"
+                      aria-expanded="false"
+                      title="Ajouter un élément"
+                    >
+                      <span class="material-symbols-rounded" aria-hidden="true">add</span><span>Ajouter</span>
+                      <span class="material-symbols-rounded overlay-toolbar__add-chevron" aria-hidden="true">expand_more</span>
+                    </button>
+                    <div class="overlay-toolbar__add-panel" role="menu" hidden>
+                      <button class="overlay-toolbar__add-item" type="button" role="menuitem" data-overlay-tool="text">
+                        <span class="material-symbols-rounded" aria-hidden="true">title</span><span>Texte</span>
+                      </button>
+                      <button class="overlay-toolbar__add-item" type="button" role="menuitem" data-overlay-tool="image">
+                        <span class="material-symbols-rounded" aria-hidden="true">image</span><span>Image</span>
+                      </button>
+                      <button class="overlay-toolbar__add-item" type="button" role="menuitem" data-overlay-tool="icon">
+                        <span class="material-symbols-rounded" aria-hidden="true">star</span><span>Icône</span>
+                      </button>
+                      <button class="overlay-toolbar__add-item" type="button" role="menuitem" data-overlay-tool="shape">
+                        <span class="material-symbols-rounded" aria-hidden="true">category</span><span>Forme</span>
+                      </button>
+                      <button class="overlay-toolbar__add-item" type="button" role="menuitem" data-overlay-tool="video">
+                        <span class="material-symbols-rounded" aria-hidden="true">videocam</span><span>Vidéo</span>
+                      </button>
+                      <button class="overlay-toolbar__add-item" type="button" role="menuitem" data-overlay-tool="embed">
+                        <span class="material-symbols-rounded" aria-hidden="true">link</span><span>Depuis un lien</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div class="overlay-toolbar__divider" aria-hidden="true"></div>
                 <button class="overlay-toolbar__button" type="button" id="overlay-tool-group" disabled title="Grouper la sélection">
@@ -489,8 +512,9 @@
                 </button>
               </div>
               <div class="overlay-canvas" id="overlay-canvas"></div>
+              </div>
             </div>
-            <aside class="overlay-layers" aria-label="Calques">
+            <aside class="overlay-layers" id="overlay-layers" aria-label="Calques">
               <h3 class="overlay-layers__title">Calques</h3>
               <div class="overlay-layers__list" id="overlay-layers-list"></div>
               <div class="overlay-item-settings" id="overlay-item-settings" hidden>
@@ -792,6 +816,19 @@
           </div>
         </section>
       </div>
+      <footer class="account-panel-drawer__footer">
+        <span class="account-panel-drawer__footer-label">Thème</span>
+        <div class="theme-switch" id="theme-switch" role="group" aria-label="Thème de l'interface">
+          <button class="theme-switch__button" type="button" data-theme-choice="dark" aria-pressed="true" title="Thème sombre">
+            <span class="material-symbols-rounded" aria-hidden="true">dark_mode</span>
+            <span>Sombre</span>
+          </button>
+          <button class="theme-switch__button" type="button" data-theme-choice="light" aria-pressed="false" title="Thème clair">
+            <span class="material-symbols-rounded" aria-hidden="true">light_mode</span>
+            <span>Clair</span>
+          </button>
+        </div>
+      </footer>
     </section>
 
     <dialog class="widget-settings" id="widget-settings-dialog" aria-labelledby="widget-settings-title">
@@ -828,6 +865,24 @@
             <span class="field__label">Description</span>
             <textarea id="widget-settings-description" rows="3" maxlength="140"></textarea>
           </label>
+          <fieldset class="widget-icon-field">
+            <legend>Taille par défaut</legend>
+            <div class="overlay-canvas-size">
+              <div class="overlay-canvas-size__inputs">
+                <label>
+                  <span>L</span>
+                  <input id="widget-settings-width" type="number" min="8" max="4096" step="1" required>
+                </label>
+                <span aria-hidden="true">×</span>
+                <label>
+                  <span>H</span>
+                  <input id="widget-settings-height" type="number" min="8" max="4096" step="1" required>
+                </label>
+                <span>px</span>
+              </div>
+            </div>
+            <p class="widget-settings__hint">Taille utilisée à l’ajout sur un overlay — modifiable ensuite au cas par cas sur le canevas.</p>
+          </fieldset>
           <fieldset class="widget-icon-field">
             <legend>Icône</legend>
             <div class="widget-icon-choices" id="widget-icon-choices"></div>
@@ -964,17 +1019,30 @@
     <script>
       // The markup above defaults to the dashboard-visible state (the common
       // case for a plain "/" visit) so there's nothing to flash from while
-      // initialize() in app.js is still fetching. For a direct widget link
-      // (?widget=...) that default is wrong, so correct it here, synchronously,
-      // before the browser paints — app.js can't run this early since it's a
-      // deferred module and its own correction only lands after the widget
-      // catalog fetch resolves.
-      if (new URLSearchParams(location.search).has("widget")) {
+      // initialize() in app.js is still fetching. For a direct widget/overlay
+      // link (?widget=... or ?overlay=...) that default is wrong, so correct
+      // it here, synchronously, before the browser paints — app.js can't run
+      // this early since it's a deferred module and its own correction only
+      // lands after the widget/overlay catalog fetch resolves.
+      // Thème clair/sombre de l'interface (bascule dans "Mon compte") : posé
+      // ici, synchronement avant le premier paint, pour ne jamais flasher en
+      // sombre (le défaut de la feuille de style) le temps qu'app.js charge
+      // et relise la préférence sauvegardée.
+      if (localStorage.getItem("se-lab-app-theme") === "light") {
+        document.documentElement.dataset.theme = "light";
+      }
+
+      const deepLinkParams = new URLSearchParams(location.search);
+      if (deepLinkParams.has("widget") || deepLinkParams.has("overlay")) {
         document.getElementById("dashboard-view").hidden = true;
         document.getElementById("event-fab").hidden = false;
         document.querySelector(".topbar__center").hidden = false;
         document.querySelector(".workspace").classList.remove("is-dashboard");
         document.getElementById("dashboard-fab").classList.remove("is-active");
+        if (deepLinkParams.has("overlay")) {
+          document.getElementById("widget-editor-view").hidden = true;
+          document.getElementById("overlay-editor-view").hidden = false;
+        }
       }
     </script>
     <script type="module" src="/app.js"></script>

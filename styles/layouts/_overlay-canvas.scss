@@ -34,11 +34,26 @@
   gap: var(--space-12);
 }
 
+// Simple coquille de mise en page dans le flex-row .overlay-editor__body :
+// sa largeur (flex: 1) sert uniquement de référence de mesure pour
+// updateOverlayCanvasScale (clientWidth), elle ne représente plus les
+// bornes visuelles de l'overlay — c'est le rôle de .overlay-canvas-stage
+// ci-dessous, dimensionné à l'échelle exacte pour toujours respecter le
+// ratio du canevas (voir updateOverlayCanvasScale).
 .overlay-canvas-wrap {
   position: relative;
-  overflow: hidden;
   flex: 1;
   min-width: 0;
+}
+
+// Cadre visuel de l'overlay : dimensionné en JS à canvas.width/height * scale
+// (jamais en %, jamais étiré par le flex-row parent), puis centré par
+// margin: 0 auto — c'est ce qui garantit que le damier + la bordure
+// coïncident toujours exactement avec le ratio indiqué, y compris quand
+// c'est la hauteur du viewport (pas la largeur) qui borne l'échelle.
+.overlay-canvas-stage {
+  position: relative;
+  overflow: hidden;
   margin: 0 auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-12);
@@ -148,6 +163,57 @@
     &.is-active { color: #fff; border-color: transparent; background: var(--accent-gradient); }
     &:disabled { opacity: .4; pointer-events: none; }
   }
+}
+
+// Menu déroulant "+ Ajouter" (Texte/Image/Icône/Forme/Vidéo/Lien) : même
+// mécanique [data-dropdown-trigger] que .dashboard-add-fab, mais ancré sous
+// un bouton de la barre d'outils plutôt qu'en FAB flottant.
+.overlay-toolbar__add {
+  position: relative;
+
+  &-panel {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + var(--space-8));
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: max-content;
+    min-width: 180px;
+    padding: var(--space-5);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-10);
+    background: color-mix(in srgb, var(--panel) 98%, transparent);
+    box-shadow: 0 18px 52px rgb(0 0 0 / 48%);
+    backdrop-filter: blur(18px);
+
+    &[hidden] { display: none; }
+  }
+
+  &-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-9);
+    width: 100%;
+    min-height: 34px;
+    padding: 0 var(--space-10);
+    border: 0;
+    border-radius: var(--radius-7);
+    color: var(--text-secondary);
+    background: transparent;
+    cursor: pointer;
+    font-size: var(--text-12);
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+
+    .material-symbols-rounded { font-size: 16px; color: var(--muted); }
+
+    &:hover { color: var(--text); background: var(--panel-soft); }
+  }
+
+  &-chevron { font-size: 14px !important; color: var(--muted); }
 }
 
 .overlay-item {
@@ -277,6 +343,21 @@
     pointer-events: none;
   }
 
+  &__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  &__embed {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    pointer-events: none;
+  }
+
   &__icon-glyph {
     display: flex;
     align-items: center;
@@ -310,11 +391,30 @@
 }
 
 .overlay-layers {
-  flex: 0 0 240px;
+  flex: 0 0 288px;
   padding: var(--space-10);
   border: 1px solid var(--line);
   border-radius: var(--radius-10);
   background: var(--panel);
+
+  // Réglages d'un calque ouverts (panneau inséré dans __list, juste sous la
+  // ligne concernée — voir renderOverlayLayers) : le panneau s'étire jusqu'à
+  // la hauteur de .overlay-canvas-wrap, déjà bornée au viewport par
+  // updateOverlayCanvasScale, au lieu de rester cadré sur le contenu.
+  // .overlay-editor__body reste align-items: flex-start pour tout le reste
+  // (pas d'étirement quand aucun calque n'est sélectionné).
+  &.is-settings-open {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    min-height: 0;
+
+    .overlay-layers__list {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+    }
+  }
 
   &__title { margin: 0 0 var(--space-8); color: var(--muted); font-size: var(--text-12); }
 

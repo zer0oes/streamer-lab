@@ -115,7 +115,7 @@
     // .widget-library__row, qui porte désormais la cartouche visuelle
     // unique (voir &__row juste en dessous).
     display: contents;
-    color: #d0d4dc;
+    color: var(--text-secondary);
     cursor: pointer;
     // text-align: left — sans ça, ça remonte le text-align:center par défaut
     // du user-agent stylesheet sur <button> (text-align est hérité, et
@@ -238,7 +238,7 @@
       white-space: nowrap;
     }
 
-    strong { color: #eef0f4; font-size: var(--text-13); font-weight: 750; }
+    strong { color: var(--text); font-size: var(--text-13); font-weight: 750; }
     small { margin-top: 3px; color: var(--text-secondary); font-size: var(--text-11); }
   }
 

@@ -24,6 +24,8 @@ const elements = {
   widgetSettingsId: document.querySelector("#widget-settings-id"),
   widgetSettingsName: document.querySelector("#widget-settings-name"),
   widgetSettingsDescription: document.querySelector("#widget-settings-description"),
+  widgetSettingsWidth: document.querySelector("#widget-settings-width"),
+  widgetSettingsHeight: document.querySelector("#widget-settings-height"),
   widgetTypeChoices: document.querySelectorAll("[data-widget-type]"),
   widgetIconChoices: document.querySelector("#widget-icon-choices"),
   widgetSettingsMessage: document.querySelector("#widget-settings-message"),
@@ -47,15 +49,18 @@ const elements = {
   overlayEditorTitle: document.querySelector("#overlay-editor-title"),
   overlayAddItemButton: document.querySelector("#overlay-add-item"),
   overlayCanvasWrap: document.querySelector("#overlay-canvas-wrap"),
+  overlayCanvasStage: document.querySelector("#overlay-canvas-stage"),
   overlayCanvas: document.querySelector("#overlay-canvas"),
   overlayItemPickerDialog: document.querySelector("#overlay-item-picker"),
   overlayItemPickerList: document.querySelector("#overlay-item-picker-list"),
   overlayToolbar: document.querySelector("#overlay-toolbar"),
   overlayToolbarHandle: document.querySelector(".overlay-toolbar__handle"),
   overlayToolButtons: document.querySelectorAll("[data-overlay-tool]"),
+  overlayAddTrigger: document.querySelector("#overlay-add-tool-trigger"),
   overlayToolGroupButton: document.querySelector("#overlay-tool-group"),
   overlayUndoButton: document.querySelector("#overlay-tool-undo"),
   overlayRedoButton: document.querySelector("#overlay-tool-redo"),
+  overlayLayers: document.querySelector("#overlay-layers"),
   overlayLayersList: document.querySelector("#overlay-layers-list"),
   overlayItemSettingsPanel: document.querySelector("#overlay-item-settings"),
   overlayItemSettingsTitle: document.querySelector("#overlay-item-settings-title"),
@@ -69,6 +74,7 @@ const elements = {
   console: document.querySelector("#console-output"),
   accountFab: document.querySelector("#account-fab"),
   accountPanel: document.querySelector("#account-panel"),
+  themeSwitchButtons: document.querySelectorAll("[data-theme-choice]"),
   accountError: document.querySelector("#account-error"),
   loggedOutPanel: document.querySelector("#logged-out-panel"),
   loggedInPanel: document.querySelector("#logged-in-panel"),
@@ -267,6 +273,10 @@ function randomEventAmount(listener) {
 
 const previewSizeStorageKey = "se-lab-preview-size-v2";
 const previewThemeStorageKey = "se-lab-preview-theme";
+// Thème de l'interface elle-même (panneau "Mon compte") — distinct de
+// previewThemeStorageKey ci-dessus, qui ne concerne que le damier clair/sombre
+// de l'aperçu widget seul.
+const appThemeStorageKey = "se-lab-app-theme";
 const previewPlatformStorageKey = "widget-lab-platform";
 const activeWidgetStorageKey = "widget-lab-active-widget";
 const sidebarStateStorageKey = "widget-lab-sidebar-sections";
@@ -312,6 +322,35 @@ const DEFAULT_OVERLAY_CANVAS = { width: 1920, height: 1080 };
 // prochaine synchronisation (le serveur reclamperait a une autre taille que
 // celle affichee pendant le drag).
 const MIN_OVERLAY_ITEM_SIZE = 8;
+// Repli pour les widgets/alertes créés avant l'ajout du champ "Taille par
+// défaut" (leur manifeste n'a pas encore width/height) : mêmes valeurs que
+// l'ancien placement en dur dans addOverlayItem, pour ne rien faire bouger
+// rétroactivement.
+const DEFAULT_WIDGET_SIZE = { width: 320, height: 180 };
+// Outils regroupés dans le menu déroulant "+ Ajouter" de la barre d'outils :
+// leur bouton respectif n'est visible qu'une fois le menu ouvert, donc c'est
+// le déclencheur du menu lui-même qui doit porter l'état "actif" pendant le
+// placement (sinon rien ne signale visuellement quel outil est armé). Doit
+// rester déclaré avant `await initialize()` plus bas : ce top-level await
+// suspend le reste du module tant qu'il n'est pas résolu, et initialize()
+// peut appeler setOverlayTool() (via openOverlayEditor) avant d'y arriver.
+const OVERLAY_ADD_MENU_TOOLS = new Set(["text", "image", "video", "embed", "icon", "shape"]);
+// Marge sous le canevas mis à l'échelle pour ne jamais coller au bord du
+// viewport (cf. updateOverlayCanvasScale). Même remarque qu'au-dessus : doit
+// être déclarée avant `await initialize()`.
+const OVERLAY_CANVAS_BOTTOM_MARGIN = 24;
+// Cible des raccourcis .url (widgets/alertes/overlays) : le Lab ne crée
+// jamais rien à distance, donc aucun ID StreamElements/Streamlabs connu pour
+// pointer vers "ce" widget précis sur la plateforme — seul son tableau de
+// bord général d'édition est atteignable. StreamElements gère overlays ET
+// widgets au même endroit (un widget s'ajoute à l'intérieur d'un overlay) ;
+// côté Streamlabs, les overlays vivent dans Streamlabs Desktop (pas de page
+// web dédiée), donc on pointe aussi vers l'éditeur de Custom Widget, seul
+// équivalent web du contenu exporté par le Lab.
+const PLATFORM_DASHBOARD_URLS = {
+  [PLATFORM_STREAM_ELEMENTS]: "https://streamelements.com/dashboard/overlays",
+  [PLATFORM_STREAMLABS]: "https://streamlabs.com/dashboard#/widgets/customwidget"
+};
 let previewSize = loadPreviewSize();
 let previewTheme = loadPreviewTheme();
 let previewPlatform = normalizePlatform(localStorage.getItem(previewPlatformStorageKey));
@@ -411,6 +450,7 @@ async function copyActiveEditorFile() {
 }
 
 initializePreviewPlatform();
+initializeAppTheme();
 initializeExportMenu();
 initializePreviewControls();
 initializePreviewTheme();
@@ -453,6 +493,19 @@ function initializePreviewPlatform() {
     button.addEventListener("click", async () => {
       const nextPlatform = normalizePlatform(button.dataset.platform);
       if (nextPlatform === previewPlatform || platformSwitching || widgetSwitching) return;
+
+      // Sur le canevas overlay, aucun éditeur de code widget n'est affiché :
+      // la plateforme ne sert ici qu'à choisir le format ciblé par Export
+      // (voir exportOverlayCode), donc pas de flush/rechargement de l'éditeur
+      // de widget en arrière-plan, qui serait hors-sujet et fausserait les
+      // toasts affichés à l'utilisateur.
+      if (!elements.overlayEditorView.hidden) {
+        previewPlatform = nextPlatform;
+        applyPreviewPlatform();
+        localStorage.setItem(previewPlatformStorageKey, previewPlatform);
+        showToast(`Export configuré pour ${previewPlatform === PLATFORM_STREAMLABS ? "Streamlabs" : "StreamElements"}`);
+        return;
+      }
 
       if (!await flushWidgetEditor()) {
         showToast("Corrigez les erreurs de l’éditeur avant de changer de plateforme.");
@@ -504,9 +557,10 @@ function applyPreviewPlatform() {
     ? "fields.streamlabs.json"
     : "fields.streamelements.json";
   elements.exportConvertLabel.textContent = `Convertir pour ${conversionTarget}`;
+  const isOverlayView = !elements.overlayEditorView.hidden;
   elements.exportMenuTrigger.setAttribute(
     "aria-label",
-    `Exporter le widget depuis ${previewPlatform === PLATFORM_STREAMLABS ? "Streamlabs" : "StreamElements"}`
+    `Exporter ${isOverlayView ? "l’overlay" : "le widget"} depuis ${previewPlatform === PLATFORM_STREAMLABS ? "Streamlabs" : "StreamElements"}`
   );
   setExportMenuOpen(false);
   document.documentElement.dataset.platform = previewPlatform;
@@ -519,9 +573,10 @@ function initializeExportMenu() {
 
   for (const item of elements.exportMenuItems) {
     item.addEventListener("click", async () => {
+      const isOverlayView = !elements.overlayEditorView.hidden;
       if (item.dataset.exportAction === "shortcut") {
         setExportMenuOpen(false);
-        exportWidgetShortcut();
+        if (isOverlayView) exportOverlayShortcut(); else exportWidgetShortcut();
         return;
       }
       const platform = item.dataset.exportAction === "download"
@@ -530,7 +585,7 @@ function initializeExportMenu() {
       setExportMenuOpen(false);
       elements.exportMenuTrigger.disabled = true;
       try {
-        await exportWidgetCode(platform);
+        if (isOverlayView) await exportOverlayCode(platform); else await exportWidgetCode(platform);
       } finally {
         elements.exportMenuTrigger.disabled = false;
       }
@@ -578,6 +633,37 @@ function applyPreviewTheme() {
   const label = `Passer en mode ${nextTheme}`;
   elements.previewTheme.setAttribute("aria-label", label);
   elements.previewTheme.closest(".preview-theme").title = label;
+}
+
+// Thème de l'interface (panneau "Mon compte"), distinct de
+// initializePreviewTheme() ci-dessus qui ne pilote que le damier clair/sombre
+// de l'aperçu widget seul.
+function loadAppTheme() {
+  return localStorage.getItem(appThemeStorageKey) === "light" ? "light" : "dark";
+}
+
+function applyAppTheme(theme) {
+  if (theme === "light") document.documentElement.dataset.theme = "light";
+  else delete document.documentElement.dataset.theme;
+  for (const button of elements.themeSwitchButtons) {
+    const active = button.dataset.themeChoice === theme;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
+}
+
+function initializeAppTheme() {
+  // Le script inline de index.html a déjà posé data-theme avant le premier
+  // paint (anti-flash) : on ne fait ici que synchroniser l'état visuel des
+  // boutons avec cette même préférence, pas re-décider du thème.
+  applyAppTheme(loadAppTheme());
+  for (const button of elements.themeSwitchButtons) {
+    button.addEventListener("click", () => {
+      const theme = button.dataset.themeChoice === "light" ? "light" : "dark";
+      localStorage.setItem(appThemeStorageKey, theme);
+      applyAppTheme(theme);
+    });
+  }
 }
 
 function initializePreviewControls() {
@@ -853,6 +939,8 @@ function openWidgetSettings(entry) {
   elements.widgetSettingsId.value = entry.id;
   elements.widgetSettingsName.value = entry.name;
   elements.widgetSettingsDescription.value = entry.description || "";
+  elements.widgetSettingsWidth.value = entry.width || DEFAULT_WIDGET_SIZE.width;
+  elements.widgetSettingsHeight.value = entry.height || DEFAULT_WIDGET_SIZE.height;
   setWidgetSettingsMessage("");
   selectWidgetIcon(entry.icon || "widgets");
   selectWidgetType(entry.type || "widget");
@@ -868,6 +956,8 @@ function openWidgetCreation(defaultType = "widget") {
   elements.widgetSettingsId.value = "";
   elements.widgetSettingsName.value = "";
   elements.widgetSettingsDescription.value = "";
+  elements.widgetSettingsWidth.value = DEFAULT_WIDGET_SIZE.width;
+  elements.widgetSettingsHeight.value = DEFAULT_WIDGET_SIZE.height;
   setWidgetSettingsMessage("");
   selectWidgetIcon(defaultType === "alert" ? "celebration" : "widgets");
   selectWidgetType(defaultType);
@@ -905,6 +995,8 @@ async function saveWidgetMetadata() {
   const widgetId = elements.widgetSettingsId.value;
   const name = elements.widgetSettingsName.value.trim();
   const description = elements.widgetSettingsDescription.value.trim();
+  const width = Math.max(MIN_OVERLAY_ITEM_SIZE, Number(elements.widgetSettingsWidth.value) || DEFAULT_WIDGET_SIZE.width);
+  const height = Math.max(MIN_OVERLAY_ITEM_SIZE, Number(elements.widgetSettingsHeight.value) || DEFAULT_WIDGET_SIZE.height);
   if (!name) {
     elements.widgetSettingsName.focus();
     return;
@@ -918,12 +1010,12 @@ async function saveWidgetMetadata() {
       ? await fetch("/api/widgets", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, description, icon: selectedWidgetIcon, type: selectedWidgetType })
+          body: JSON.stringify({ name, description, icon: selectedWidgetIcon, type: selectedWidgetType, width, height })
         })
       : await fetch("/api/widget/metadata", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ widgetId, name, description, icon: selectedWidgetIcon, type: selectedWidgetType })
+          body: JSON.stringify({ widgetId, name, description, icon: selectedWidgetIcon, type: selectedWidgetType, width, height })
         });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
@@ -1332,7 +1424,21 @@ function initializeOverlayCanvas() {
   });
 
   for (const button of elements.overlayToolButtons) {
-    button.addEventListener("click", () => setOverlayTool(button.dataset.overlayTool));
+    button.addEventListener("click", () => {
+      // Sans effet pour "Sélection" (hors menu) ; ferme le menu "+ Ajouter"
+      // pour les autres, choisis depuis son panneau déroulant.
+      closeAllDropdowns();
+      setOverlayTool(button.dataset.overlayTool);
+    });
+  }
+  if (elements.overlayAddTrigger) {
+    // Manquait : le déclencheur du menu "+ Ajouter" n'a pas [data-overlay-tool]
+    // (seuls ses items en ont un), donc la boucle ci-dessus ne l'atteint pas —
+    // sans ce listener dédié, rien n'ouvre jamais son panneau.
+    elements.overlayAddTrigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleDropdown(elements.overlayAddTrigger);
+    });
   }
   elements.overlayToolGroupButton.addEventListener("click", createOverlayGroup);
   elements.overlayUndoButton.addEventListener("click", undoOverlay);
@@ -1416,6 +1522,11 @@ function initializeOverlayCanvas() {
   });
 
   new ResizeObserver(updateOverlayCanvasScale).observe(elements.overlayCanvasWrap);
+  // Un redimensionnement vertical pur (largeur inchangée) ne fait pas bouger
+  // .overlay-canvas-wrap tant que updateOverlayCanvasScale n'a pas déjà
+  // recalculé sa hauteur : sans cet écouteur, le ResizeObserver ci-dessus ne
+  // se déclenche jamais pour ce cas, seul window.innerHeight en a changé.
+  window.addEventListener("resize", updateOverlayCanvasScale);
 }
 
 function initializeOverlayToolbarDrag() {
@@ -1427,16 +1538,20 @@ function initializeOverlayToolbarDrag() {
     const toolbar = elements.overlayToolbar;
     toolbar.setPointerCapture(event.pointerId);
     toolbar.classList.add("is-dragging");
-    const wrapRect = elements.overlayCanvasWrap.getBoundingClientRect();
+    // .overlay-canvas-stage, pas .overlay-canvas-wrap : c'est le stage (taille
+    // exacte canvas.width/height * scale, centré dans le wrap) qui sert de
+    // bloc conteneur positionné à la barre d'outils depuis l'introduction du
+    // stage — le wrap peut être plus large que lui (letterboxing horizontal).
+    const stageRect = elements.overlayCanvasStage.getBoundingClientRect();
     const toolbarRect = toolbar.getBoundingClientRect();
     const offsetX = event.clientX - toolbarRect.left;
     const offsetY = event.clientY - toolbarRect.top;
 
     const onMove = (moveEvent) => {
-      const maxLeft = Math.max(0, wrapRect.width - toolbarRect.width);
-      const maxTop = Math.max(0, wrapRect.height - toolbarRect.height);
-      const left = Math.min(maxLeft, Math.max(0, moveEvent.clientX - wrapRect.left - offsetX));
-      const top = Math.min(maxTop, Math.max(0, moveEvent.clientY - wrapRect.top - offsetY));
+      const maxLeft = Math.max(0, stageRect.width - toolbarRect.width);
+      const maxTop = Math.max(0, stageRect.height - toolbarRect.height);
+      const left = Math.min(maxLeft, Math.max(0, moveEvent.clientX - stageRect.left - offsetX));
+      const top = Math.min(maxTop, Math.max(0, moveEvent.clientY - stageRect.top - offsetY));
       applyOverlayToolbarPosition({ left, top });
     };
     const onUp = () => {
@@ -1445,7 +1560,7 @@ function initializeOverlayToolbarDrag() {
       toolbar.removeEventListener("pointerup", onUp);
       toolbar.classList.remove("is-dragging");
       const rect = toolbar.getBoundingClientRect();
-      saveOverlayToolbarPosition({ left: rect.left - wrapRect.left, top: rect.top - wrapRect.top });
+      saveOverlayToolbarPosition({ left: rect.left - stageRect.left, top: rect.top - stageRect.top });
     };
     toolbar.addEventListener("pointermove", onMove);
     toolbar.addEventListener("pointerup", onUp);
@@ -1476,12 +1591,21 @@ function setOverlayTool(tool) {
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
   }
+  if (elements.overlayAddTrigger) {
+    elements.overlayAddTrigger.classList.toggle("is-active", OVERLAY_ADD_MENU_TOOLS.has(tool));
+  }
   elements.overlayCanvas.classList.toggle("is-placing", tool !== "select");
 }
 
+// Relit l'échelle réellement appliquée sur .overlay-canvas-stage (dont la
+// largeur en px est posée par updateOverlayCanvasScale) plutôt que de la
+// recalculer à partir de .overlay-canvas-wrap : ce dernier ne borne plus que
+// la largeur disponible, alors que l'échelle réelle peut être bornée par la
+// hauteur (overlay 9:16, fenêtre basse) — recalculer ici diffusion à part
+// aurait redonné un ratio clic/glisser faux dans ce cas.
 function overlayCanvasScale() {
   const canvas = activeOverlay?.canvas || DEFAULT_OVERLAY_CANVAS;
-  return (elements.overlayCanvasWrap.clientWidth || canvas.width) / canvas.width;
+  return (elements.overlayCanvasStage.offsetWidth || canvas.width) / canvas.width;
 }
 
 // getBoundingClientRect() sur #overlay-canvas tient déjà compte de son
@@ -1525,6 +1649,18 @@ function placeOverlayItem(tool, x, y) {
     createOverlayPrimitive("shape", x, y, 200, 200, {
       shape: "rectangle", fill: "#7c5cff", stroke: "transparent", strokeWidth: 0, radius: 0
     });
+    return;
+  }
+  if (tool === "video") {
+    const src = window.prompt("URL de la vidéo (mp4, webm… http/https)");
+    if (!src) return;
+    createOverlayPrimitive("video", x, y, 320, 180, { src, fit: "cover", loop: true, muted: true });
+    return;
+  }
+  if (tool === "embed") {
+    const src = window.prompt("URL du contenu à intégrer (page web, widget externe… http/https)");
+    if (!src) return;
+    createOverlayPrimitive("embed", x, y, 400, 300, { src });
   }
 }
 
@@ -1715,10 +1851,26 @@ function renderOverlayCanvas() {
 function updateOverlayCanvasScale() {
   if (!activeOverlay) return;
   const canvas = activeOverlay.canvas || DEFAULT_OVERLAY_CANVAS;
+  // Mesurée sur .overlay-canvas-wrap (flex: 1, jamais redimensionné en JS),
+  // jamais sur .overlay-canvas-stage : comme le stage est explicitement
+  // dimensionné ci-dessous, lire sa propre largeur serait auto-référentiel
+  // (chaque recalcul repartirait de la taille posée par le calcul précédent
+  // au lieu de l'espace réellement disponible).
   const availableWidth = elements.overlayCanvasWrap.clientWidth || canvas.width;
-  const scale = Math.min(1, availableWidth / canvas.width);
+  // Sans cette borne verticale, un overlay au format portrait (9:16) ou une
+  // fenêtre basse laissait le canevas dépasser le bas du viewport : la mise à
+  // l'échelle ne tenait compte que de la largeur disponible.
+  const top = elements.overlayCanvasWrap.getBoundingClientRect().top;
+  const availableHeight = Math.max(120, window.innerHeight - top - OVERLAY_CANVAS_BOTTOM_MARGIN);
+  // Une seule échelle uniforme pour les deux dimensions (jamais scaleX/scaleY
+  // séparés) + le stage dimensionné exactement à canvas.width/height * scale
+  // (jamais étiré en % par le flex-row parent) : le ratio indiqué par
+  // l'overlay est donc toujours respecté, que ce soit la largeur ou la
+  // hauteur qui borne l'échelle.
+  const scale = Math.min(1, availableWidth / canvas.width, availableHeight / canvas.height);
   elements.overlayCanvas.style.transform = `scale(${scale})`;
-  elements.overlayCanvasWrap.style.height = `${canvas.height * scale}px`;
+  elements.overlayCanvasStage.style.width = `${canvas.width * scale}px`;
+  elements.overlayCanvasStage.style.height = `${canvas.height * scale}px`;
 }
 
 function findOverlayItem(itemId) {
@@ -1729,6 +1881,8 @@ function overlayItemDefaultLabel(item) {
   switch (item.type) {
     case "text": return "Texte";
     case "image": return "Image";
+    case "video": return "Vidéo";
+    case "embed": return "Lien";
     case "icon": return "Icône";
     case "shape": return "Forme";
     case "group": return `Groupe (${item.props.children.length})`;
@@ -1754,6 +1908,8 @@ function buildOverlayItemElement(item) {
   else if (item.type === "icon") chrome.append(buildIconInspector(item, el));
   else if (item.type === "shape") chrome.append(buildShapeInspector(item, el));
   else if (item.type === "image") chrome.append(buildImageInspector(item, el));
+  else if (item.type === "video") chrome.append(buildVideoInspector(item, el));
+  else if (item.type === "embed") chrome.append(buildEmbedInspector(item, el));
 
   // Un groupe se redimensionne uniquement par ses poignées (mise à l'échelle
   // proportionnelle de ses enfants) : des champs largeur/hauteur libres
@@ -1776,6 +1932,8 @@ function buildOverlayItemElement(item) {
   if (item.type === "widget" || item.type === "alert") buildWidgetItemContent(item, el, label);
   else if (item.type === "text") buildTextItemContent(item, el);
   else if (item.type === "image") buildImageItemContent(item, el);
+  else if (item.type === "video") buildVideoItemContent(item, el);
+  else if (item.type === "embed") buildEmbedItemContent(item, el);
   else if (item.type === "icon") buildIconItemContent(item, el);
   else if (item.type === "shape") buildShapeItemContent(item, el);
   else if (item.type === "group") buildGroupItemContent(item, el);
@@ -2021,11 +2179,18 @@ async function renderOverlayItemSettings() {
   const item = overlaySettingsItemId ? findOverlayItem(overlaySettingsItemId) : null;
   if (!item || (item.type !== "widget" && item.type !== "alert")) {
     elements.overlayItemSettingsPanel.hidden = true;
+    // Panneau fermé : le panneau de calques reprend sa hauteur naturelle
+    // plutôt que d'occuper toute la hauteur du viewport pour rien.
+    elements.overlayLayers?.classList.remove("is-settings-open");
     return;
   }
 
   const bundle = await loadOverlayItemBundle(item.widgetId);
   elements.overlayItemSettingsPanel.hidden = false;
+  // Réglages ouverts : le panneau de calques s'étire jusqu'en bas du
+  // viewport pour laisser de la place à une liste de champs potentiellement
+  // longue, au lieu de rester cadré sur la hauteur de la liste de calques.
+  elements.overlayLayers?.classList.add("is-settings-open");
   elements.overlayItemSettingsTitle.textContent = bundle?.widgetMeta?.name || item.widgetId;
   elements.overlayItemSettingsFields.replaceChildren();
   elements.overlayItemSettingsFields.append(buildOverlayItemPositionFields(item));
@@ -2220,6 +2385,79 @@ function buildImageInspector(item, el) {
   return wrap;
 }
 
+function buildVideoItemContent(item, el) {
+  const video = document.createElement("video");
+  video.className = "overlay-item__video";
+  video.src = item.props.src;
+  video.style.objectFit = item.props.fit;
+  video.autoplay = true;
+  video.loop = item.props.loop !== false;
+  video.muted = item.props.muted !== false;
+  video.playsInline = true;
+  el.append(video);
+}
+
+function buildVideoInspector(item, el) {
+  const wrap = document.createElement("span");
+  wrap.className = "overlay-item__image-inspector";
+  const editButton = document.createElement("button");
+  editButton.type = "button";
+  editButton.className = "text-button";
+  editButton.textContent = "URL";
+  editButton.addEventListener("pointerdown", (event) => event.stopPropagation());
+  editButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const target = findOverlayItem(item.id);
+    if (!target) return;
+    const nextUrl = window.prompt("URL de la vidéo", target.props.src);
+    if (!nextUrl) return;
+    target.props.src = nextUrl;
+    const video = el.querySelector(".overlay-item__video");
+    if (video) video.src = nextUrl;
+    pushOverlayHistory();
+    scheduleOverlayPersist();
+  });
+  wrap.append(editButton);
+  return wrap;
+}
+
+function buildEmbedItemContent(item, el) {
+  const frame = document.createElement("iframe");
+  frame.className = "overlay-item__embed";
+  frame.src = item.props.src;
+  frame.title = "Contenu intégré";
+  // Autorise les intégrations courantes (lecteurs vidéo, widgets tiers…) sans
+  // laisser la page distante naviguer la fenêtre parente (pas de
+  // allow-top-navigation) : même logique de moindre privilège que le sandbox
+  // des iframes de widgets, adaptée à une URL externe arbitraire.
+  frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-forms allow-presentation");
+  el.append(frame);
+}
+
+function buildEmbedInspector(item, el) {
+  const wrap = document.createElement("span");
+  wrap.className = "overlay-item__image-inspector";
+  const editButton = document.createElement("button");
+  editButton.type = "button";
+  editButton.className = "text-button";
+  editButton.textContent = "URL";
+  editButton.addEventListener("pointerdown", (event) => event.stopPropagation());
+  editButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const target = findOverlayItem(item.id);
+    if (!target) return;
+    const nextUrl = window.prompt("URL du contenu à intégrer", target.props.src);
+    if (!nextUrl) return;
+    target.props.src = nextUrl;
+    const frame = el.querySelector(".overlay-item__embed");
+    if (frame) frame.src = nextUrl;
+    pushOverlayHistory();
+    scheduleOverlayPersist();
+  });
+  wrap.append(editButton);
+  return wrap;
+}
+
 function buildIconItemContent(item, el) {
   const glyph = document.createElement("span");
   glyph.className = "material-symbols-rounded overlay-item__icon-glyph";
@@ -2396,7 +2634,14 @@ function renderOverlayLayers() {
     return;
   }
   const sorted = [...activeOverlay.items].sort((a, b) => b.z - a.z);
-  for (const item of sorted) elements.overlayLayersList.append(buildOverlayLayerRow(item));
+  for (const item of sorted) {
+    elements.overlayLayersList.append(buildOverlayLayerRow(item));
+    // Le panneau de réglages est un unique élément DOM partagé (jamais
+    // recréé, cf. renderOverlayItemSettings) : on le rattache ici, juste
+    // après le calque qu'il concerne, plutôt qu'en pied de liste — replaceChildren()
+    // ci-dessus l'en a détaché au passage précédent, donc rien ne le duplique.
+    if (item.id === overlaySettingsItemId) elements.overlayLayersList.append(elements.overlayItemSettingsPanel);
+  }
 }
 
 function overlayLayerIcon(item) {
@@ -2404,6 +2649,8 @@ function overlayLayerIcon(item) {
     case "alert": return "campaign";
     case "text": return "title";
     case "image": return "image";
+    case "video": return "videocam";
+    case "embed": return "link";
     case "icon": return "star";
     case "shape": return "category";
     case "group": return "select_all";
@@ -2415,6 +2662,8 @@ function overlayLayerLabel(item) {
   switch (item.type) {
     case "text": return item.props.content || "Texte";
     case "image": return "Image";
+    case "video": return "Vidéo";
+    case "embed": return "Lien";
     case "icon": return `Icône (${item.props.name})`;
     case "shape": return item.props.shape === "ellipse" ? "Forme (ellipse)" : "Forme (rectangle)";
     case "group": return `Groupe (${item.props.children.length})`;
@@ -2486,7 +2735,6 @@ function buildOverlayLayerRow(item) {
 function startOverlayLayerReorder(event, row) {
   event.stopPropagation();
   const list = elements.overlayLayersList;
-  row.setPointerCapture(event.pointerId);
   row.classList.add("is-dragging");
 
   const onMove = (moveEvent) => {
@@ -2495,14 +2743,19 @@ function startOverlayLayerReorder(event, row) {
     list.insertBefore(row, after || null);
   };
   const onUp = () => {
-    row.releasePointerCapture(event.pointerId);
-    row.removeEventListener("pointermove", onMove);
-    row.removeEventListener("pointerup", onUp);
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
     row.classList.remove("is-dragging");
     commitOverlayLayerOrder();
   };
-  row.addEventListener("pointermove", onMove);
-  row.addEventListener("pointerup", onUp);
+  // Écouté sur document, pas sur row : list.insertBefore() ci-dessus déplace
+  // row dans le DOM à chaque déplacement, ce qui fait relâcher implicitement
+  // la pointer capture par le navigateur (setPointerCapture ne survit pas à
+  // un repositionnement du nœud capturé) — sans ça, pointerup n'atteint plus
+  // jamais row une fois le curseur passé sur une autre ligne, et le drag ne
+  // se termine jamais (commitOverlayLayerOrder n'est jamais appelé).
+  document.addEventListener("pointermove", onMove);
+  document.addEventListener("pointerup", onUp);
 }
 
 function commitOverlayLayerOrder() {
@@ -2568,8 +2821,8 @@ function addOverlayItem(entry) {
     type: entry.type === "alert" ? "alert" : "widget",
     x: 40 + cascade,
     y: 220 + cascade,
-    w: 320,
-    h: 180,
+    w: entry.width || DEFAULT_WIDGET_SIZE.width,
+    h: entry.height || DEFAULT_WIDGET_SIZE.height,
     z: nextZ,
     props: {}
   };
@@ -2801,7 +3054,10 @@ async function initialize() {
     initializeWidgetEditor();
     updateLiveStatus(state.live);
     connectEventStream();
-    if (openDirectly) hideDashboard(); else showDashboard();
+    const requestedOverlayId = new URLSearchParams(window.location.search).get("overlay");
+    if (overlayCatalog.some(entry => entry.id === requestedOverlayId)) await openOverlayEditor(requestedOverlayId);
+    else if (openDirectly) hideDashboard();
+    else showDashboard();
   } catch (error) {
     addConsole("error", error.message);
     showToast(error.message);
@@ -2952,6 +3208,16 @@ function buildWidgetLibraryRow(entry, { showMeta = false } = {}) {
     openWidgetSettings(entry);
   });
 
+  const shortcutItem = document.createElement("button");
+  shortcutItem.type = "button";
+  shortcutItem.className = "widget-library__options-item";
+  shortcutItem.setAttribute("role", "menuitem");
+  shortcutItem.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">link</span><span>Créer un raccourci .url</span>';
+  shortcutItem.addEventListener("click", () => {
+    closeAllDropdowns();
+    exportWidgetShortcut(entry.id, entry.name);
+  });
+
   const deleteItem = document.createElement("button");
   deleteItem.type = "button";
   deleteItem.className = "widget-library__options-item is-danger";
@@ -2962,7 +3228,7 @@ function buildWidgetLibraryRow(entry, { showMeta = false } = {}) {
     void deleteWidgetEntry(entry);
   });
 
-  menuPanel.append(editItem, deleteItem);
+  menuPanel.append(editItem, shortcutItem, deleteItem);
   menuTrigger.addEventListener("click", (event) => {
     event.stopPropagation();
     toggleDropdown(menuTrigger);
@@ -4260,7 +4526,11 @@ function setActiveView(view) {
   // items, voir dispatchToWidget) — seul le dashboard, où rien n'est
   // sélectionné/composé, ne l'affiche pas.
   elements.eventFab.hidden = view !== "editor" && view !== "overlay";
-  elements.topbarCenter.hidden = view !== "editor";
+  // Plateforme simulée + Export ont un sens dès qu'un widget/alerte ou un
+  // overlay est en cours d'édition — seul le dashboard, où rien de concret
+  // n'est encore ouvert, les masque.
+  elements.topbarCenter.hidden = view === "dashboard";
+  applyPreviewPlatform();
   // .is-dashboard masque aussi la section "Champs" (styles/layouts/_sidebar.scss) :
   // non pertinente hors édition d'un widget/alerte précis, donc sur dashboard
   // ET sur le canevas overlay — seul le repère actif du bouton Dashboard doit
@@ -4486,16 +4756,24 @@ function slugifyWidgetName(name) {
     .replace(/^-|-$/g, "") || "custom-widget";
 }
 
-function exportWidgetShortcut() {
-  if (!activeWidgetId) return;
+// widgetId/displayName optionnels : sans eux, exporte le raccourci du widget
+// actif (bouton Export de l'en-tête). Avec eux, exportable directement depuis
+// une ligne de la bibliothèque (dashboard ou panneau latéral) sans avoir à
+// ouvrir l'éditeur de ce widget au préalable.
+function exportWidgetShortcut(widgetId = activeWidgetId, displayName) {
+  if (!widgetId) return;
   const configuredName = String(
-    fieldData?.widgetName ||
-    widget?.fields?.widgetName?.value ||
-    widget?.widgetMeta?.name ||
+    displayName ||
+    (widgetId === activeWidgetId
+      ? fieldData?.widgetName || widget?.fields?.widgetName?.value || widget?.widgetMeta?.name
+      : null) ||
     "custom-widget"
   );
   const slug = slugifyWidgetName(configuredName);
-  const shortcutUrl = `${window.location.origin}/?widget=${encodeURIComponent(activeWidgetId)}`;
+  // Ouvre le tableau de bord de la plateforme sélectionnée dans l'en-tête
+  // (StreamElements/Streamlabs), pas l'éditeur local du Lab : voir
+  // PLATFORM_DASHBOARD_URLS pour le pourquoi (aucun ID distant connu).
+  const shortcutUrl = PLATFORM_DASHBOARD_URLS[previewPlatform] || PLATFORM_DASHBOARD_URLS[PLATFORM_STREAM_ELEMENTS];
   const content = `[InternetShortcut]\r\nURL=${shortcutUrl}\r\n`;
   const blob = new Blob([content], { type: "application/x-mswinurl" });
   const url = URL.createObjectURL(blob);
@@ -4543,6 +4821,86 @@ async function exportWidgetCode(platform) {
   const bridge = exported.bridgeInjected ? " · pont de compatibilité inclus" : "";
   addConsole("info", `Export ${exported.platformName}${bridge}`);
   showToast(`Export ${exported.platformName} téléchargé${bridge}`);
+}
+
+function exportOverlayShortcut() {
+  if (!activeOverlay) return;
+  const slug = slugifyWidgetName(activeOverlay.name || "overlay");
+  // Cf. exportWidgetShortcut : ouvre la plateforme sélectionnée, pas l'éditeur
+  // local du Lab.
+  const shortcutUrl = PLATFORM_DASHBOARD_URLS[previewPlatform] || PLATFORM_DASHBOARD_URLS[PLATFORM_STREAM_ELEMENTS];
+  const content = `[InternetShortcut]\r\nURL=${shortcutUrl}\r\n`;
+  const blob = new Blob([content], { type: "application/x-mswinurl" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${slug}.url`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  addConsole("info", "Raccourci overlay .url généré");
+  showToast("Raccourci téléchargé");
+}
+
+// Pas d'équivalent "widget unique" côté StreamElements/Streamlabs pour un
+// overlay entier (ce sont des widgets qu'on importe un par un côté
+// plateforme) : on zippe donc le bundle exporté de chaque widget/alerte posé
+// sur le canevas, un sous-dossier par item, en réutilisant buildPlatformExport
+// telle quelle pour rester identique à l'export widget seul.
+async function exportOverlayCode(platform) {
+  if (!activeOverlay) return;
+  const widgetItems = activeOverlay.items.filter((item) => item.type === "widget" || item.type === "alert");
+  if (!widgetItems.length) {
+    showToast("Cet overlay ne contient aucun widget ou alerte à exporter.");
+    return;
+  }
+
+  const files = {};
+  const usedFolders = new Set();
+  let platformName = "";
+  let bridgeInjectedAny = false;
+
+  for (const item of widgetItems) {
+    const bundle = await loadOverlayItemBundle(item.widgetId);
+    if (!bundle) continue;
+    const values = resolveOverlayItemFieldData(bundle, item);
+    const exported = buildPlatformExport(bundle, values, platform);
+    platformName = exported.platformName;
+    if (exported.bridgeInjected) bridgeInjectedAny = true;
+
+    const baseFolder = slugifyWidgetName(bundle.widgetMeta?.name || item.widgetId);
+    let folder = baseFolder;
+    let suffix = 2;
+    while (usedFolders.has(folder)) folder = `${baseFolder}-${suffix++}`;
+    usedFolders.add(folder);
+
+    for (const [name, content] of Object.entries(exported.files)) {
+      files[`${folder}/${name}`] = content;
+    }
+  }
+
+  if (!Object.keys(files).length) {
+    showToast("Aucun widget exportable trouvé dans cet overlay.");
+    return;
+  }
+
+  const archive = createZip(files);
+  const slug = slugifyWidgetName(activeOverlay.name || "overlay");
+  const suffix = platform === PLATFORM_STREAMLABS ? "streamlabs" : "streamelements";
+  const blob = new Blob([archive], { type: "application/zip" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${slug}-${suffix}.zip`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+
+  const bridge = bridgeInjectedAny ? " · pont de compatibilité inclus sur au moins un widget" : "";
+  addConsole("info", `Export overlay ${platformName}${bridge}`);
+  showToast(`Export ${platformName} téléchargé${bridge}`);
 }
 document.querySelector("#checker-toggle").addEventListener("click", ({ currentTarget }) => {
   const active = currentTarget.getAttribute("aria-pressed") !== "true";

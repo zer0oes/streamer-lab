@@ -11,55 +11,73 @@
   },
   "items": [
     {
-      "id": "item-ms6opcyw-dpzv4",
+      "id": "item-msdfdbm9-cu0c0",
       "type": "widget",
       "widgetId": "zer0oes-goal-bar",
-      "x": 632,
-      "y": 929,
-      "w": 656,
-      "h": 151,
-      "z": 1,
+      "x": 710,
+      "y": 936,
+      "w": 500,
+      "h": 100,
+      "z": 2,
       "props": {
         "fieldData": {
-          "follows_color_type": "gradient",
-          "subs_color_type": "gradient",
-          "cheers_color_type": "gradient",
-          "tips_color_type": "gradient",
           "goal_type": "subs",
-          "title": "Sub pour voir ma tête !",
-          "goal_total": 50
+          "goal_total": 50,
+          "title": "Sub et je mets la cam !",
+          "border_color": "#34385f",
+          "border_opacity": 0.8,
+          "background_opacity": 0.7
         }
       }
     },
     {
-      "id": "item-ms79ho5h-vlt1x",
-      "type": "alert",
-      "widgetId": "zer0oes-alerts",
-      "x": 600,
-      "y": 70,
-      "w": 720,
-      "h": 400,
-      "z": 2,
-      "props": {
-        "fieldData": {}
-      }
-    },
-    {
-      "id": "item-ms7iunxo-cqtul",
+      "id": "item-msdffy9u-c1rpy",
       "type": "widget",
       "widgetId": "zer0oes-animated-labels",
-      "x": 0,
-      "y": 884,
-      "w": 802,
-      "h": 121,
-      "z": 3,
+      "x": 50,
+      "y": 906,
+      "w": 709,
+      "h": 119,
+      "z": 4,
       "props": {
         "fieldData": {
           "orderCustom": "follow,sub,tip"
         }
       }
+    },
+    {
+      "id": "item-msdfh4lm-cqjb8",
+      "type": "widget",
+      "widgetId": "zer0oes-neon-chat",
+      "x": 170,
+      "y": 85,
+      "w": 420,
+      "h": 750,
+      "z": 3,
+      "props": {
+        "fieldData": {
+          "messagePosition": "bottom",
+          "hideAfter": 120,
+          "ignoredUsers": "StreamElements,WizeBot,WZBot"
+        }
+      }
+    },
+    {
+      "id": "item-msdg1mmg-q9egm",
+      "type": "video",
+      "x": 0,
+      "y": 0,
+      "w": 1920,
+      "h": 1080,
+      "z": 1,
+      "props": {
+        "src": "https://cdn.streamelements.com/uploads/01kd887x8art5fwx6ws0fvwg7m.webm",
+        "fit": "cover",
+        "loop": true,
+        "muted": true
+      }
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1785767573177
+  "updatedAt": 1785776423992
 }

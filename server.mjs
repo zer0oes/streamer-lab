@@ -603,7 +603,14 @@ function parseWidgetMetadataInput(body) {
   if (!name || name.length > 60) throw new Error("Le nom doit contenir entre 1 et 60 caracteres");
   if (description.length > 140) throw new Error("La description est limitee a 140 caracteres");
   if (!/^[a-z0-9_]{1,40}$/.test(icon)) throw new Error("Icone Material invalide");
-  return { name, description, icon };
+  const width = parseWidgetDimension(body.width, 320);
+  const height = parseWidgetDimension(body.height, 180);
+  return { name, description, icon, width, height };
+}
+
+function parseWidgetDimension(value, fallback) {
+  const number = Math.round(Number(value));
+  return Number.isFinite(number) ? Math.min(4096, Math.max(8, number)) : fallback;
 }
 
 function slugify(value) {
