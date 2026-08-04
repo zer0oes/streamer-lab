@@ -62,8 +62,12 @@ const elements = {
   overlayToolButtons: document.querySelectorAll("[data-overlay-tool]"),
   overlayAddTrigger: document.querySelector("#overlay-add-tool-trigger"),
   overlayToolGroupButton: document.querySelector("#overlay-tool-group"),
+  overlayDuplicateButton: document.querySelector("#overlay-tool-duplicate"),
   overlayUndoButton: document.querySelector("#overlay-tool-undo"),
   overlayRedoButton: document.querySelector("#overlay-tool-redo"),
+  overlayZoomOutButton: document.querySelector("#overlay-zoom-out"),
+  overlayZoomInButton: document.querySelector("#overlay-zoom-in"),
+  overlayZoomLabel: document.querySelector("#overlay-zoom-label"),
   overlayLayers: document.querySelector("#overlay-layers"),
   overlayLayersList: document.querySelector("#overlay-layers-list"),
   overlayItemSettingsPanel: document.querySelector("#overlay-item-settings"),
@@ -151,8 +155,20 @@ let selectedOverlayIcon = "desktop_landscape";
 let overlaySettingsMode = "edit";
 const overlayItemBundleCache = new Map();
 let activeOverlayTool = "select";
+// "fit" (comportement historique, toujours ≤ 100%, recalculé à chaque
+// redimensionnement) ou un nombre (0.25-4, échelle absolue choisie via la
+// jauge de zoom de la barre d'outils — cf. setOverlayZoom/stepOverlayZoom).
+let overlayZoomMode = "fit";
+// Style texte capturé par l'outil pipette (tout .props sauf `content`), en
+// attente d'application sur un autre item texte — null tant que rien n'a
+// été capturé. Cf. handleOverlayEyedropperClick.
+let overlayEyedropperStyle = null;
 let selectedOverlayItemIds = new Set();
 let overlaySettingsItemId = null;
+// Dernier calque cliqué dans le panneau des calques + horodatage, pour
+// détecter un double-clic manuellement (cf. buildOverlayLayerRow) puisque
+// le "dblclick" natif ne survit pas au ré-rendu déclenché par le premier clic.
+let overlayLastLayerClick = { itemId: null, time: 0 };
 let overlayHistory = [];
 let overlayHistoryIndex = -1;
 const overlayToolbarPositionStorageKey = "overlay-toolbar-position";
@@ -349,7 +365,7 @@ const DEFAULT_WIDGET_SIZE = { width: 320, height: 180 };
 // rester déclaré avant `await initialize()` plus bas : ce top-level await
 // suspend le reste du module tant qu'il n'est pas résolu, et initialize()
 // peut appeler setOverlayTool() (via openOverlayEditor) avant d'y arriver.
-const OVERLAY_ADD_MENU_TOOLS = new Set(["text", "image", "video", "embed", "icon", "shape"]);
+const OVERLAY_ADD_MENU_TOOLS = new Set(["image", "video", "embed", "icon", "shape"]);
 // Marge sous le canevas mis à l'échelle pour ne jamais coller au bord du
 // viewport (cf. updateOverlayCanvasScale). Même remarque qu'au-dessus : doit
 // être déclarée avant `await initialize()`.
@@ -1461,9 +1477,16 @@ function initializeOverlayCanvas() {
       toggleDropdown(elements.overlayAddTrigger);
     });
   }
-  elements.overlayToolGroupButton.addEventListener("click", createOverlayGroup);
+  elements.overlayToolGroupButton.addEventListener("click", () => {
+    if (elements.overlayToolGroupButton.dataset.mode === "ungroup") ungroupOverlaySelection();
+    else createOverlayGroup();
+  });
+  elements.overlayDuplicateButton.addEventListener("click", duplicateOverlaySelection);
   elements.overlayUndoButton.addEventListener("click", undoOverlay);
   elements.overlayRedoButton.addEventListener("click", redoOverlay);
+  elements.overlayZoomOutButton.addEventListener("click", () => stepOverlayZoom(-1));
+  elements.overlayZoomInButton.addEventListener("click", () => stepOverlayZoom(1));
+  elements.overlayZoomLabel.addEventListener("click", () => setOverlayZoom("fit"));
   for (const button of elements.overlayAlignButtons) {
     button.addEventListener("click", () => alignOverlaySelection(button.dataset.overlayAlign));
   }
@@ -1486,6 +1509,14 @@ function initializeOverlayCanvas() {
   setOverlayGuidesVisible(showOverlayGuides);
 
   elements.overlayCanvas.addEventListener("pointerdown", (event) => {
+    // Traité à part, avant même le placement générique ci-dessous : cet
+    // outil ne crée jamais de nouvel item, il lit/écrit le style d'un item
+    // texte EXISTANT sur lequel on clique (cf. handleOverlayEyedropperClick).
+    if (activeOverlayTool === "eyedropper") {
+      const itemEl = event.target.closest(".overlay-item");
+      if (itemEl) handleOverlayEyedropperClick(itemEl.dataset.itemId);
+      return;
+    }
     if (activeOverlayTool !== "select" && !event.target.closest("[data-handle]")) {
       const point = canvasPointFromEvent(event);
       placeOverlayItem(activeOverlayTool, point.x, point.y);
@@ -1548,6 +1579,14 @@ function initializeOverlayCanvas() {
     } else if ((event.ctrlKey || event.metaKey) && (key === "y" || (key === "z" && event.shiftKey))) {
       event.preventDefault();
       redoOverlay();
+    } else if ((event.ctrlKey || event.metaKey) && key === "d") {
+      // preventDefault avant tout : sans ça, le navigateur ouvre son propre
+      // dialogue "Ajouter aux favoris" (comportement natif de Ctrl+D) en plus
+      // de dupliquer la sélection.
+      event.preventDefault();
+      duplicateOverlaySelection();
+    } else if (event.key === "Escape" && activeOverlayTool !== "select") {
+      setOverlayTool("select");
     }
   });
 
@@ -1615,6 +1654,12 @@ function saveOverlayToolbarPosition(position) {
 }
 
 function setOverlayTool(tool) {
+  // Quitter l'outil pipette (quelle qu'en soit la raison : Échap, un autre
+  // outil choisi…) abandonne toujours le style éventuellement en attente —
+  // le rearmer au prochain passage sur "eyedropper" évite qu'un style
+  // capturé lors d'une session précédente s'applique par surprise bien plus
+  // tard.
+  if (activeOverlayTool === "eyedropper" && tool !== "eyedropper") overlayEyedropperStyle = null;
   activeOverlayTool = tool;
   for (const button of elements.overlayToolButtons) {
     const active = button.dataset.overlayTool === tool;
@@ -1625,6 +1670,29 @@ function setOverlayTool(tool) {
     elements.overlayAddTrigger.classList.toggle("is-active", OVERLAY_ADD_MENU_TOOLS.has(tool));
   }
   elements.overlayCanvas.classList.toggle("is-placing", tool !== "select");
+}
+
+// Premier clic (sur un texte) : capture son style et reste en attente d'une
+// cible — l'outil reste actif pour permettre plusieurs applications de
+// suite, jusqu'à Échap ou un changement d'outil (cf. setOverlayTool). Clic
+// suivant (sur un autre texte) : applique le style capturé.
+function handleOverlayEyedropperClick(itemId) {
+  const item = findOverlayItem(itemId);
+  if (!item || item.type !== "text") {
+    showToast("La pipette de style ne fonctionne que sur des éléments texte.");
+    return;
+  }
+  if (!overlayEyedropperStyle) {
+    const { content, ...style } = item.props;
+    overlayEyedropperStyle = style;
+    showToast("Style copié — cliquez un autre texte pour l'appliquer (Échap pour annuler).");
+    return;
+  }
+  item.props = { ...item.props, ...overlayEyedropperStyle };
+  renderOverlayCanvas();
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+  showToast("Style appliqué.");
 }
 
 // Relit l'échelle réellement appliquée sur .overlay-canvas-stage (dont la
@@ -1711,7 +1779,18 @@ function updateOverlaySelectionUI() {
     node.classList.toggle("is-active", selectedOverlayItemIds.has(node.dataset.itemId));
   }
   const selectionCount = selectedOverlayItemIds.size;
-  elements.overlayToolGroupButton.disabled = selectionCount < 2;
+  // Un seul groupe sélectionné : le bouton "Grouper" devient "Dégrouper"
+  // plutôt que de rester désactivé (grouper une sélection d'1 seul élément
+  // n'a pas de sens, mais dégrouper l'unique groupe sélectionné si).
+  const soleSelection = selectionCount === 1 ? findOverlayItem([...selectedOverlayItemIds][0]) : null;
+  const isUngroupMode = soleSelection?.type === "group";
+  elements.overlayToolGroupButton.dataset.mode = isUngroupMode ? "ungroup" : "group";
+  elements.overlayToolGroupButton.disabled = isUngroupMode ? false : selectionCount < 2;
+  elements.overlayToolGroupButton.title = isUngroupMode ? "Dégrouper" : "Grouper la sélection";
+  elements.overlayToolGroupButton.setAttribute("aria-label", isUngroupMode ? "Dégrouper" : "Grouper la sélection");
+  const groupButtonIcon = elements.overlayToolGroupButton.querySelector(".material-symbols-rounded");
+  if (groupButtonIcon) groupButtonIcon.textContent = isUngroupMode ? "call_split" : "select_all";
+  elements.overlayDuplicateButton.disabled = selectionCount < 1;
   for (const button of elements.overlayAlignButtons) button.disabled = selectionCount < 1;
   for (const button of elements.overlayDistributeButtons) button.disabled = selectionCount < 3;
   if (overlaySettingsItemId && !(selectionCount === 1 && selectedOverlayItemIds.has(overlaySettingsItemId))) {
@@ -1755,6 +1834,20 @@ function createOverlayGroup() {
   scheduleOverlayPersist();
 }
 
+// Dissout le groupe sélectionné : retire uniquement l'item "group" lui-même
+// (removeOverlayItem ne supprime jamais ses enfants en cascade, cf. son
+// propre commentaire), puis resélectionne ses anciens enfants — comme un
+// dégroupement Photoshop, ils restent en place et sélectionnés.
+function ungroupOverlaySelection() {
+  if (selectedOverlayItemIds.size !== 1) return;
+  const group = findOverlayItem([...selectedOverlayItemIds][0]);
+  if (!group || group.type !== "group") return;
+  const childIds = [...group.props.children];
+  removeOverlayItem(group.id);
+  selectedOverlayItemIds = new Set(childIds);
+  updateOverlaySelectionUI();
+}
+
 // Items sélectionnés au premier niveau uniquement : si un groupe sélectionné
 // a aussi l'un de ses propres enfants directement sélectionné (possible,
 // chaque enfant reste cliquable/shift-sélectionnable indépendamment), cet
@@ -1768,7 +1861,53 @@ function selectedOverlayItemsList() {
   return items.filter((entry) => !childIdsOfSelectedGroups.has(entry.id));
 }
 
+const OVERLAY_DUPLICATE_OFFSET = 20;
+
+// Duplique la sélection de premier niveau (cf. selectedOverlayItemsList) :
+// un groupe emmène une copie de chacun de ses enfants avec lui (jamais les
+// ids d'origine — sinon les deux groupes partageraient les mêmes membres),
+// toujours au premier niveau même si l'original était lui-même dans un
+// groupe (une duplication "à l'intérieur" du groupe parent ajouterait de la
+// complexité non demandée ici).
+function duplicateOverlaySelection() {
+  if (!activeOverlay) return;
+  const items = selectedOverlayItemsList();
+  if (!items.length) return;
+  let nextZ = activeOverlay.items.reduce((max, item) => Math.max(max, item.z), 0) + 1;
+  const clones = [];
+
+  const cloneItem = (item) => {
+    const clone = {
+      ...item,
+      id: generateOverlayItemId(),
+      x: item.x + OVERLAY_DUPLICATE_OFFSET,
+      y: item.y + OVERLAY_DUPLICATE_OFFSET,
+      z: nextZ++,
+      props: { ...item.props }
+    };
+    clones.push(clone);
+    return clone;
+  };
+
+  const topClones = items.map((item) => {
+    const clone = cloneItem(item);
+    if (item.type === "group") {
+      const childClones = item.props.children.map(findOverlayItem).filter(Boolean).map(cloneItem);
+      clone.props = { ...clone.props, children: childClones.map((child) => child.id) };
+    }
+    return clone;
+  });
+
+  activeOverlay.items = [...activeOverlay.items, ...clones];
+  renderOverlayCanvas();
+  selectedOverlayItemIds = new Set(topClones.map((clone) => clone.id));
+  updateOverlaySelectionUI();
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+}
+
 function moveOverlayItemTo(item, newX, newY) {
+  if (item.locked) return;
   const dx = newX - item.x;
   const dy = newY - item.y;
   if (dx === 0 && dy === 0) return;
@@ -1853,10 +1992,12 @@ async function openOverlayEditor(overlayId) {
     activeOverlayId = overlay.id;
     selectedOverlayItemIds = new Set();
     overlaySettingsItemId = null;
+    overlayZoomMode = "fit";
     setOverlayTool("select");
     elements.overlayEditorTitle.textContent = overlay.name;
     showOverlayEditor();
     renderOverlayLibrary();
+    updateOverlaySelectionUI();
     renderOverlayCanvas();
     resetOverlayHistory();
     renderOverlayGuides();
@@ -1883,9 +2024,10 @@ function renderOverlayCanvas() {
   updateOverlaySelectionUI();
 }
 
-function updateOverlayCanvasScale() {
-  if (!activeOverlay) return;
-  const canvas = activeOverlay.canvas || DEFAULT_OVERLAY_CANVAS;
+// Échelle d'ajustement pure (comme avant l'ajout du zoom manuel) : jamais
+// au-delà de 100%, toujours contrainte par l'espace dispo. Sert de valeur
+// par défaut (overlayZoomMode === "fit") et de base pour +/- (cf. stepOverlayZoom).
+function computeOverlayFitScale(canvas) {
   // Mesurée sur .overlay-canvas-wrap (flex: 1, jamais redimensionné en JS),
   // jamais sur .overlay-canvas-stage : comme le stage est explicitement
   // dimensionné ci-dessous, lire sa propre largeur serait auto-référentiel
@@ -1897,12 +2039,23 @@ function updateOverlayCanvasScale() {
   // l'échelle ne tenait compte que de la largeur disponible.
   const top = elements.overlayCanvasWrap.getBoundingClientRect().top;
   const availableHeight = Math.max(120, window.innerHeight - top - OVERLAY_CANVAS_BOTTOM_MARGIN);
+  return Math.min(1, availableWidth / canvas.width, availableHeight / canvas.height);
+}
+
+function updateOverlayCanvasScale() {
+  if (!activeOverlay) return;
+  const canvas = activeOverlay.canvas || DEFAULT_OVERLAY_CANVAS;
+  const fitScale = computeOverlayFitScale(canvas);
+  // En zoom manuel (jauge de la barre d'outils), l'échelle appliquée ignore
+  // l'espace disponible — .overlay-canvas-wrap devient alors scrollable
+  // (overflow: auto, voir _overlay-canvas.scss) au lieu de recadrer le
+  // canevas comme en mode "ajuster".
+  const scale = overlayZoomMode === "fit" ? fitScale : overlayZoomMode;
   // Une seule échelle uniforme pour les deux dimensions (jamais scaleX/scaleY
   // séparés) + le stage dimensionné exactement à canvas.width/height * scale
   // (jamais étiré en % par le flex-row parent) : le ratio indiqué par
   // l'overlay est donc toujours respecté, que ce soit la largeur ou la
   // hauteur qui borne l'échelle.
-  const scale = Math.min(1, availableWidth / canvas.width, availableHeight / canvas.height);
   elements.overlayCanvas.style.transform = `scale(${scale})`;
   // .overlay-guides est un frère de .overlay-canvas, pas un enfant (voir le
   // commentaire sur .overlay-guides dans _overlay-canvas.scss) : il lui faut
@@ -1911,6 +2064,35 @@ function updateOverlayCanvasScale() {
   elements.overlayCanvasStage.style.width = `${canvas.width * scale}px`;
   elements.overlayCanvasStage.style.height = `${canvas.height * scale}px`;
   if (showOverlayGuides) drawOverlayRulers(canvas, scale);
+  updateOverlayZoomDisplay(scale);
+}
+
+const OVERLAY_ZOOM_MIN = 0.25;
+const OVERLAY_ZOOM_MAX = 4;
+const OVERLAY_ZOOM_STEP = 0.25;
+
+function setOverlayZoom(mode) {
+  overlayZoomMode = mode === "fit" ? "fit" : Math.min(OVERLAY_ZOOM_MAX, Math.max(OVERLAY_ZOOM_MIN, mode));
+  updateOverlayCanvasScale();
+}
+
+function stepOverlayZoom(direction) {
+  if (!activeOverlay) return;
+  const canvas = activeOverlay.canvas || DEFAULT_OVERLAY_CANVAS;
+  const current = overlayZoomMode === "fit" ? computeOverlayFitScale(canvas) : overlayZoomMode;
+  // Aligné sur un multiple du pas (25%) plutôt que juste += pas : partir
+  // d'un ajustement à une valeur "moche" (ex. 63%) doit quand même retomber
+  // sur des paliers ronds (75%, 100%…), pas s'accumuler depuis cette valeur.
+  const stepped = direction > 0
+    ? Math.floor(current / OVERLAY_ZOOM_STEP) * OVERLAY_ZOOM_STEP + OVERLAY_ZOOM_STEP
+    : Math.ceil(current / OVERLAY_ZOOM_STEP) * OVERLAY_ZOOM_STEP - OVERLAY_ZOOM_STEP;
+  setOverlayZoom(stepped);
+}
+
+function updateOverlayZoomDisplay(scale) {
+  if (elements.overlayZoomLabel) elements.overlayZoomLabel.textContent = `${Math.round(scale * 100)}%`;
+  if (elements.overlayZoomOutButton) elements.overlayZoomOutButton.disabled = scale <= OVERLAY_ZOOM_MIN;
+  if (elements.overlayZoomInButton) elements.overlayZoomInButton.disabled = scale >= OVERLAY_ZOOM_MAX;
 }
 
 // --- Overlays : règles et repères (bouton "Repères" de la barre d'outils) --
@@ -2157,7 +2339,7 @@ function overlayItemDefaultLabel(item) {
 
 function buildOverlayItemElement(item) {
   const el = document.createElement("div");
-  el.className = `overlay-item overlay-item--${item.type}${item.hidden ? " overlay-item--hidden" : ""}`;
+  el.className = `overlay-item overlay-item--${item.type}${item.hidden ? " overlay-item--hidden" : ""}${item.locked ? " overlay-item--locked" : ""}`;
   el.dataset.itemId = item.id;
   applyOverlayItemStyle(el, item);
 
@@ -2227,6 +2409,8 @@ function buildOverlaySizeInputs(item, el) {
   heightInput.min = String(MIN_OVERLAY_ITEM_SIZE);
   heightInput.value = String(item.h);
   heightInput.dataset.dim = "h";
+  widthInput.disabled = Boolean(item.locked);
+  heightInput.disabled = Boolean(item.locked);
   sizeLabel.append(widthInput, separator, heightInput);
 
   const onSizeChange = () => {
@@ -3033,15 +3217,49 @@ function renderOverlayLayers() {
     elements.overlayLayersList.append(buildLibraryEmptyState("Aucun élément."));
     return;
   }
-  const sorted = [...activeOverlay.items].sort((a, b) => b.z - a.z);
-  for (const item of sorted) {
-    elements.overlayLayersList.append(buildOverlayLayerRow(item));
-    // Le panneau de réglages est un unique élément DOM partagé (jamais
-    // recréé, cf. renderOverlayItemSettings) : on le rattache ici, juste
-    // après le calque qu'il concerne, plutôt qu'en pied de liste — replaceChildren()
-    // ci-dessus l'en a détaché au passage précédent, donc rien ne le duplique.
-    if (item.id === overlaySettingsItemId) elements.overlayLayersList.append(elements.overlayItemSettingsPanel);
+  // Un calque qui appartient à un groupe n'apparaît plus au premier niveau :
+  // il est rendu imbriqué sous ce groupe par appendOverlayGroupNode, jamais
+  // aux deux endroits à la fois (comme un dossier Photoshop).
+  const nestedIds = new Set(
+    activeOverlay.items.filter((entry) => entry.type === "group").flatMap((group) => group.props.children)
+  );
+  const topLevel = activeOverlay.items.filter((entry) => !nestedIds.has(entry.id)).sort((a, b) => b.z - a.z);
+  for (const item of topLevel) {
+    if (item.type === "group") appendOverlayGroupNode(item);
+    else appendOverlayLayerRow(elements.overlayLayersList, item);
   }
+}
+
+function appendOverlayLayerRow(list, item) {
+  list.append(buildOverlayLayerRow(item));
+  // Le panneau de réglages est un unique élément DOM partagé (jamais
+  // recréé, cf. renderOverlayItemSettings) : on le rattache ici, juste
+  // après le calque qu'il concerne, plutôt qu'en pied de liste — replaceChildren()
+  // dans renderOverlayLayers l'en a détaché au passage précédent, donc rien
+  // ne le duplique.
+  if (item.id === overlaySettingsItemId) list.append(elements.overlayItemSettingsPanel);
+}
+
+// Un seul niveau d'imbrication est rendu (un groupe ne peut pas se déplier
+// lui-même s'il contient un autre groupe) : suffisant pour l'usage courant
+// et évite un panneau récursif à profondeur arbitraire pour un cas limite
+// que l'éditeur ne met pas en avant (createOverlayGroup n'empêche pas
+// techniquement de grouper un groupe, mais rien ne l'encourage non plus).
+function appendOverlayGroupNode(group) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "overlay-layers__group";
+  const headerRow = buildOverlayLayerRow(group, wrapper, true);
+  wrapper.append(headerRow);
+  if (group.id === overlaySettingsItemId) wrapper.append(elements.overlayItemSettingsPanel);
+
+  const childrenList = document.createElement("div");
+  childrenList.className = "overlay-layers__group-children";
+  childrenList.hidden = Boolean(group.collapsed);
+  const children = group.props.children.map(findOverlayItem).filter(Boolean).sort((a, b) => b.z - a.z);
+  for (const child of children) appendOverlayLayerRow(childrenList, child);
+  wrapper.append(childrenList);
+
+  elements.overlayLayersList.append(wrapper);
 }
 
 function overlayLayerIcon(item) {
@@ -3059,6 +3277,10 @@ function overlayLayerIcon(item) {
 }
 
 function overlayLayerLabel(item) {
+  // Un calque renommé (double-clic sur son libellé, cf. startOverlayLayerRename)
+  // garde ce nom tant qu'il n'est pas explicitement vidé — sinon retombe sur
+  // le libellé calculé habituel ci-dessous.
+  if (item.name) return item.name;
   switch (item.type) {
     case "text": return item.props.content || "Texte";
     case "image": return "Image";
@@ -3071,24 +3293,22 @@ function overlayLayerLabel(item) {
   }
 }
 
-function buildOverlayLayerRow(item) {
+// dragUnit : nœud effectivement déplacé lors d'un glisser (par défaut la
+// ligne elle-même ; pour l'en-tête d'un groupe c'est son wrapper
+// .overlay-layers__group tout entier, header + enfants, cf. appendOverlayGroupNode).
+// expandable : true seulement pour l'en-tête d'un groupe rendu au premier
+// niveau — un groupe imbriqué dans un autre (cas limite non exposé par
+// l'UI) n'affiche pas son propre chevron, faute de conteneur d'enfants à déplier.
+function buildOverlayLayerRow(item, dragUnit, expandable = false) {
   const row = document.createElement("div");
-  row.className = `overlay-layers__item${selectedOverlayItemIds.has(item.id) ? " is-active" : ""}${item.hidden ? " is-hidden" : ""}`;
+  row.className = [
+    "overlay-layers__item",
+    selectedOverlayItemIds.has(item.id) ? "is-active" : "",
+    item.hidden ? "is-hidden" : "",
+    item.locked ? "is-locked" : ""
+  ].filter(Boolean).join(" ");
   row.dataset.itemId = item.id;
-
-  const handle = document.createElement("span");
-  handle.className = "material-symbols-rounded overlay-layers__handle";
-  handle.setAttribute("aria-hidden", "true");
-  handle.textContent = "drag_indicator";
-
-  const icon = document.createElement("span");
-  icon.className = "material-symbols-rounded";
-  icon.setAttribute("aria-hidden", "true");
-  icon.textContent = overlayLayerIcon(item);
-
-  const label = document.createElement("span");
-  label.className = "overlay-layers__label";
-  label.textContent = overlayLayerLabel(item);
+  const unit = dragUnit || row;
 
   const visibilityButton = document.createElement("button");
   visibilityButton.type = "button";
@@ -3099,6 +3319,41 @@ function buildOverlayLayerRow(item) {
   visibilityButton.addEventListener("click", (event) => {
     event.stopPropagation();
     toggleOverlayItemVisibility(item.id);
+  });
+
+  let disclosure = null;
+  if (item.type === "group" && expandable) {
+    disclosure = document.createElement("button");
+    disclosure.type = "button";
+    disclosure.className = `icon-button overlay-layers__disclosure${item.collapsed ? "" : " is-open"}`;
+    disclosure.setAttribute("aria-label", item.collapsed ? "Déplier le groupe" : "Replier le groupe");
+    disclosure.title = item.collapsed ? "Déplier le groupe" : "Replier le groupe";
+    disclosure.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>';
+    disclosure.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleOverlayGroupCollapsed(item.id);
+    });
+  }
+
+  const icon = document.createElement("span");
+  icon.className = "material-symbols-rounded";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = overlayLayerIcon(item);
+
+  const label = document.createElement("span");
+  label.className = "overlay-layers__label";
+  label.textContent = overlayLayerLabel(item);
+  label.title = "Double-cliquer pour renommer";
+
+  const lockButton = document.createElement("button");
+  lockButton.type = "button";
+  lockButton.className = `icon-button${item.locked ? " overlay-layers__lock--active" : ""}`;
+  lockButton.setAttribute("aria-label", item.locked ? "Déverrouiller" : "Verrouiller");
+  lockButton.title = item.locked ? "Déverrouiller (position et taille)" : "Verrouiller (position et taille)";
+  lockButton.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${item.locked ? "lock" : "lock_open"}</span>`;
+  lockButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleOverlayItemLocked(item.id);
   });
 
   let settingsButton = null;
@@ -3127,56 +3382,187 @@ function buildOverlayLayerRow(item) {
     removeOverlayItem(item.id);
   });
 
-  row.append(handle, icon, label, visibilityButton, ...(settingsButton ? [settingsButton] : []), deleteButton);
+  row.append(
+    visibilityButton,
+    ...(disclosure ? [disclosure] : []),
+    icon,
+    label,
+    lockButton,
+    ...(settingsButton ? [settingsButton] : []),
+    deleteButton
+  );
   row.addEventListener("click", (event) => {
-    if (event.target === deleteButton || deleteButton.contains(event.target)) return;
-    if (event.target === visibilityButton || visibilityButton.contains(event.target)) return;
-    if (settingsButton && (event.target === settingsButton || settingsButton.contains(event.target))) return;
-    if (event.target === handle) return;
+    if (event.target.closest("button")) return;
     if (event.shiftKey) {
       toggleOverlaySelection(item.id);
+      return;
+    }
+    // Détection manuelle du double-clic plutôt qu'un écouteur natif
+    // "dblclick" sur le libellé : le premier clic ci-dessous appelle déjà
+    // updateOverlaySelectionUI(), qui reconstruit toute la ligne (donc aussi
+    // .overlay-layers__label) via renderOverlayLayers() — le navigateur ne
+    // reconnaît alors plus le second clic comme portant sur le même élément
+    // et ne déclenche jamais "dblclick".
+    const now = Date.now();
+    const isDoubleClick = overlayLastLayerClick.itemId === item.id && now - overlayLastLayerClick.time < 400;
+    overlayLastLayerClick = isDoubleClick ? { itemId: null, time: 0 } : { itemId: item.id, time: now };
+    if (isDoubleClick) {
+      startOverlayLayerRename(item, row, row.querySelector(":scope > .overlay-layers__label"));
       return;
     }
     selectedOverlayItemIds = new Set([item.id]);
     updateOverlaySelectionUI();
   });
-  handle.addEventListener("pointerdown", (event) => startOverlayLayerReorder(event, row));
+  // Plus de poignée dédiée : toute la ligne sert de prise pour réordonner
+  // (voir startOverlayLayerReorder, qui n'engage un vrai glisser qu'au-delà
+  // d'un seuil de mouvement pour ne pas gêner le simple clic de sélection
+  // ci-dessus).
+  row.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("button")) return;
+    startOverlayLayerReorder(event, unit);
+  });
   return row;
 }
 
-function startOverlayLayerReorder(event, row) {
-  event.stopPropagation();
-  const list = elements.overlayLayersList;
-  row.classList.add("is-dragging");
+function isOverlayLayerUnit(el) {
+  return el.classList.contains("overlay-layers__item") || el.classList.contains("overlay-layers__group");
+}
+
+// unit : le nœud à déplacer (une ligne simple, ou le wrapper d'un groupe —
+// cf. buildOverlayLayerRow). Le glisser reste cantonné au conteneur parent
+// de unit : la liste de premier niveau pour un item/groupe, ou la liste des
+// enfants d'UN SEUL groupe pour un calque imbriqué — jamais les deux à la
+// fois, pour ne pas faire sortir un calque de son groupe (ou l'inverse) par accident.
+function startOverlayLayerReorder(event, unit) {
+  const list = unit.parentElement;
+  if (!list) return;
+  const startX = event.clientX;
+  const startY = event.clientY;
+  let dragging = false;
+  const DRAG_THRESHOLD_PX = 4;
 
   const onMove = (moveEvent) => {
-    const rows = [...list.querySelectorAll(".overlay-layers__item")].filter((candidate) => candidate !== row);
-    const after = rows.find((candidate) => moveEvent.clientY < candidate.getBoundingClientRect().top + candidate.offsetHeight / 2);
-    list.insertBefore(row, after || null);
+    if (!dragging) {
+      if (Math.abs(moveEvent.clientX - startX) < DRAG_THRESHOLD_PX && Math.abs(moveEvent.clientY - startY) < DRAG_THRESHOLD_PX) return;
+      dragging = true;
+      unit.classList.add("is-dragging");
+    }
+    const siblings = [...list.children].filter((candidate) => candidate !== unit && isOverlayLayerUnit(candidate));
+    const after = siblings.find((candidate) => moveEvent.clientY < candidate.getBoundingClientRect().top + candidate.offsetHeight / 2);
+    list.insertBefore(unit, after || null);
   };
   const onUp = () => {
     document.removeEventListener("pointermove", onMove);
     document.removeEventListener("pointerup", onUp);
-    row.classList.remove("is-dragging");
+    if (!dragging) return;
+    unit.classList.remove("is-dragging");
     commitOverlayLayerOrder();
   };
-  // Écouté sur document, pas sur row : list.insertBefore() ci-dessus déplace
-  // row dans le DOM à chaque déplacement, ce qui fait relâcher implicitement
+  // Écouté sur document, pas sur unit : list.insertBefore() ci-dessus déplace
+  // unit dans le DOM à chaque déplacement, ce qui fait relâcher implicitement
   // la pointer capture par le navigateur (setPointerCapture ne survit pas à
   // un repositionnement du nœud capturé) — sans ça, pointerup n'atteint plus
-  // jamais row une fois le curseur passé sur une autre ligne, et le drag ne
+  // jamais unit une fois le curseur passé sur une autre ligne, et le drag ne
   // se termine jamais (commitOverlayLayerOrder n'est jamais appelé).
   document.addEventListener("pointermove", onMove);
   document.addEventListener("pointerup", onUp);
 }
 
+// Un groupe garde toujours un z inférieur à celui de tous ses enfants (sa
+// frame est de toute façon pointer-events:none et purement décorative, voir
+// _overlay-canvas.scss) : on parcourt donc chaque enfant AVANT le groupe qui
+// le contient, pour que le compteur descendant leur réserve les valeurs les
+// plus hautes du bloc.
 function commitOverlayLayerOrder() {
-  const orderedIds = [...elements.overlayLayersList.querySelectorAll(".overlay-layers__item")].map((row) => row.dataset.itemId);
-  orderedIds.forEach((id, index) => {
-    const item = findOverlayItem(id);
-    if (item) item.z = orderedIds.length - index;
-  });
+  if (!activeOverlay) return;
+  let z = activeOverlay.items.length;
+  const applyOrder = (list) => {
+    const units = [...list.children].filter(isOverlayLayerUnit);
+    for (const unit of units) {
+      if (unit.classList.contains("overlay-layers__group")) {
+        const childrenList = unit.querySelector(":scope > .overlay-layers__group-children");
+        if (childrenList) applyOrder(childrenList);
+        const headerRow = unit.querySelector(":scope > .overlay-layers__item");
+        const group = headerRow ? findOverlayItem(headerRow.dataset.itemId) : null;
+        if (group) group.z = z--;
+      } else {
+        const item = findOverlayItem(unit.dataset.itemId);
+        if (item) item.z = z--;
+      }
+    }
+  };
+  applyOrder(elements.overlayLayersList);
   renderOverlayCanvas();
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+}
+
+function toggleOverlayGroupCollapsed(itemId) {
+  const item = findOverlayItem(itemId);
+  if (!item || item.type !== "group") return;
+  item.collapsed = !item.collapsed;
+  renderOverlayLayers();
+  scheduleOverlayPersist();
+}
+
+function toggleOverlayItemLocked(itemId) {
+  const item = findOverlayItem(itemId);
+  if (!item) return;
+  item.locked = !item.locked;
+  renderOverlayLayers();
+  renderOverlayCanvas();
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+}
+
+// Remplace le libellé d'un calque (item normal ou groupe) par un champ texte
+// éditable en place — Entrée ou perte de focus valide, Échap annule sans
+// rien persister.
+function startOverlayLayerRename(item, row, label) {
+  if (row.querySelector(".overlay-layers__rename-input")) return;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "overlay-layers__rename-input";
+  input.maxLength = 200;
+  input.value = overlayLayerLabel(item);
+  label.replaceWith(input);
+  input.focus();
+  input.select();
+
+  let settled = false;
+  const finish = (commit) => {
+    if (settled) return;
+    settled = true;
+    input.removeEventListener("blur", onBlur);
+    input.removeEventListener("keydown", onKeydown);
+    if (commit) renameOverlayItem(item.id, input.value.trim());
+    else renderOverlayLayers();
+  };
+  const onBlur = () => finish(true);
+  const onKeydown = (event) => {
+    // Empêche le raccourci global Ctrl+Z (écouté sur document, cf. son garde
+    // isContentEditable qui ne couvre pas un <input>) d'interrompre la
+    // saisie ou l'annuler natif du champ pendant le renommage.
+    event.stopPropagation();
+    if (event.key === "Enter") {
+      event.preventDefault();
+      finish(true);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      finish(false);
+    }
+  };
+  input.addEventListener("blur", onBlur);
+  input.addEventListener("keydown", onKeydown);
+  input.addEventListener("pointerdown", (event) => event.stopPropagation());
+  input.addEventListener("click", (event) => event.stopPropagation());
+}
+
+function renameOverlayItem(itemId, name) {
+  const item = findOverlayItem(itemId);
+  if (!item) return;
+  item.name = name;
+  renderOverlayLayers();
   pushOverlayHistory();
   scheduleOverlayPersist();
 }
@@ -3311,7 +3697,7 @@ function scheduleGuidesPersist() {
 
 function startOverlayItemDrag(event, itemEl) {
   const item = findOverlayItem(itemEl.dataset.itemId);
-  if (!item) return;
+  if (!item || item.locked) return;
   itemEl.setPointerCapture(event.pointerId);
   elements.overlayCanvas.classList.add("is-dragging");
   const scale = overlayCanvasScale();
@@ -3359,7 +3745,7 @@ function startOverlayItemDrag(event, itemEl) {
 function startOverlayItemResize(event, itemEl, handlePosition) {
   event.stopPropagation();
   const item = findOverlayItem(itemEl.dataset.itemId);
-  if (!item) return;
+  if (!item || item.locked) return;
   itemEl.setPointerCapture(event.pointerId);
   elements.overlayCanvas.classList.add("is-dragging");
   const scale = overlayCanvasScale();
@@ -3418,7 +3804,7 @@ function startOverlayItemResize(event, itemEl, handlePosition) {
 function startOverlayGroupResize(event, itemEl, handlePosition) {
   event.stopPropagation();
   const group = findOverlayItem(itemEl.dataset.itemId);
-  if (!group) return;
+  if (!group || group.locked) return;
   itemEl.setPointerCapture(event.pointerId);
   elements.overlayCanvas.classList.add("is-dragging");
   const scale = overlayCanvasScale();

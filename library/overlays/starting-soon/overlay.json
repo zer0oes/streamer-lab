@@ -20,6 +20,9 @@
       "h": 100,
       "z": 2,
       "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
       "props": {
         "fieldData": {
           "goal_type": "subs",
@@ -41,6 +44,9 @@
       "h": 121,
       "z": 4,
       "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
       "props": {
         "fieldData": {
           "orderCustom": "follow,sub,tip"
@@ -57,6 +63,9 @@
       "h": 750,
       "z": 3,
       "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
       "props": {
         "fieldData": {
           "messagePosition": "bottom",
@@ -74,6 +83,9 @@
       "h": 1080,
       "z": 1,
       "hidden": false,
+      "locked": true,
+      "name": "Starting soon",
+      "collapsed": false,
       "props": {
         "src": "https://cdn.streamelements.com/uploads/01kd887x8art5fwx6ws0fvwg7m.webm",
         "fit": "cover",
@@ -83,7 +95,7 @@
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1785841144578,
+  "updatedAt": 1785847742789,
   "guides": {
     "horizontal": [
       966

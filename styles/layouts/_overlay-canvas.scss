@@ -5,7 +5,10 @@
 // down via CSS transform so stored x/y/w/h never need unit conversion).
 @use "../base/primitives";
 
-$overlay-layers-width: 288px;
+// Même largeur que .account-panel-drawer (panneau "Mon compte", voir
+// styles/components/_account-panel.scss) : les deux panneaux latéraux
+// droits doivent s'aligner visuellement.
+$overlay-layers-width: min(420px, 92vw);
 
 .overlay-editor__toolbar {
   @include primitives.heading-row;
@@ -36,6 +39,13 @@ $overlay-layers-width: 288px;
   position: relative;
   flex: 1;
   min-width: 0;
+  // Zoom manuel (jauge de la barre d'outils) au-delà de 100% : le stage
+  // peut alors dépasser la largeur allouée par ce flex-row. Un scroll
+  // horizontal contenu ici évite un débordement de toute la page (pas de
+  // contrainte de hauteur équivalente : un débordement vertical reste géré
+  // par le défilement normal de la page, plus simple qu'une seconde zone de
+  // scroll imbriquée).
+  overflow-x: auto;
 }
 
 // Cadre visuel de l'overlay : dimensionné en JS à canvas.width/height * scale
@@ -285,6 +295,31 @@ $ruler-size: 20px;
     &.is-active { color: #fff; border-color: transparent; background: var(--accent-gradient); }
     &:disabled { opacity: .4; pointer-events: none; }
   }
+
+  &__zoom {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  // Bouton (pas juste un span) : cliquer dessus réinitialise le zoom sur
+  // "ajuster à la fenêtre", cf. setOverlayZoom("fit") dans app.js.
+  &__zoom-label {
+    min-width: 40px;
+    height: 24px;
+    padding: 0 var(--space-4);
+    border: 0;
+    border-radius: var(--radius-6);
+    color: var(--muted);
+    background: none;
+    font-size: var(--text-11);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    cursor: pointer;
+    transition: color var(--duration-fast), background var(--duration-fast);
+
+    &:hover { color: var(--text); background: var(--panel-soft); }
+  }
 }
 
 // Menu déroulant "+ Ajouter" (Texte/Image/Icône/Forme/Vidéo/Lien) : même
@@ -363,6 +398,17 @@ $ruler-size: 20px;
   &--hidden {
     visibility: hidden;
     pointer-events: none;
+  }
+
+  // Calque verrouillé (cadenas dans le panneau Calques) : reste sélectionnable
+  // et cliquable (pour le déverrouiller depuis le panneau ou lire ses
+  // réglages), mais ni déplaçable ni redimensionnable — startOverlayItemDrag/
+  // Resize/GroupResize refusent déjà le geste côté JS, ceci n'en est que le
+  // signal visuel (poignées masquées, curseur "interdit").
+  &--locked {
+    cursor: not-allowed;
+
+    .overlay-item__handle { display: none; }
   }
 
   &__chrome {
@@ -543,7 +589,10 @@ $ruler-size: 20px;
   display: flex;
   flex-direction: column;
   width: $overlay-layers-width;
-  padding: var(--space-10);
+  // Même marge que .account-panel-drawer__body (l'autre panneau latéral
+  // droit, cf. styles/components/_account-panel.scss) : les deux doivent
+  // s'aligner visuellement, pas seulement en largeur.
+  padding: var(--space-24);
   border-left: 1px solid var(--line);
   background: var(--panel);
 
@@ -571,37 +620,77 @@ $ruler-size: 20px;
     gap: var(--space-8);
     padding: var(--space-6) var(--space-8);
     border-radius: var(--radius-6);
-    cursor: pointer;
+    // Plus de poignée dédiée (voir startOverlayLayerReorder) : toute la
+    // ligne amorce un glisser-déposer au-delà d'un seuil de mouvement, d'où
+    // le curseur "grab" partout plutôt que sur une icône isolée.
+    cursor: grab;
     transition: background var(--duration-fast);
 
     .material-symbols-rounded { font-size: 16px; color: var(--muted); }
 
     // Rangée compacte (largeur fixe de 240px, voir plus haut) : la taille
     // par défaut de .icon-button (32px) laisserait trop peu de place au
-    // libellé maintenant qu'un item widget/alerte porte deux boutons
-    // (réglages + supprimer) au lieu d'un seul.
+    // libellé maintenant qu'un item widget/alerte porte plusieurs boutons
+    // (verrou, réglages, supprimer) au lieu d'un seul.
     .icon-button { width: 24px; height: 24px; }
 
     &:hover { background: var(--panel-soft); }
-    &.is-dragging { opacity: .5; }
+    &.is-dragging { opacity: .5; cursor: grabbing; }
 
+    // Même traitement discret qu'un item actif dans .widget-library__row
+    // (fond légèrement teinté + liseré gauche) plutôt qu'un aplat
+    // accent-gradient plein — trop appuyé sur une liste dense où plusieurs
+    // lignes peuvent être sélectionnées en même temps (multi-sélection).
     &.is-active {
-      background: var(--accent-gradient);
-
-      .material-symbols-rounded,
-      .overlay-layers__label { color: #fff; }
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent-bright) 16%, transparent), color-mix(in srgb, var(--accent) 7%, transparent));
+      box-shadow: inset 3px 0 0 var(--accent-bright);
     }
 
     // Calque masqué : la ligne reste pleinement utilisable (c'est le seul
     // moyen de le resélectionner/réafficher, cf. .overlay-item--hidden), donc
     // seule l'opacité baisse — pas de pointer-events:none ici.
     &.is-hidden { opacity: .5; }
+
+    // Calque verrouillé : lui aussi reste pleinement cliquable (le seul
+    // moyen de le redéverrouiller), la baisse d'opacité du bouton verrou
+    // suffit à signaler l'état — cf. &__lock-icon plus bas via le bouton lui-même.
+    &.is-locked { cursor: pointer; }
   }
 
-  &__handle {
-    cursor: grab;
+  // En-tête d'un groupe + ses enfants repliables — un simple wrapper autour
+  // de la ligne .overlay-layers__item du groupe et de .overlay-layers__group-children,
+  // pour que les deux voyagent ensemble lors d'un glisser (cf. dragUnit dans
+  // buildOverlayLayerRow) et que le repli n'affecte que ce sous-arbre.
+  &__group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    border-radius: var(--radius-6);
 
-    &:active { cursor: grabbing; }
+    &.is-dragging { opacity: .5; }
+  }
+
+  &__group-children {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    // Indentation façon dossier : décale les enfants sous le libellé du
+    // groupe plutôt que sous son icône, pour bien marquer l'imbrication.
+    padding-left: 20px;
+
+    &[hidden] { display: none; }
+  }
+
+  &__lock--active .material-symbols-rounded { color: var(--accent-bright); }
+
+  &__disclosure {
+    flex: 0 0 auto;
+    color: var(--muted);
+    transition: transform var(--duration-fast);
+
+    .material-symbols-rounded { color: inherit; }
+
+    &.is-open { transform: rotate(90deg); }
   }
 
   &__label {
@@ -612,6 +701,25 @@ $ruler-size: 20px;
     font-size: var(--text-11);
     white-space: nowrap;
     text-overflow: ellipsis;
+    cursor: text;
+  }
+
+  // Remplace __label le temps d'un renommage (double-clic, cf.
+  // startOverlayLayerRename) : mêmes dimensions/police pour ne pas décaler
+  // le reste de la ligne.
+  &__rename-input {
+    flex: 1;
+    min-width: 0;
+    padding: 1px var(--space-4);
+    color: var(--text);
+    border: 1px solid var(--accent-bright);
+    border-radius: var(--radius-5);
+    background: var(--panel-soft);
+    font: inherit;
+    font-size: var(--text-11);
+    cursor: text;
+
+    &:focus { outline: none; }
   }
 }
 

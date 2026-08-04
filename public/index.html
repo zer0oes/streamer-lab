@@ -428,8 +428,14 @@
                   <span class="material-symbols-rounded" aria-hidden="true">drag_indicator</span>
                 </button>
                 <div class="overlay-toolbar__group" role="radiogroup" aria-label="Outil">
-                  <button class="overlay-toolbar__button is-active" type="button" data-overlay-tool="select" aria-pressed="true" title="Sélection">
-                    <span class="material-symbols-rounded" aria-hidden="true">arrow_selector_tool</span><span>Sélection</span>
+                  <button class="overlay-toolbar__button is-active" type="button" data-overlay-tool="select" aria-pressed="true" aria-label="Sélection" title="Sélection">
+                    <span class="material-symbols-rounded" aria-hidden="true">arrow_selector_tool</span>
+                  </button>
+                  <button class="overlay-toolbar__button" type="button" data-overlay-tool="text" aria-pressed="false" aria-label="Texte" title="Texte">
+                    <span class="material-symbols-rounded" aria-hidden="true">title</span>
+                  </button>
+                  <button class="overlay-toolbar__button" type="button" data-overlay-tool="eyedropper" aria-pressed="false" aria-label="Pipette de style (texte)" title="Pipette de style (texte)">
+                    <span class="material-symbols-rounded" aria-hidden="true">colorize</span>
                   </button>
                   <div class="overlay-toolbar__add">
                     <button
@@ -449,9 +455,6 @@
                         <span class="material-symbols-rounded" aria-hidden="true">widgets</span><span>Widget / Alerte</span>
                       </button>
                       <div class="overlay-toolbar__add-divider" role="separator"></div>
-                      <button class="overlay-toolbar__add-item" type="button" role="menuitem" data-overlay-tool="text">
-                        <span class="material-symbols-rounded" aria-hidden="true">title</span><span>Texte</span>
-                      </button>
                       <button class="overlay-toolbar__add-item" type="button" role="menuitem" data-overlay-tool="image">
                         <span class="material-symbols-rounded" aria-hidden="true">image</span><span>Image</span>
                       </button>
@@ -471,8 +474,11 @@
                   </div>
                 </div>
                 <div class="overlay-toolbar__divider" aria-hidden="true"></div>
-                <button class="overlay-toolbar__button" type="button" id="overlay-tool-group" disabled title="Grouper la sélection">
-                  <span class="material-symbols-rounded" aria-hidden="true">select_all</span><span>Groupe</span>
+                <button class="overlay-toolbar__button" type="button" id="overlay-tool-group" disabled aria-label="Grouper la sélection" title="Grouper la sélection">
+                  <span class="material-symbols-rounded" aria-hidden="true">select_all</span>
+                </button>
+                <button class="icon-button" type="button" id="overlay-tool-duplicate" disabled aria-label="Dupliquer" title="Dupliquer (Ctrl+D)">
+                  <span class="material-symbols-rounded" aria-hidden="true">content_copy</span>
                 </button>
                 <div class="overlay-toolbar__divider" aria-hidden="true"></div>
                 <div class="overlay-toolbar__group" role="group" aria-label="Alignement">
@@ -505,9 +511,19 @@
                   </button>
                 </div>
                 <div class="overlay-toolbar__divider" aria-hidden="true"></div>
-                <button class="overlay-toolbar__button" type="button" id="overlay-tool-rulers" aria-pressed="false" title="Règles et repères">
-                  <span class="material-symbols-rounded" aria-hidden="true">straighten</span><span>Repères</span>
+                <button class="overlay-toolbar__button" type="button" id="overlay-tool-rulers" aria-pressed="false" aria-label="Règles et repères" title="Règles et repères">
+                  <span class="material-symbols-rounded" aria-hidden="true">straighten</span>
                 </button>
+                <div class="overlay-toolbar__divider" aria-hidden="true"></div>
+                <div class="overlay-toolbar__zoom" role="group" aria-label="Zoom">
+                  <button class="icon-button" type="button" id="overlay-zoom-out" aria-label="Zoom arrière" title="Zoom arrière">
+                    <span class="material-symbols-rounded" aria-hidden="true">remove</span>
+                  </button>
+                  <button class="overlay-toolbar__zoom-label" type="button" id="overlay-zoom-label" title="Ajuster à la fenêtre">100%</button>
+                  <button class="icon-button" type="button" id="overlay-zoom-in" aria-label="Zoom avant" title="Zoom avant">
+                    <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                  </button>
+                </div>
                 <div class="overlay-toolbar__divider" aria-hidden="true"></div>
                 <button class="icon-button" type="button" id="overlay-tool-undo" disabled aria-label="Annuler" title="Annuler (Ctrl+Z)">
                   <span class="material-symbols-rounded" aria-hidden="true">undo</span>
