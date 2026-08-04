@@ -19,6 +19,7 @@
       "w": 500,
       "h": 100,
       "z": 2,
+      "hidden": false,
       "props": {
         "fieldData": {
           "goal_type": "subs",
@@ -34,11 +35,12 @@
       "id": "item-msdffy9u-c1rpy",
       "type": "widget",
       "widgetId": "zer0oes-animated-labels",
-      "x": 50,
-      "y": 906,
+      "x": 51,
+      "y": 907,
       "w": 709,
-      "h": 119,
+      "h": 121,
       "z": 4,
+      "hidden": false,
       "props": {
         "fieldData": {
           "orderCustom": "follow,sub,tip"
@@ -50,10 +52,11 @@
       "type": "widget",
       "widgetId": "zer0oes-neon-chat",
       "x": 170,
-      "y": 85,
+      "y": 86,
       "w": 420,
       "h": 750,
       "z": 3,
+      "hidden": false,
       "props": {
         "fieldData": {
           "messagePosition": "bottom",
@@ -63,13 +66,14 @@
       }
     },
     {
-      "id": "item-msdg1mmg-q9egm",
+      "id": "item-msei0i7s-ml4uy",
       "type": "video",
       "x": 0,
       "y": 0,
       "w": 1920,
       "h": 1080,
       "z": 1,
+      "hidden": false,
       "props": {
         "src": "https://cdn.streamelements.com/uploads/01kd887x8art5fwx6ws0fvwg7m.webm",
         "fit": "cover",
@@ -79,5 +83,11 @@
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1785776423992
+  "updatedAt": 1785838386122,
+  "guides": {
+    "horizontal": [
+      966
+    ],
+    "vertical": []
+  }
 }

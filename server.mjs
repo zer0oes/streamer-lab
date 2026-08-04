@@ -35,6 +35,7 @@ import {
   createOverlay,
   updateOverlayMetadata,
   replaceOverlayItems,
+  replaceOverlayGuides,
   deleteOverlay,
   duplicateOverlay
 } from "./lib/overlays.mjs";
@@ -259,6 +260,14 @@ const server = createServer(async (request, response) => {
       const body = await readRequestJson(request);
       if (!Array.isArray(body.items)) return sendJson(response, 400, { error: "Items invalides" });
       const overlay = await replaceOverlayItems(body.overlayId, body.items);
+      if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
+      return sendJson(response, 200, { saved: true, overlayId: overlay.id, at: Date.now() });
+    }
+
+    if (request.method === "PUT" && url.pathname === "/api/overlay/guides") {
+      const body = await readRequestJson(request);
+      if (!body.guides || typeof body.guides !== "object") return sendJson(response, 400, { error: "Repères invalides" });
+      const overlay = await replaceOverlayGuides(body.overlayId, body.guides);
       if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
       return sendJson(response, 200, { saved: true, overlayId: overlay.id, at: Date.now() });
     }

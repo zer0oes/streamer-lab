@@ -5,6 +5,8 @@
 // down via CSS transform so stored x/y/w/h never need unit conversion).
 @use "../base/primitives";
 
+$overlay-layers-width: 288px;
+
 .overlay-editor__toolbar {
   @include primitives.heading-row;
   justify-content: space-between;
@@ -14,24 +16,14 @@
 
 .overlay-editor__heading { display: flex; flex-direction: column; gap: var(--space-4); }
 
-.overlay-editor__add-button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 30%, transparent);
-
-  .material-symbols-rounded { font-size: 18px; }
-
-  &:hover {
-    box-shadow: 0 14px 34px color-mix(in srgb, var(--accent) 40%, transparent);
-    transform: translateY(-1px);
-  }
-}
-
 .overlay-editor__body {
   display: flex;
   align-items: flex-start;
   gap: var(--space-12);
+  // .overlay-layers est position: fixed (ancré au viewport, cf. plus bas),
+  // donc hors du flux de ce flex-row : cette marge réserve la place qu'il
+  // occupe, pour que .overlay-canvas-wrap ne passe pas dessous.
+  padding-right: calc(#{$overlay-layers-width} + var(--space-12));
 }
 
 // Simple coquille de mise en page dans le flex-row .overlay-editor__body :
@@ -79,6 +71,136 @@
   // Curseur "placement" pendant qu'un outil autre que Sélection est actif :
   // le prochain clic sur le canevas va créer un item, pas en sélectionner un.
   &.is-placing { cursor: crosshair; }
+}
+
+// Repères (bouton "Repères" de la barre d'outils) : rubans + calque de
+// lignes, masqués par défaut, affichés ensemble par la seule classe
+// .show-rulers sur le stage (un bouton pilote les deux, pas de réglage
+// séparé "afficher les rubans" / "afficher les repères").
+$ruler-size: 20px;
+
+.overlay-ruler {
+  position: absolute;
+  z-index: 3;
+  display: none;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+
+  &--top {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: $ruler-size;
+    border-bottom: 1px solid var(--line);
+  }
+
+  &--left {
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: $ruler-size;
+    border-right: 1px solid var(--line);
+  }
+}
+
+.overlay-ruler__corner {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  left: 0;
+  width: $ruler-size;
+  height: $ruler-size;
+  display: none;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.overlay-canvas-stage.show-rulers {
+  .overlay-ruler,
+  .overlay-ruler__corner,
+  .overlay-guides { display: block; }
+}
+
+// Frère de .overlay-canvas (PAS un enfant) avec son propre transform: scale()
+// synchronisé par JS (updateOverlayCanvasScale) : .overlay-canvas a un
+// transform, ce qui crée son propre contexte d'empilement — un z-index posé
+// sur un descendant à lui ne peut jamais dépasser .overlay-toolbar (z-index
+// explicite, contexte parent), quelle que soit sa valeur. D'où ce calque à
+// part, dimensionné pareil (1920×1080 logiques) pour que top/left en pixels
+// "logiques" (comme item.x/y) tombent au bon endroit une fois mis à l'échelle.
+.overlay-guides {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  // Les items posent leur propre z-index arbitraire (item.z, petits entiers
+  // séquentiels) : ce calque doit rester au-dessus de N'IMPORTE lequel
+  // d'entre eux, comme sur Photoshop où les repères sont toujours visibles
+  // par-dessus le contenu. Reste sous .overlay-toolbar (z-index: 5) : la
+  // barre d'outils flottante garde la priorité visuelle sur les repères
+  // qu'elle recouvre ponctuellement, comme sur le contenu du canevas.
+  z-index: 4;
+  // Le calque couvre tout le canevas mais est vide la plupart du temps :
+  // sans ce none, il capterait le clic/drag de N'IMPORTE quel item en
+  // dessous partout où il n'y a pas de ligne, dès que les repères sont
+  // affichés. .overlay-guide réactive pointer-events: auto lui-même (les
+  // enfants peuvent toujours resurpasser un ancêtre à none).
+  pointer-events: none;
+  display: none;
+}
+
+.overlay-guide {
+  position: absolute;
+
+  // La ligne visible (2px logiques) et la zone cliquable (14px logiques) sont
+  // volontairement dissociées : ce calque est mis à l'échelle avec le reste
+  // de .overlay-canvas, donc à un zoom d'édition typique (~0.5), 2px logiques
+  // tombent sous le pixel physique — quasiment impossible à attraper à la
+  // souris. ::after dessine le trait fin, l'élément lui-même ne fait que
+  // porter la zone de drag, bien plus généreuse.
+  &--horizontal {
+    left: 0;
+    right: 0;
+    height: 14px;
+    margin-top: -7px;
+    cursor: ns-resize;
+    pointer-events: auto;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 6px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #4dd0ff;
+      box-shadow: 0 0 0 1px rgb(0 0 0 / 35%);
+    }
+  }
+
+  &--vertical {
+    top: 0;
+    bottom: 0;
+    width: 14px;
+    margin-left: -7px;
+    cursor: ew-resize;
+    pointer-events: auto;
+
+    &::after {
+      content: "";
+      position: absolute;
+      left: 6px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #4dd0ff;
+      box-shadow: 0 0 0 1px rgb(0 0 0 / 35%);
+    }
+  }
+
+  &.is-dragging::after { background: var(--warning); }
 }
 
 // La barre d'outils flotte au-dessus du canevas mis à l'échelle, dans son
@@ -214,6 +336,15 @@
   }
 
   &-chevron { font-size: 14px !important; color: var(--muted); }
+
+  // Sépare "Widget / Alerte" (ouvre le sélecteur de bibliothèque) des
+  // primitives de dessin en dessous (Texte/Image/…, placées directement au
+  // clic sur le canevas) : deux familles d'ajout différentes dans un même menu.
+  &-divider {
+    height: 1px;
+    margin: var(--space-4) var(--space-6);
+    background: var(--line);
+  }
 }
 
 .overlay-item {
@@ -225,6 +356,14 @@
 
   &:hover,
   &.is-active { border-color: var(--accent-bright); }
+
+  // Calque masqué (œil barré dans le panneau Calques) : invisible ET non
+  // cliquable sur le canevas — comme Photoshop, un calque masqué ne se
+  // sélectionne plus qu'en repassant par le panneau de calques.
+  &--hidden {
+    visibility: hidden;
+    pointer-events: none;
+  }
 
   &__chrome {
     position: absolute;
@@ -390,35 +529,41 @@
   }
 }
 
+// Ancré au viewport (pas au flux de .overlay-editor__body, qui lui réserve
+// juste la place en padding-right, cf. plus haut) : bord droit et bas du
+// viewport, collé sous le header. Comme .account-panel-drawer, mais sans lui
+// disputer son z-index (40) — celui-ci reste au-dessus de tout, ce panneau
+// est un panneau de travail permanent, pas un tiroir modal.
 .overlay-layers {
-  flex: 0 0 288px;
+  position: fixed;
+  top: var(--topbar-height);
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  width: $overlay-layers-width;
   padding: var(--space-10);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-10);
+  border-left: 1px solid var(--line);
   background: var(--panel);
 
-  // Réglages d'un calque ouverts (panneau inséré dans __list, juste sous la
-  // ligne concernée — voir renderOverlayLayers) : le panneau s'étire jusqu'à
-  // la hauteur de .overlay-canvas-wrap, déjà bornée au viewport par
-  // updateOverlayCanvasScale, au lieu de rester cadré sur le contenu.
-  // .overlay-editor__body reste align-items: flex-start pour tout le reste
-  // (pas d'étirement quand aucun calque n'est sélectionné).
-  &.is-settings-open {
-    display: flex;
-    flex-direction: column;
-    align-self: stretch;
-    min-height: 0;
-
-    .overlay-layers__list {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow-y: auto;
-    }
-  }
+  &[hidden] { display: none; }
 
   &__title { margin: 0 0 var(--space-8); color: var(--muted); font-size: var(--text-12); }
 
-  &__list { display: flex; flex-direction: column; gap: var(--space-4); }
+  // flex: 1 1 auto + overflow-y: auto : la liste (pas le panneau, toujours
+  // pile la hauteur du viewport par construction maintenant) absorbe tout
+  // excédent et scrolle en interne — items nombreux ou réglages d'un calque
+  // insérés dedans (cf. renderOverlayLayers) ne poussent jamais le panneau
+  // au-delà du bas du viewport.
+  &__list {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    gap: var(--space-4);
+    overflow-y: auto;
+  }
 
   &__item {
     display: flex;
@@ -446,6 +591,11 @@
       .material-symbols-rounded,
       .overlay-layers__label { color: #fff; }
     }
+
+    // Calque masqué : la ligne reste pleinement utilisable (c'est le seul
+    // moyen de le resélectionner/réafficher, cf. .overlay-item--hidden), donc
+    // seule l'opacité baisse — pas de pointer-events:none ici.
+    &.is-hidden { opacity: .5; }
   }
 
   &__handle {

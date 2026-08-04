@@ -10,4 +10,4 @@ npm-debug.log*
 /public/styles.css
 /public/styles.css.map
 
-# .vscode/sidebar-notes.json
+.vscode/sidebar-notes.json

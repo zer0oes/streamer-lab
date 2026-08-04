@@ -51,6 +51,10 @@ const elements = {
   overlayCanvasWrap: document.querySelector("#overlay-canvas-wrap"),
   overlayCanvasStage: document.querySelector("#overlay-canvas-stage"),
   overlayCanvas: document.querySelector("#overlay-canvas"),
+  overlayGuidesLayer: document.querySelector("#overlay-guides"),
+  overlayRulerTop: document.querySelector("#overlay-ruler-top"),
+  overlayRulerLeft: document.querySelector("#overlay-ruler-left"),
+  overlayRulerToggle: document.querySelector("#overlay-tool-rulers"),
   overlayItemPickerDialog: document.querySelector("#overlay-item-picker"),
   overlayItemPickerList: document.querySelector("#overlay-item-picker-list"),
   overlayToolbar: document.querySelector("#overlay-toolbar"),
@@ -152,6 +156,17 @@ let overlaySettingsItemId = null;
 let overlayHistory = [];
 let overlayHistoryIndex = -1;
 const overlayToolbarPositionStorageKey = "overlay-toolbar-position";
+// Préférence d'affichage des règles/repères : un réglage d'édition personnel
+// (comme le damier de l'aperçu widget), pas un contenu d'overlay — reste donc
+// en localStorage, jamais dans overlay.json (contrairement aux repères
+// eux-mêmes, voir activeOverlay.guides).
+const overlayGuidesVisibleStorageKey = "overlay-guides-visible";
+let showOverlayGuides = localStorage.getItem(overlayGuidesVisibleStorageKey) === "true";
+let overlayGuidesPersistTimer;
+// Distance d'accroche en pixels ÉCRAN (constante quel que soit le zoom) :
+// convertie en pixels logiques via l'échelle courante au moment de l'accroche
+// (cf. snapEdge/snapMovePosition), jamais stockée déjà convertie.
+const GUIDE_SNAP_SCREEN_PX = 6;
 let fieldData = {};
 let session = {};
 let channel = { id: "local-channel", username: "MaChaine" };
@@ -1415,7 +1430,13 @@ async function deleteOverlayEntry(entry) {
 // --- Overlays : canevas de composition (import, glisser-déposer, redimensionnement) ---
 
 function initializeOverlayCanvas() {
-  elements.overlayAddItemButton.addEventListener("click", () => openOverlayItemPicker());
+  elements.overlayAddItemButton.addEventListener("click", () => {
+    // Vit maintenant dans le panneau "+ Ajouter" de la barre d'outils (avant :
+    // gros bouton dédié dans l'en-tête) : fermer le menu avant d'ouvrir le
+    // sélecteur, sinon les deux resteraient superposés à l'écran.
+    closeAllDropdowns();
+    openOverlayItemPicker();
+  });
 
   const closePicker = () => elements.overlayItemPickerDialog.close();
   document.querySelector("#close-overlay-item-picker").addEventListener("click", closePicker);
@@ -1454,6 +1475,15 @@ function initializeOverlayCanvas() {
     renderOverlayItemSettings();
   });
   initializeOverlayToolbarDrag();
+
+  elements.overlayRulerToggle?.addEventListener("click", () => setOverlayGuidesVisible(!showOverlayGuides));
+  elements.overlayRulerTop?.addEventListener("pointerdown", (event) => startOverlayGuideCreate(event, "horizontal"));
+  elements.overlayRulerLeft?.addEventListener("pointerdown", (event) => startOverlayGuideCreate(event, "vertical"));
+  // Synchronise l'état initial (préférence localStorage) sur le bouton/stage
+  // dès le chargement du module — openOverlayEditor rappellera
+  // setOverlayGuidesVisible une fois l'overlay chargé pour (re)dessiner les
+  // règles/repères propres à CET overlay.
+  setOverlayGuidesVisible(showOverlayGuides);
 
   elements.overlayCanvas.addEventListener("pointerdown", (event) => {
     if (activeOverlayTool !== "select" && !event.target.closest("[data-handle]")) {
@@ -1829,6 +1859,7 @@ async function openOverlayEditor(overlayId) {
     renderOverlayLibrary();
     renderOverlayCanvas();
     resetOverlayHistory();
+    renderOverlayGuides();
   } catch (error) {
     showToast(`Overlay introuvable : ${error.message}`);
   }
@@ -1845,6 +1876,10 @@ function renderOverlayCanvas() {
   for (const item of activeOverlay.items) {
     elements.overlayCanvas.append(buildOverlayItemElement(item));
   }
+  // #overlay-guides est un frère de #overlay-canvas (pas un enfant, voir
+  // _overlay-canvas.scss), donc epargné par le replaceChildren() ci-dessus —
+  // seul son contenu (les lignes) a besoin d'être resynchronisé.
+  renderOverlayGuides();
   updateOverlaySelectionUI();
 }
 
@@ -1869,8 +1904,238 @@ function updateOverlayCanvasScale() {
   // hauteur qui borne l'échelle.
   const scale = Math.min(1, availableWidth / canvas.width, availableHeight / canvas.height);
   elements.overlayCanvas.style.transform = `scale(${scale})`;
+  // .overlay-guides est un frère de .overlay-canvas, pas un enfant (voir le
+  // commentaire sur .overlay-guides dans _overlay-canvas.scss) : il lui faut
+  // donc exactement le même transform, posé séparément ici.
+  elements.overlayGuidesLayer.style.transform = `scale(${scale})`;
   elements.overlayCanvasStage.style.width = `${canvas.width * scale}px`;
   elements.overlayCanvasStage.style.height = `${canvas.height * scale}px`;
+  if (showOverlayGuides) drawOverlayRulers(canvas, scale);
+}
+
+// --- Overlays : règles et repères (bouton "Repères" de la barre d'outils) --
+
+const OVERLAY_RULER_SIZE = 20; // doit rester synchro avec $ruler-size (styles/layouts/_overlay-canvas.scss)
+
+function setOverlayGuidesVisible(visible) {
+  showOverlayGuides = visible;
+  localStorage.setItem(overlayGuidesVisibleStorageKey, String(visible));
+  elements.overlayRulerToggle?.classList.toggle("is-active", visible);
+  elements.overlayRulerToggle?.setAttribute("aria-pressed", String(visible));
+  elements.overlayCanvasStage.classList.toggle("show-rulers", visible);
+  if (!visible || !activeOverlay) return;
+  drawOverlayRulers(activeOverlay.canvas || DEFAULT_OVERLAY_CANVAS, overlayCanvasScale());
+  renderOverlayGuides();
+}
+
+// Choisit un intervalle "rond" (1/2/5/10/20/25/50…) tel que son équivalent à
+// l'écran (step * scale) reste lisible — sans ça, les graduations se
+// chevaucheraient au zoom réduit ou se retrouveraient trop clairsemées au zoom élevé.
+function pickRulerStep(scale) {
+  const niceSteps = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
+  return niceSteps.find((step) => step * scale >= 50) ?? niceSteps[niceSteps.length - 1];
+}
+
+function drawOverlayRulers(canvas, scale) {
+  const step = pickRulerStep(scale);
+  drawOverlayRuler(elements.overlayRulerTop, canvas.width, scale, step, true);
+  drawOverlayRuler(elements.overlayRulerLeft, canvas.height, scale, step, false);
+}
+
+function drawOverlayRuler(canvasEl, logicalLength, scale, step, isHorizontal) {
+  if (!canvasEl) return;
+  const dpr = window.devicePixelRatio || 1;
+  const displayLength = Math.max(1, Math.round(logicalLength * scale));
+  const thickness = OVERLAY_RULER_SIZE;
+  canvasEl.style.width = isHorizontal ? `${displayLength}px` : `${thickness}px`;
+  canvasEl.style.height = isHorizontal ? `${thickness}px` : `${displayLength}px`;
+  canvasEl.width = Math.round((isHorizontal ? displayLength : thickness) * dpr);
+  canvasEl.height = Math.round((isHorizontal ? thickness : displayLength) * dpr);
+
+  const ctx = canvasEl.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, displayLength, thickness);
+
+  const rootStyle = getComputedStyle(document.documentElement);
+  ctx.strokeStyle = rootStyle.getPropertyValue("--line-soft").trim() || "#373d4a";
+  ctx.fillStyle = rootStyle.getPropertyValue("--muted").trim() || "#858b98";
+  ctx.font = "9px system-ui, sans-serif";
+  ctx.lineWidth = 1;
+  ctx.textBaseline = "alphabetic";
+
+  const minorDivisions = 5;
+  const minorStep = step / minorDivisions;
+  const totalTicks = Math.ceil(logicalLength / minorStep);
+  for (let i = 0; i <= totalTicks; i++) {
+    const value = i * minorStep;
+    if (value > logicalLength + minorStep) break;
+    const isMajor = i % minorDivisions === 0;
+    // +0.5 pour un trait net d'1px physique (évite l'anti-aliasing d'une
+    // ligne posée pile sur une frontière de pixel).
+    const pos = Math.round(value * scale) + 0.5;
+    const tickLength = isMajor ? thickness * 0.55 : thickness * 0.3;
+    ctx.beginPath();
+    if (isHorizontal) {
+      ctx.moveTo(pos, thickness - tickLength);
+      ctx.lineTo(pos, thickness);
+    } else {
+      ctx.moveTo(thickness - tickLength, pos);
+      ctx.lineTo(thickness, pos);
+    }
+    ctx.stroke();
+    if (isMajor && value > 0) {
+      const label = String(Math.round(value));
+      if (isHorizontal) {
+        ctx.fillText(label, pos + 2, 9);
+      } else {
+        ctx.save();
+        ctx.translate(9, pos - 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(label, 0, 0);
+        ctx.restore();
+      }
+    }
+  }
+}
+
+function renderOverlayGuides() {
+  if (!elements.overlayGuidesLayer) return;
+  elements.overlayGuidesLayer.replaceChildren();
+  if (!activeOverlay?.guides || !showOverlayGuides) return;
+  activeOverlay.guides.horizontal.forEach((value, index) => {
+    elements.overlayGuidesLayer.append(buildOverlayGuideElement("horizontal", value, index));
+  });
+  activeOverlay.guides.vertical.forEach((value, index) => {
+    elements.overlayGuidesLayer.append(buildOverlayGuideElement("vertical", value, index));
+  });
+}
+
+function buildOverlayGuideElement(axis, value, index) {
+  const el = document.createElement("div");
+  el.className = `overlay-guide overlay-guide--${axis}`;
+  if (axis === "horizontal") el.style.top = `${value}px`;
+  else el.style.left = `${value}px`;
+  el.addEventListener("pointerdown", (event) => startOverlayGuideDrag(event, axis, index));
+  return el;
+}
+
+// true si le pointeur est en dehors du stage (damier + rubans) — glisser un
+// repère jusque là le supprime, comme sur Photoshop (repère renvoyé vers/au-delà
+// des règles).
+function isOutsideOverlayStage(clientX, clientY) {
+  const rect = elements.overlayCanvasStage.getBoundingClientRect();
+  return clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom;
+}
+
+function startOverlayGuideDrag(event, axis, index) {
+  event.stopPropagation();
+  event.preventDefault();
+  const guideEl = event.currentTarget;
+  guideEl.classList.add("is-dragging");
+
+  const onMove = (moveEvent) => {
+    const outside = isOutsideOverlayStage(moveEvent.clientX, moveEvent.clientY);
+    guideEl.style.opacity = outside ? "0.35" : "";
+    if (outside) return;
+    const point = canvasPointFromEvent(moveEvent);
+    if (axis === "horizontal") guideEl.style.top = `${Math.round(point.y)}px`;
+    else guideEl.style.left = `${Math.round(point.x)}px`;
+  };
+  const onUp = (upEvent) => {
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    const list = axis === "horizontal" ? activeOverlay.guides.horizontal : activeOverlay.guides.vertical;
+    if (isOutsideOverlayStage(upEvent.clientX, upEvent.clientY)) {
+      list.splice(index, 1);
+    } else {
+      const point = canvasPointFromEvent(upEvent);
+      list[index] = Math.round(axis === "horizontal" ? point.y : point.x);
+    }
+    renderOverlayGuides();
+    scheduleGuidesPersist();
+  };
+  document.addEventListener("pointermove", onMove);
+  document.addEventListener("pointerup", onUp);
+}
+
+// Glisser depuis une règle crée un nouveau repère : suit le pointeur sans
+// rien persister tant qu'on n'a pas vraiment déplacé la souris (sinon un
+// simple clic sur la règle créerait un repère parasite à la position 0), et
+// annule si relâché en dehors du stage.
+function startOverlayGuideCreate(event, axis) {
+  event.preventDefault();
+  if (!activeOverlay) return;
+  const startX = event.clientX;
+  const startY = event.clientY;
+  let moved = false;
+  const guideEl = buildOverlayGuideElement(axis, 0, -1);
+  guideEl.classList.add("is-dragging");
+  guideEl.style.display = "none";
+  elements.overlayGuidesLayer.append(guideEl);
+
+  const onMove = (moveEvent) => {
+    if (!moved && Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) < 3) return;
+    moved = true;
+    const outside = isOutsideOverlayStage(moveEvent.clientX, moveEvent.clientY);
+    guideEl.style.display = outside ? "none" : "";
+    if (outside) return;
+    const point = canvasPointFromEvent(moveEvent);
+    if (axis === "horizontal") guideEl.style.top = `${Math.round(point.y)}px`;
+    else guideEl.style.left = `${Math.round(point.x)}px`;
+  };
+  const onUp = (upEvent) => {
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    guideEl.remove();
+    if (!moved || isOutsideOverlayStage(upEvent.clientX, upEvent.clientY)) return;
+    const point = canvasPointFromEvent(upEvent);
+    const value = Math.round(axis === "horizontal" ? point.y : point.x);
+    if (axis === "horizontal") activeOverlay.guides.horizontal.push(value);
+    else activeOverlay.guides.vertical.push(value);
+    renderOverlayGuides();
+    scheduleGuidesPersist();
+  };
+  document.addEventListener("pointermove", onMove);
+  document.addEventListener("pointerup", onUp);
+}
+
+// Accroche un bord/centre à ~GUIDE_SNAP_SCREEN_PX pixels écran d'un repère —
+// convertit ce seuil en pixels logiques via l'échelle courante, jamais
+// l'inverse (le seuil doit rester visuellement constant quel que soit le zoom).
+function snapEdge(value, guides, scale) {
+  if (!showOverlayGuides || !guides?.length) return value;
+  const threshold = GUIDE_SNAP_SCREEN_PX / scale;
+  let best = value;
+  let bestDist = threshold;
+  for (const guide of guides) {
+    const dist = Math.abs(guide - value);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = guide;
+    }
+  }
+  return Math.round(best);
+}
+
+// Comme snapEdge, mais teste aussi le bord opposé et le centre (pas juste
+// pos) : au drag, n'importe lequel des trois peut être celui qui aligne
+// visuellement l'item sur le repère.
+function snapMovePosition(pos, size, guides, scale) {
+  if (!showOverlayGuides || !guides?.length) return pos;
+  const threshold = GUIDE_SNAP_SCREEN_PX / scale;
+  const offsets = [0, size / 2, size];
+  let bestPos = pos;
+  let bestDist = threshold;
+  for (const guide of guides) {
+    for (const offset of offsets) {
+      const dist = Math.abs(guide - (pos + offset));
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestPos = guide - offset;
+      }
+    }
+  }
+  return Math.round(bestPos);
 }
 
 function findOverlayItem(itemId) {
@@ -1892,7 +2157,7 @@ function overlayItemDefaultLabel(item) {
 
 function buildOverlayItemElement(item) {
   const el = document.createElement("div");
-  el.className = `overlay-item overlay-item--${item.type}`;
+  el.className = `overlay-item overlay-item--${item.type}${item.hidden ? " overlay-item--hidden" : ""}`;
   el.dataset.itemId = item.id;
   applyOverlayItemStyle(el, item);
 
@@ -1904,8 +2169,7 @@ function buildOverlayItemElement(item) {
   label.textContent = overlayItemDefaultLabel(item);
   chrome.append(label);
 
-  if (item.type === "text") chrome.append(buildTextInspector(item, el));
-  else if (item.type === "icon") chrome.append(buildIconInspector(item, el));
+  if (item.type === "icon") chrome.append(buildIconInspector(item, el));
   else if (item.type === "shape") chrome.append(buildShapeInspector(item, el));
   else if (item.type === "image") chrome.append(buildImageInspector(item, el));
   else if (item.type === "video") chrome.append(buildVideoInspector(item, el));
@@ -1992,6 +2256,15 @@ async function buildWidgetItemContent(item, el, label) {
   const frame = document.createElement("iframe");
   frame.className = "overlay-item__frame";
   frame.setAttribute("sandbox", "allow-scripts");
+  // Certains widgets (labels animés, in-game labels…) posent délibérément
+  // overflow: visible sur leur html/body pour laisser peindre des glows/
+  // ombres au-delà de leur boîte — mais overflow: visible sur la racine d'un
+  // document est spécifié comme équivalent à "auto" une fois propagé au
+  // viewport, donc affiche une vraie scrollbar dès que l'item est redimensionné
+  // plus petit que le contenu. scrolling="no" désactive ce scroll interne côté
+  // iframe, sans toucher au CSS de chaque widget (qui doit garder overflow:
+  // visible pour ses effets).
+  frame.setAttribute("scrolling", "no");
   frame.title = item.widgetId;
 
   if (!bundle) {
@@ -2175,25 +2448,159 @@ function buildOverlayItemPositionFields(item) {
   return details;
 }
 
+// --- Overlays : réglages d'un item "texte" ----------------------------
+// Même apparence (field-group/field/checkbox-field) que les champs widget
+// juste au-dessus, mais un schéma fixe (pas de fields.json) et un commit
+// synchrone dédié (commitOverlayTextProp) plutôt que commitOverlayItemField,
+// qui écrit dans item.props.fieldData et redessine un iframe de widget —
+// aucun des deux ne s'applique à un item texte.
+
+function buildOverlayFieldGroup(title, open) {
+  const details = document.createElement("details");
+  details.className = "field-group";
+  details.open = open;
+  const summary = document.createElement("summary");
+  summary.className = "field-group__summary";
+  summary.textContent = title;
+  summary.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (details.open) collapseDetails(details);
+    else expandDetails(details);
+  });
+  const body = document.createElement("div");
+  body.className = "field-group__body";
+  details.append(summary, body);
+  return { details, body };
+}
+
+function buildOverlayField(labelText, inputEl) {
+  const label = document.createElement("label");
+  label.className = "field";
+  const caption = document.createElement("span");
+  caption.className = "field__label";
+  caption.textContent = labelText;
+  label.append(caption, inputEl);
+  return label;
+}
+
+function buildOverlayCheckboxField(labelText, checked, onCommit) {
+  const label = document.createElement("label");
+  label.className = "checkbox-field";
+  label.innerHTML = `<span class="checkbox-field__label">${escapeHtml(labelText)}</span>`;
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = Boolean(checked);
+  input.addEventListener("change", () => onCommit(input.checked));
+  label.append(input);
+  return label;
+}
+
+const OVERLAY_TEXT_FONT_WEIGHTS = {
+  "400": "Regular (400)",
+  "500": "Medium (500)",
+  "600": "SemiBold (600)",
+  "700": "Bold (700)",
+  "800": "ExtraBold (800)",
+  "900": "Black (900)"
+};
+const OVERLAY_TEXT_ALIGNS = { left: "Gauche", center: "Centré", right: "Droite" };
+const OVERLAY_TEXT_COLOR_MODES = { solid: "Couleur unie", gradient: "Dégradé" };
+
+function commitOverlayTextProp(itemId, key, value) {
+  const item = findOverlayItem(itemId);
+  if (!item) return;
+  item.props[key] = value;
+  const textEl = elements.overlayCanvas.querySelector(`[data-item-id="${itemId}"] .overlay-item__text`);
+  if (textEl) applyOverlayTextStyle(textEl, item.props);
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+  // Redessine le panneau : colorMode/shadowEnabled/strokeEnabled font/défont
+  // apparaître des champs (dégradé, ombre, contour) — sans ça, cocher "Activer
+  // l'ombre" ne ferait rien apparaître tant qu'on ne referme/rouvre pas le panneau.
+  renderOverlayItemSettings();
+}
+
+function buildOverlayTextSettingsFields(item) {
+  const fragment = document.createDocumentFragment();
+  const props = item.props;
+  const commit = (key) => (value) => commitOverlayTextProp(item.id, key, value);
+
+  const typo = buildOverlayFieldGroup("Police", true);
+  typo.body.append(
+    buildOverlayField("Police (nom CSS)", createOverlayItemFieldInput("fontFamily", { type: "text" }, props.fontFamily, commit("fontFamily"))),
+    buildOverlayField("Taille (px)", createOverlayItemFieldInput("fontSize", { type: "number", min: 6, max: 400, step: 1 }, props.fontSize, (value) => commit("fontSize")(Math.max(6, value)))),
+    buildOverlayField("Graisse", createOverlayItemFieldInput("fontWeight", { type: "dropdown", options: OVERLAY_TEXT_FONT_WEIGHTS }, String(props.fontWeight), (value) => commit("fontWeight")(Number(value)))),
+    buildOverlayField("Interlettrage (px)", createOverlayItemFieldInput("letterSpacing", { type: "number", min: -20, max: 100, step: 0.5 }, props.letterSpacing, commit("letterSpacing"))),
+    buildOverlayField("Hauteur de ligne", createOverlayItemFieldInput("lineHeight", { type: "number", min: 0.5, max: 4, step: 0.1 }, props.lineHeight, commit("lineHeight"))),
+    buildOverlayField("Alignement", createOverlayItemFieldInput("align", { type: "dropdown", options: OVERLAY_TEXT_ALIGNS }, props.align, commit("align")))
+  );
+  fragment.append(typo.details);
+
+  const colorGroup = buildOverlayFieldGroup("Couleur", true);
+  colorGroup.body.append(
+    buildOverlayField("Type", createOverlayItemFieldInput("colorMode", { type: "dropdown", options: OVERLAY_TEXT_COLOR_MODES }, props.colorMode, commit("colorMode")))
+  );
+  if (props.colorMode === "gradient") {
+    colorGroup.body.append(
+      buildOverlayField("Couleur 1", createOverlayItemFieldInput("gradientFrom", { type: "colorpicker" }, props.gradientFrom, commit("gradientFrom"))),
+      buildOverlayField("Couleur 2", createOverlayItemFieldInput("gradientTo", { type: "colorpicker" }, props.gradientTo, commit("gradientTo"))),
+      buildOverlayField("Angle (°)", createOverlayItemFieldInput("gradientAngle", { type: "number", min: 0, max: 360, step: 1 }, props.gradientAngle, commit("gradientAngle")))
+    );
+  } else {
+    colorGroup.body.append(
+      buildOverlayField("Couleur", createOverlayItemFieldInput("color", { type: "colorpicker" }, props.color, commit("color")))
+    );
+  }
+  fragment.append(colorGroup.details);
+
+  const shadowGroup = buildOverlayFieldGroup("Ombre", Boolean(props.shadowEnabled));
+  shadowGroup.body.append(buildOverlayCheckboxField("Activer l'ombre", props.shadowEnabled, commit("shadowEnabled")));
+  if (props.shadowEnabled) {
+    shadowGroup.body.append(
+      buildOverlayField("Couleur", createOverlayItemFieldInput("shadowColor", { type: "colorpicker" }, props.shadowColor, commit("shadowColor"))),
+      buildOverlayField("Flou (px)", createOverlayItemFieldInput("shadowBlur", { type: "number", min: 0, max: 100, step: 1 }, props.shadowBlur, commit("shadowBlur"))),
+      buildOverlayField("Décalage X (px)", createOverlayItemFieldInput("shadowOffsetX", { type: "number", min: -100, max: 100, step: 1 }, props.shadowOffsetX, commit("shadowOffsetX"))),
+      buildOverlayField("Décalage Y (px)", createOverlayItemFieldInput("shadowOffsetY", { type: "number", min: -100, max: 100, step: 1 }, props.shadowOffsetY, commit("shadowOffsetY")))
+    );
+  }
+  fragment.append(shadowGroup.details);
+
+  const strokeGroup = buildOverlayFieldGroup("Contour", Boolean(props.strokeEnabled));
+  strokeGroup.body.append(buildOverlayCheckboxField("Activer le contour", props.strokeEnabled, commit("strokeEnabled")));
+  if (props.strokeEnabled) {
+    strokeGroup.body.append(
+      buildOverlayField("Couleur", createOverlayItemFieldInput("strokeColor", { type: "colorpicker" }, props.strokeColor, commit("strokeColor"))),
+      buildOverlayField("Épaisseur (px)", createOverlayItemFieldInput("strokeWidth", { type: "number", min: 0, max: 20, step: 0.5 }, props.strokeWidth, commit("strokeWidth")))
+    );
+  }
+  fragment.append(strokeGroup.details);
+
+  return fragment;
+}
+
 async function renderOverlayItemSettings() {
   const item = overlaySettingsItemId ? findOverlayItem(overlaySettingsItemId) : null;
-  if (!item || (item.type !== "widget" && item.type !== "alert")) {
+  if (!item || !["widget", "alert", "text"].includes(item.type)) {
     elements.overlayItemSettingsPanel.hidden = true;
-    // Panneau fermé : le panneau de calques reprend sa hauteur naturelle
-    // plutôt que d'occuper toute la hauteur du viewport pour rien.
-    elements.overlayLayers?.classList.remove("is-settings-open");
+    return;
+  }
+
+  elements.overlayItemSettingsPanel.hidden = false;
+  elements.overlayItemSettingsFields.replaceChildren();
+  elements.overlayItemSettingsFields.append(buildOverlayItemPositionFields(item));
+
+  if (item.type === "text") {
+    // Pas de bundle à charger (contrairement à widget/alert) : synchrone,
+    // donc on peut se permettre de tout redessiner à chaque champ modifié
+    // (cf. commitOverlayTextProp) pour garder les groupes conditionnels
+    // (dégradé/ombre/contour) toujours en phase avec leurs cases à cocher.
+    elements.overlayItemSettingsTitle.textContent = "Texte";
+    elements.overlayItemSettingsFields.append(buildOverlayTextSettingsFields(item));
     return;
   }
 
   const bundle = await loadOverlayItemBundle(item.widgetId);
-  elements.overlayItemSettingsPanel.hidden = false;
-  // Réglages ouverts : le panneau de calques s'étire jusqu'en bas du
-  // viewport pour laisser de la place à une liste de champs potentiellement
-  // longue, au lieu de rester cadré sur la hauteur de la liste de calques.
-  elements.overlayLayers?.classList.add("is-settings-open");
   elements.overlayItemSettingsTitle.textContent = bundle?.widgetMeta?.name || item.widgetId;
-  elements.overlayItemSettingsFields.replaceChildren();
-  elements.overlayItemSettingsFields.append(buildOverlayItemPositionFields(item));
 
   if (!bundle) {
     elements.overlayItemSettingsFields.append(buildLibraryEmptyState("Widget introuvable."));
@@ -2282,8 +2689,30 @@ function applyOverlayTextStyle(el, props) {
   el.style.fontFamily = props.fontFamily;
   el.style.fontSize = `${props.fontSize}px`;
   el.style.fontWeight = String(props.fontWeight);
-  el.style.color = props.color;
   el.style.textAlign = props.align;
+  el.style.letterSpacing = `${props.letterSpacing ?? 0}px`;
+  el.style.lineHeight = String(props.lineHeight ?? 1.2);
+
+  // Dégradé : peint le texte via background-clip au lieu de color (aucune
+  // propriété CSS native "gradient de texte" n'existe) — d'où le besoin de
+  // repasser color à transparent et de nettoyer le fond quand on revient en
+  // couleur unie, sinon l'ancien dégradé resterait visible sous le texte.
+  if (props.colorMode === "gradient") {
+    el.style.color = "transparent";
+    el.style.backgroundImage = `linear-gradient(${props.gradientAngle ?? 90}deg, ${props.gradientFrom}, ${props.gradientTo})`;
+    el.style.backgroundClip = "text";
+    el.style.webkitBackgroundClip = "text";
+  } else {
+    el.style.color = props.color;
+    el.style.backgroundImage = "none";
+    el.style.backgroundClip = "";
+    el.style.webkitBackgroundClip = "";
+  }
+
+  el.style.textShadow = props.shadowEnabled
+    ? `${props.shadowOffsetX ?? 0}px ${props.shadowOffsetY ?? 4}px ${Math.max(0, props.shadowBlur ?? 8)}px ${props.shadowColor}`
+    : "none";
+  el.style.webkitTextStroke = props.strokeEnabled ? `${props.strokeWidth}px ${props.strokeColor}` : "";
 }
 
 function buildTextItemContent(item, el) {
@@ -2321,35 +2750,6 @@ function enterOverlayTextEdit(itemId, el, textEl) {
     textEl.removeEventListener("blur", commit);
   };
   textEl.addEventListener("blur", commit);
-}
-
-function buildTextInspector(item, el) {
-  const wrap = document.createElement("span");
-  wrap.className = "overlay-item__text-inspector";
-  const colorInput = document.createElement("input");
-  colorInput.type = "color";
-  colorInput.value = item.props.color;
-  const sizeInput = document.createElement("input");
-  sizeInput.type = "number";
-  sizeInput.min = "6";
-  sizeInput.max = "400";
-  sizeInput.value = String(item.props.fontSize);
-
-  const commit = () => {
-    const target = findOverlayItem(item.id);
-    if (!target) return;
-    target.props.color = colorInput.value;
-    target.props.fontSize = Math.max(6, Number(sizeInput.value) || target.props.fontSize);
-    const textEl = el.querySelector(".overlay-item__text");
-    if (textEl) applyOverlayTextStyle(textEl, target.props);
-    pushOverlayHistory();
-    scheduleOverlayPersist();
-  };
-  colorInput.addEventListener("change", commit);
-  sizeInput.addEventListener("change", commit);
-  for (const input of [colorInput, sizeInput]) input.addEventListener("pointerdown", (event) => event.stopPropagation());
-  wrap.append(colorInput, sizeInput);
-  return wrap;
 }
 
 function buildImageItemContent(item, el) {
@@ -2673,7 +3073,7 @@ function overlayLayerLabel(item) {
 
 function buildOverlayLayerRow(item) {
   const row = document.createElement("div");
-  row.className = `overlay-layers__item${selectedOverlayItemIds.has(item.id) ? " is-active" : ""}`;
+  row.className = `overlay-layers__item${selectedOverlayItemIds.has(item.id) ? " is-active" : ""}${item.hidden ? " is-hidden" : ""}`;
   row.dataset.itemId = item.id;
 
   const handle = document.createElement("span");
@@ -2690,8 +3090,19 @@ function buildOverlayLayerRow(item) {
   label.className = "overlay-layers__label";
   label.textContent = overlayLayerLabel(item);
 
+  const visibilityButton = document.createElement("button");
+  visibilityButton.type = "button";
+  visibilityButton.className = "icon-button";
+  visibilityButton.setAttribute("aria-label", item.hidden ? "Afficher" : "Masquer");
+  visibilityButton.title = item.hidden ? "Afficher" : "Masquer";
+  visibilityButton.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${item.hidden ? "visibility_off" : "visibility"}</span>`;
+  visibilityButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleOverlayItemVisibility(item.id);
+  });
+
   let settingsButton = null;
-  if (item.type === "widget" || item.type === "alert") {
+  if (item.type === "widget" || item.type === "alert" || item.type === "text") {
     settingsButton = document.createElement("button");
     settingsButton.type = "button";
     settingsButton.className = "icon-button";
@@ -2710,15 +3121,16 @@ function buildOverlayLayerRow(item) {
   deleteButton.type = "button";
   deleteButton.className = "icon-button";
   deleteButton.setAttribute("aria-label", "Supprimer");
-  deleteButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">close_small</span>';
+  deleteButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">delete</span>';
   deleteButton.addEventListener("click", (event) => {
     event.stopPropagation();
     removeOverlayItem(item.id);
   });
 
-  row.append(handle, icon, label, ...(settingsButton ? [settingsButton] : []), deleteButton);
+  row.append(handle, icon, label, visibilityButton, ...(settingsButton ? [settingsButton] : []), deleteButton);
   row.addEventListener("click", (event) => {
     if (event.target === deleteButton || deleteButton.contains(event.target)) return;
+    if (event.target === visibilityButton || visibilityButton.contains(event.target)) return;
     if (settingsButton && (event.target === settingsButton || settingsButton.contains(event.target))) return;
     if (event.target === handle) return;
     if (event.shiftKey) {
@@ -2844,6 +3256,15 @@ function removeOverlayItem(itemId) {
   scheduleOverlayPersist();
 }
 
+function toggleOverlayItemVisibility(itemId) {
+  const item = findOverlayItem(itemId);
+  if (!item) return;
+  item.hidden = !item.hidden;
+  renderOverlayCanvas();
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+}
+
 function scheduleOverlayPersist() {
   if (!activeOverlay) return;
   clearTimeout(overlayPersistTimer);
@@ -2862,6 +3283,28 @@ function scheduleOverlayPersist() {
       }
     } catch (error) {
       showToast(`Enregistrement de l’overlay impossible : ${error.message}`);
+    }
+  }, 400);
+}
+
+function scheduleGuidesPersist() {
+  if (!activeOverlay) return;
+  clearTimeout(overlayGuidesPersistTimer);
+  const overlayId = activeOverlay.id;
+  const guides = activeOverlay.guides;
+  overlayGuidesPersistTimer = setTimeout(async () => {
+    try {
+      const response = await fetch("/api/overlay/guides", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ overlayId, guides })
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `Erreur HTTP ${response.status}`);
+      }
+    } catch (error) {
+      showToast(`Enregistrement des repères impossible : ${error.message}`);
     }
   }, 400);
 }
@@ -2886,8 +3329,17 @@ function startOverlayItemDrag(event, itemEl) {
       const target = findOverlayItem(id);
       const origin = origins.get(id);
       if (!target || !origin) continue;
-      target.x = Math.round(origin.x + dx);
-      target.y = Math.round(origin.y + dy);
+      let nextX = Math.round(origin.x + dx);
+      let nextY = Math.round(origin.y + dy);
+      // Accroche uniquement pour un item seul (pas un groupe) : sur un
+      // déplacement de groupe, chaque enfant devrait s'accrocher
+      // indépendamment, ce qui casserait le delta commun voulu ici.
+      if (movingIds.length === 1) {
+        nextX = snapMovePosition(nextX, target.w, activeOverlay.guides?.vertical, scale);
+        nextY = snapMovePosition(nextY, target.h, activeOverlay.guides?.horizontal, scale);
+      }
+      target.x = nextX;
+      target.y = nextY;
       const el = elements.overlayCanvas.querySelector(`[data-item-id="${id}"]`);
       if (el) applyOverlayItemStyle(el, target);
     }
@@ -2918,15 +3370,25 @@ function startOverlayItemResize(event, itemEl, handlePosition) {
   const onMove = (moveEvent) => {
     const dx = (moveEvent.clientX - startX) / scale;
     const dy = (moveEvent.clientY - startY) / scale;
+    const vGuides = activeOverlay.guides?.vertical;
+    const hGuides = activeOverlay.guides?.horizontal;
 
-    if (handlePosition.includes("e")) item.w = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(origin.w + dx));
-    if (handlePosition.includes("s")) item.h = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(origin.h + dy));
+    if (handlePosition.includes("e")) {
+      const rightEdge = snapEdge(origin.x + origin.w + dx, vGuides, scale);
+      item.w = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(rightEdge - origin.x));
+    }
+    if (handlePosition.includes("s")) {
+      const bottomEdge = snapEdge(origin.y + origin.h + dy, hGuides, scale);
+      item.h = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(bottomEdge - origin.y));
+    }
     if (handlePosition.includes("w")) {
-      item.w = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(origin.w - dx));
+      const leftEdge = snapEdge(origin.x + dx, vGuides, scale);
+      item.w = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(origin.x + origin.w - leftEdge));
       item.x = Math.round(origin.x + origin.w - item.w);
     }
     if (handlePosition.includes("n")) {
-      item.h = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(origin.h - dy));
+      const topEdge = snapEdge(origin.y + dy, hGuides, scale);
+      item.h = Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(origin.y + origin.h - topEdge));
       item.y = Math.round(origin.y + origin.h - item.h);
     }
     applyOverlayItemStyle(itemEl, item);

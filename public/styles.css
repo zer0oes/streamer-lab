@@ -1824,24 +1824,11 @@ input[type=range] {
   gap: var(--space-4);
 }
 
-.overlay-editor__add-button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 30%, transparent);
-}
-.overlay-editor__add-button .material-symbols-rounded {
-  font-size: 18px;
-}
-.overlay-editor__add-button:hover {
-  box-shadow: 0 14px 34px color-mix(in srgb, var(--accent) 40%, transparent);
-  transform: translateY(-1px);
-}
-
 .overlay-editor__body {
   display: flex;
   align-items: flex-start;
   gap: var(--space-12);
+  padding-right: calc(288px + var(--space-12));
 }
 
 .overlay-canvas-wrap {
@@ -1876,6 +1863,101 @@ input[type=range] {
 }
 .overlay-canvas.is-placing {
   cursor: crosshair;
+}
+
+.overlay-ruler {
+  position: absolute;
+  z-index: 3;
+  display: none;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+}
+.overlay-ruler--top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.overlay-ruler--left {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 20px;
+  border-right: 1px solid var(--line);
+}
+
+.overlay-ruler__corner {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  display: none;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.overlay-canvas-stage.show-rulers .overlay-ruler,
+.overlay-canvas-stage.show-rulers .overlay-ruler__corner,
+.overlay-canvas-stage.show-rulers .overlay-guides {
+  display: block;
+}
+
+.overlay-guides {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  z-index: 4;
+  pointer-events: none;
+  display: none;
+}
+
+.overlay-guide {
+  position: absolute;
+}
+.overlay-guide--horizontal {
+  left: 0;
+  right: 0;
+  height: 14px;
+  margin-top: -7px;
+  cursor: ns-resize;
+  pointer-events: auto;
+}
+.overlay-guide--horizontal::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #4dd0ff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.overlay-guide--vertical {
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  margin-left: -7px;
+  cursor: ew-resize;
+  pointer-events: auto;
+}
+.overlay-guide--vertical::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #4dd0ff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.overlay-guide.is-dragging::after {
+  background: var(--warning);
 }
 
 .overlay-toolbar {
@@ -2008,6 +2090,11 @@ input[type=range] {
   font-size: 14px !important;
   color: var(--muted);
 }
+.overlay-toolbar__add-divider {
+  height: 1px;
+  margin: var(--space-4) var(--space-6);
+  background: var(--line);
+}
 
 .overlay-item {
   position: absolute;
@@ -2018,6 +2105,10 @@ input[type=range] {
 }
 .overlay-item:hover, .overlay-item.is-active {
   border-color: var(--accent-bright);
+}
+.overlay-item--hidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 .overlay-item__chrome {
   position: absolute;
@@ -2164,22 +2255,20 @@ input[type=range] {
 }
 
 .overlay-layers {
-  flex: 0 0 288px;
-  padding: var(--space-10);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-10);
-  background: var(--panel);
-}
-.overlay-layers.is-settings-open {
+  position: fixed;
+  top: var(--topbar-height);
+  right: 0;
+  bottom: 0;
+  z-index: 6;
   display: flex;
   flex-direction: column;
-  align-self: stretch;
-  min-height: 0;
+  width: 288px;
+  padding: var(--space-10);
+  border-left: 1px solid var(--line);
+  background: var(--panel);
 }
-.overlay-layers.is-settings-open .overlay-layers__list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
+.overlay-layers[hidden] {
+  display: none;
 }
 .overlay-layers__title {
   margin: 0 0 var(--space-8);
@@ -2188,8 +2277,11 @@ input[type=range] {
 }
 .overlay-layers__list {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  min-height: 0;
   gap: var(--space-4);
+  overflow-y: auto;
 }
 .overlay-layers__item {
   display: flex;
@@ -2220,6 +2312,9 @@ input[type=range] {
 .overlay-layers__item.is-active .material-symbols-rounded,
 .overlay-layers__item.is-active .overlay-layers__label {
   color: #fff;
+}
+.overlay-layers__item.is-hidden {
+  opacity: 0.5;
 }
 .overlay-layers__handle {
   cursor: grab;

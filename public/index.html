@@ -360,6 +360,7 @@
               class="preview-shell__frame"
               title="Aperçu du Custom Widget"
               sandbox="allow-scripts"
+              scrolling="no"
             ></iframe>
           </div>
         </div>
@@ -418,10 +419,6 @@
               <span class="eyebrow">OVERLAY</span>
               <h2 id="overlay-editor-title">Overlay</h2>
             </div>
-            <button class="button button--primary overlay-editor__add-button" id="overlay-add-item" type="button">
-              <span class="material-symbols-rounded" aria-hidden="true">add</span>
-              <span>Ajouter un widget/alerte</span>
-            </button>
           </div>
           <div class="overlay-editor__body">
             <div class="overlay-canvas-wrap" id="overlay-canvas-wrap">
@@ -448,6 +445,10 @@
                       <span class="material-symbols-rounded overlay-toolbar__add-chevron" aria-hidden="true">expand_more</span>
                     </button>
                     <div class="overlay-toolbar__add-panel" role="menu" hidden>
+                      <button class="overlay-toolbar__add-item" type="button" role="menuitem" id="overlay-add-item">
+                        <span class="material-symbols-rounded" aria-hidden="true">widgets</span><span>Widget / Alerte</span>
+                      </button>
+                      <div class="overlay-toolbar__add-divider" role="separator"></div>
                       <button class="overlay-toolbar__add-item" type="button" role="menuitem" data-overlay-tool="text">
                         <span class="material-symbols-rounded" aria-hidden="true">title</span><span>Texte</span>
                       </button>
@@ -504,6 +505,10 @@
                   </button>
                 </div>
                 <div class="overlay-toolbar__divider" aria-hidden="true"></div>
+                <button class="overlay-toolbar__button" type="button" id="overlay-tool-rulers" aria-pressed="false" title="Règles et repères">
+                  <span class="material-symbols-rounded" aria-hidden="true">straighten</span><span>Repères</span>
+                </button>
+                <div class="overlay-toolbar__divider" aria-hidden="true"></div>
                 <button class="icon-button" type="button" id="overlay-tool-undo" disabled aria-label="Annuler" title="Annuler (Ctrl+Z)">
                   <span class="material-symbols-rounded" aria-hidden="true">undo</span>
                 </button>
@@ -512,6 +517,10 @@
                 </button>
               </div>
               <div class="overlay-canvas" id="overlay-canvas"></div>
+              <div class="overlay-guides" id="overlay-guides"></div>
+              <canvas class="overlay-ruler overlay-ruler--top" id="overlay-ruler-top"></canvas>
+              <canvas class="overlay-ruler overlay-ruler--left" id="overlay-ruler-left"></canvas>
+              <div class="overlay-ruler__corner" id="overlay-ruler-corner"></div>
               </div>
             </div>
             <aside class="overlay-layers" id="overlay-layers" aria-label="Calques">
