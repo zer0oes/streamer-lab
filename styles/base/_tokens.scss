@@ -52,6 +52,10 @@ $danger-bright: color.scale($danger, $lightness: 20%);
 
   // --- Layout --------------------------------------------------------
   --topbar-height: 83px;
+  // Largeur commune aux panneaux latéraux droits fixes (Mon compte, Calques
+  // d'un overlay, Champs d'un widget/alerte) : une seule valeur pour que les
+  // trois s'alignent visuellement, jamais dupliquée en dur par panneau.
+  --side-panel-width: min(420px, 92vw);
 
   // --- Spacing (padding/margin/gap) — every value used 2+ times in the app.
   // Sub-2px (hairline nudges) and one-off component dimensions (15/28/32/40/42px)

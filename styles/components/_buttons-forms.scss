@@ -147,4 +147,9 @@ input {
 
   &:hover { color: var(--text); border-color: #414753; }
   .material-symbols-rounded { font-size: 18px; }
+  // display:grid ci-dessus a la même spécificité que la règle [hidden] du
+  // navigateur (une classe vs un attribut) : sans cette redéclaration
+  // explicite, l'ordre de cascade fait gagner .icon-button et l'attribut
+  // hidden n'a plus aucun effet visuel.
+  &[hidden] { display: none; }
 }

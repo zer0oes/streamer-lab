@@ -74,6 +74,16 @@
 
   &__column { min-width: 0; }
 
+  // Colonne droite du dashboard : empile Médias au-dessus de Comptes (deux
+  // <section> distinctes) plutôt qu'un 3e élément dans la grille 2 colonnes
+  // de &__columns, qui l'aurait fait passer à la ligne suivante au lieu de
+  // rester dans cette même colonne étroite.
+  &__side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-20);
+  }
+
   &__column-header {
     position: relative;
     display: flex;

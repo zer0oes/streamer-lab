@@ -253,9 +253,199 @@
     text-transform: uppercase;
   }
 
-  &__active-mark {
-    color: var(--accent-bright);
-    font-size: 19px;
+}
+
+// Panneau "Médias" de la bibliothèque (sidebar gauche) : grille de vignettes
+// pour les images/vidéos déjà utilisées dans les overlays StreamElements
+// connectés (cf. renderMediaLibrary dans app.js). Volontairement compact et
+// distinct de .widget-library (pas de nom/description à deux lignes ici,
+// juste un aperçu + le nom de fichier).
+.media-library {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+
+  &__empty {
+    grid-column: 1 / -1;
+  }
+
+  // Zone de dépôt "Ajouter un média" (cf. buildMediaUploadControl) : occupe
+  // toute la largeur de la grille plutôt qu'une seule cellule, comme
+  // &__empty ci-dessus. Glisser-déposer ET clic (label enveloppant l'input
+  // file caché) sont tous deux supportés.
+  &__dropzone {
+    display: flex;
+    flex-direction: column;
+    grid-column: 1 / -1;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-5);
+    min-height: 68px;
+    padding: var(--space-12);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-9);
+    color: var(--muted);
+    cursor: pointer;
+    text-align: center;
+    transition: border-color var(--duration-fast), background var(--duration-fast), color var(--duration-fast);
+
+    .material-symbols-rounded { font-size: 19px; color: var(--accent-bright); }
+
+    &:hover,
+    &:focus-within {
+      color: #fff;
+      border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
+      background: color-mix(in srgb, var(--panel-soft) 92%, var(--accent-bright) 8%);
+    }
+
+    &.is-dragover {
+      color: #fff;
+      border-color: var(--accent-bright);
+      background: color-mix(in srgb, var(--panel-soft) 85%, var(--accent-bright) 15%);
+    }
+  }
+
+  &__dropzone-text {
+    font-size: var(--text-11);
+    font-weight: 650;
+  }
+
+  // Cellule de grille (position: relative pour ancrer &__delete en overlay) :
+  // &__item lui-même n'est plus le placement direct dans la grille dès
+  // qu'un média local porte aussi un bouton de suppression à côté.
+  &__item-wrap {
+    position: relative;
+    // min-width: 0 impose : un item de grille garde par defaut min-width:auto,
+    // c'est-a-dire la largeur de son contenu incompressible — ici le nom de
+    // fichier en white-space:nowrap. Sans ce reset, une colonne 1fr est
+    // elargie de force pour un nom long (ex. "exclam-quest.png"), cassant
+    // l'egalite des colonnes que repeat(3, 1fr) est censee garantir, et
+    // l'ellipsis de &__label ci-dessous ne se declenche jamais.
+    min-width: 0;
+  }
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: var(--space-5);
+    padding: var(--space-6);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-8);
+    background: var(--panel-alt);
+    cursor: pointer;
+    transition: border-color var(--duration-fast), background var(--duration-fast);
+
+    &:hover {
+      border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
+      background: color-mix(in srgb, var(--panel-alt) 92%, var(--accent-bright) 8%);
+    }
+    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+  }
+
+  // Visible seulement au survol (comme les poignées de redimensionnement du
+  // canevas overlay) : un média local a rarement besoin d'être supprimé
+  // dans l'instant, pas la peine d'un bouton toujours présent qui alourdit
+  // chaque vignette.
+  &__delete {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    width: 24px;
+    height: 24px;
+    opacity: 0;
+    background: color-mix(in srgb, var(--panel) 85%, transparent);
+    transition: opacity var(--duration-fast);
+
+    .material-symbols-rounded { font-size: 14px; }
+  }
+
+  &__item-wrap:hover &__delete,
+  &__delete:focus-visible {
+    opacity: 1;
+  }
+
+  &__thumb {
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 16 / 9;
+    // scale-down (pas cover) : rétrécit un média plus grand que le cadre,
+    // mais n'agrandit jamais un média plus petit (contrairement à cover/
+    // contain, qui l'auraient tous les deux étiré pour remplir le cadre).
+    object-fit: scale-down;
+    border-radius: var(--radius-6);
+    background: var(--panel-soft);
+
+    // Portée par &__thumb-frame (position: relative + aspect-ratio) plutôt
+    // que par la vidéo elle-même : object-fit seul ne suffit pas à contenir
+    // une <video> à un ratio fixe sur tous les navigateurs.
+    &--video {
+      aspect-ratio: auto;
+      height: 100%;
+      border-radius: 0;
+    }
+  }
+
+  &__thumb-frame {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--radius-6);
+    background: var(--panel-soft);
+  }
+
+  &__play-badge {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 28px;
+    text-shadow: 0 2px 6px rgb(0 0 0 / 55%);
+    pointer-events: none;
+  }
+
+  &__label {
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: var(--text-10);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+// Aperçu du dashboard (#dashboard-media-library) : plus de colonnes que la
+// sidebar ci-dessus (.media-library, 3 colonnes) — la carte "Médias" du
+// dashboard dispose de bien plus de largeur que la colonne étroite de la
+// sidebar gauche.
+#dashboard-media-library {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+// Pagination des listes du dashboard (Overlays/Widgets/Alertes/Médias) :
+// cf. paginateDashboardEntries dans app.js. Un seul composant partagé entre
+// les 4 sections plutôt qu'un par section, leur structure prev/label/next
+// étant identique.
+.library-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-10);
+  margin-top: var(--space-9);
+
+  &[hidden] { display: none; }
+
+  .icon-button:disabled { opacity: .4; pointer-events: none; }
+
+  &__label {
+    min-width: 36px;
+    color: var(--muted);
+    font-size: var(--text-11);
+    font-weight: 650;
+    text-align: center;
   }
 }
 

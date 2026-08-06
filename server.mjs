@@ -1,11 +1,20 @@
-import { createReadStream, existsSync, readFileSync, watch } from "node:fs";
+import { createReadStream, existsSync, readFileSync, statSync, watch } from "node:fs";
 import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { astroToLabEvents, parseEnv } from "./lib/streamelements.mjs";
+import {
+  astroToLabEvents,
+  parseEnv,
+  buildStreamElementsAuthorizeUrl,
+  exchangeStreamElementsCode,
+  fetchStreamElementsChannel,
+  fetchStreamElementsOverlays,
+  fetchStreamElementsOverlay,
+  extractMediaFromOverlay
+} from "./lib/streamelements.mjs";
 import { streamlabsEventToLabEvents } from "./lib/streamlabs.mjs";
 import { parseCookies, serializeCookie } from "./lib/cookies.mjs";
 import {
@@ -18,8 +27,9 @@ import {
   signSessionCookie
 } from "./lib/auth.mjs";
 import { store } from "./lib/db.mjs";
-import { disconnectIntegration, maskIntegration, saveManualToken } from "./lib/integrations.mjs";
+import { decryptIntegrationToken, disconnectIntegration, maskIntegration, saveManualToken } from "./lib/integrations.mjs";
 import { saveContactMessage } from "./lib/contact.mjs";
+import { deleteLocalMedia, listLocalMedia, resolveLocalMediaPath, saveLocalMedia, MAX_MEDIA_BYTES, MEDIA_URL_PREFIX } from "./lib/media.mjs";
 import {
   LIBRARY_ROOT,
   LIBRARY_CATEGORY_DIRS,
@@ -85,10 +95,21 @@ const config = {
   twitchClientId: process.env.TWITCH_CLIENT_ID?.trim() ?? "",
   twitchClientSecret: process.env.TWITCH_CLIENT_SECRET?.trim() ?? "",
   twitchRedirectUri: process.env.TWITCH_REDIRECT_URI?.trim() || `http://localhost:${port}/auth/twitch/callback`,
+  seOAuthClientId: process.env.SE_OAUTH_CLIENT_ID?.trim() ?? "",
+  seOAuthClientSecret: process.env.SE_OAUTH_CLIENT_SECRET?.trim() ?? "",
+  seOAuthRedirectUri: process.env.SE_OAUTH_REDIRECT_URI?.trim() || `http://localhost:${port}/auth/streamelements/callback`,
   sessionSecret: process.env.SESSION_SECRET?.trim() ?? "",
   cookieSecure: process.env.COOKIE_SECURE?.trim() === "true"
 };
 const authConfigured = Boolean(config.twitchClientId && config.twitchClientSecret && config.sessionSecret);
+const seOAuthConfigured = Boolean(config.seOAuthClientId && config.seOAuthClientSecret && config.sessionSecret);
+const SE_OAUTH_STATE_COOKIE_NAME = "swx_se_oauth_state";
+// Un scan complet des overlays (liste + detail de chacun) a chaque ouverture
+// du panneau Medias serait lent et user-agent-agressif envers l'API
+// StreamElements : ce cache en memoire (par utilisateur) evite de re-scanner
+// a chaque appel tant qu'il n'a pas expire.
+const streamElementsMediaCache = new Map(); // userId -> { expiresAt, media }
+const SE_MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
 
 store.deleteExpiredSessions();
 
@@ -111,6 +132,10 @@ const mimeTypes = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
   ".woff2": "font/woff2"
 };
 
@@ -367,6 +392,169 @@ const server = createServer(async (request, response) => {
       }
     }
 
+    if (request.method === "GET" && url.pathname === "/auth/streamelements/start") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) {
+        response.writeHead(302, { Location: "/?account=open&error=login_required" });
+        return response.end();
+      }
+      if (!seOAuthConfigured) {
+        response.writeHead(302, { Location: "/?account=open&error=streamelements_not_configured" });
+        return response.end();
+      }
+      const state = randomUUID();
+      response.setHeader("Set-Cookie", serializeCookie(SE_OAUTH_STATE_COOKIE_NAME, state, { maxAgeSeconds: 600, secure: config.cookieSecure }));
+      const authorizeUrl = buildStreamElementsAuthorizeUrl({
+        clientId: config.seOAuthClientId,
+        redirectUri: config.seOAuthRedirectUri,
+        state
+      });
+      response.writeHead(302, { Location: authorizeUrl });
+      return response.end();
+    }
+
+    if (request.method === "GET" && url.pathname === "/auth/streamelements/callback") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      const cookies = parseCookies(request.headers.cookie);
+      const expectedState = cookies[SE_OAUTH_STATE_COOKIE_NAME];
+      const returnedState = url.searchParams.get("state");
+      const code = url.searchParams.get("code");
+      const clearStateCookie = serializeCookie(SE_OAUTH_STATE_COOKIE_NAME, "", { maxAgeSeconds: 0, secure: config.cookieSecure });
+
+      if (!auth || url.searchParams.get("error") || !code || !expectedState || expectedState !== returnedState) {
+        response.setHeader("Set-Cookie", clearStateCookie);
+        response.writeHead(302, { Location: "/?account=open&streamelements=cancelled" });
+        return response.end();
+      }
+
+      try {
+        const tokenResponse = await exchangeStreamElementsCode({
+          code,
+          clientId: config.seOAuthClientId,
+          clientSecret: config.seOAuthClientSecret,
+          redirectUri: config.seOAuthRedirectUri
+        });
+        const channel = await fetchStreamElementsChannel(tokenResponse.access_token, "oauth2");
+        saveManualToken({
+          userId: auth.user.id,
+          provider: "streamelements",
+          channelId: channel._id,
+          channelName: channel.displayName || channel.username || null,
+          token: JSON.stringify({ accessToken: tokenResponse.access_token, refreshToken: tokenResponse.refresh_token || null }),
+          tokenType: "oauth2",
+          topics: null
+        }, store);
+        streamElementsMediaCache.delete(auth.user.id);
+        response.setHeader("Set-Cookie", clearStateCookie);
+        response.writeHead(302, { Location: "/?account=open&streamelements=connected" });
+        return response.end();
+      } catch (error) {
+        console.error(error);
+        response.setHeader("Set-Cookie", clearStateCookie);
+        response.writeHead(302, { Location: "/?account=open&streamelements=failed" });
+        return response.end();
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/integrations/streamelements/media") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
+
+      const cached = streamElementsMediaCache.get(auth.user.id);
+      if (cached && cached.expiresAt > Date.now()) {
+        return sendJson(response, 200, { media: cached.media, cached: true });
+      }
+
+      // /channels/me et /overlays/* acceptent aussi bien un jeton JWT/apikey
+      // (formulaire de connexion manuel existant) qu'OAuth2 - jamais besoin
+      // d'exiger specifiquement OAuth2 ici. On tente d'abord l'integration
+      // liee a cet utilisateur, puis on retombe sur le SE_TOKEN/SE_CHANNEL_ID
+      // du .env (simulation) s'il n'y en a pas : un SE_TOKEN deja configure
+      // pour les evenements live suffit aussi a peupler les medias, sans
+      // connexion dediee supplementaire dans "Mon compte".
+      const integrationRow = store.getIntegration(auth.user.id, "streamelements");
+      let token, tokenType, channelId;
+      if (integrationRow) {
+        tokenType = ["jwt", "apikey", "oauth2"].includes(integrationRow.token_type) ? integrationRow.token_type : "jwt";
+        const decrypted = decryptIntegrationToken(integrationRow);
+        token = tokenType === "oauth2" ? JSON.parse(decrypted).accessToken : decrypted;
+        channelId = integrationRow.channel_id;
+      } else if (config.token && config.channelId) {
+        tokenType = ["jwt", "apikey", "oauth2"].includes(config.tokenType) ? config.tokenType : "jwt";
+        token = config.token;
+        channelId = config.channelId;
+      } else {
+        return sendJson(response, 404, { error: "StreamElements non connecte" });
+      }
+
+      try {
+        const overlays = await fetchStreamElementsOverlays(token, channelId, tokenType);
+        const media = [];
+        const seen = new Set();
+        for (const summary of overlays) {
+          const overlayId = summary._id || summary.id;
+          if (!overlayId) continue;
+          const detail = await fetchStreamElementsOverlay(token, channelId, overlayId, tokenType);
+          for (const item of extractMediaFromOverlay(detail, summary.name)) {
+            if (seen.has(item.url)) continue;
+            seen.add(item.url);
+            media.push(item);
+          }
+        }
+        streamElementsMediaCache.set(auth.user.id, { media, expiresAt: Date.now() + SE_MEDIA_CACHE_TTL_MS });
+        return sendJson(response, 200, { media, cached: false });
+      } catch (error) {
+        return sendJson(response, 502, { error: `Recuperation des medias StreamElements impossible : ${error.message}` });
+      }
+    }
+
+    // Bibliotheque de medias LOCALE (images/videos uploadees dans le Lab) :
+    // en attendant que les medias StreamElements/Streamlabs soient
+    // recuperables (cf. la section ci-dessus, qui ne lit que ceux deja
+    // references dans un overlay existant), un utilisateur peut stocker ses
+    // propres fichiers ici. Pas d'authentification requise, comme le reste de
+    // la bibliotheque (widgets/overlays) : outil local mono-utilisateur.
+    if (request.method === "GET" && url.pathname === "/api/media") {
+      return sendJson(response, 200, { media: await listLocalMedia() });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/media") {
+      const filename = url.searchParams.get("filename") || "media";
+      // Rejet base sur Content-Length AVANT de lire le moindre octet du
+      // corps : essentiel pour les gros fichiers (videos notamment). Sans ca,
+      // readRequestBuffer ci-dessous doit interrompre la lecture en cours de
+      // route en depassant MAX_MEDIA_BYTES, ce qui casse la connexion
+      // partagee requete/reponse HTTP en plein milieu — le fetch() du client
+      // reste alors en attente indefiniment (ni reponse ni erreur reseau),
+      // au lieu d'afficher une erreur claire. fetch() avec un File/Blob en
+      // corps envoie toujours Content-Length, donc ce garde-fou couvre le
+      // cas reel ; readRequestBuffer reste en filet de securite pour un
+      // corps chunked sans longueur annoncee.
+      const contentLength = Number(request.headers["content-length"]);
+      if (Number.isFinite(contentLength) && contentLength > MAX_MEDIA_BYTES) {
+        return sendJson(response, 413, { error: "Fichier trop volumineux (25 Mo max)" });
+      }
+      try {
+        const buffer = await readRequestBuffer(request, MAX_MEDIA_BYTES);
+        const entry = await saveLocalMedia(filename, buffer);
+        return sendJson(response, 201, { media: entry });
+      } catch (error) {
+        return sendJson(response, 400, { error: error.message });
+      }
+    }
+
+    if (request.method === "DELETE" && url.pathname === "/api/media") {
+      const deleted = await deleteLocalMedia(url.searchParams.get("id"));
+      return sendJson(response, 200, { deleted });
+    }
+
+    if (request.method === "GET" && url.pathname.startsWith(MEDIA_URL_PREFIX)) {
+      const id = decodeURIComponent(url.pathname.slice(MEDIA_URL_PREFIX.length));
+      const filePath = resolveLocalMediaPath(id);
+      if (!filePath) return sendJson(response, 404, { error: "Media introuvable" });
+      return streamFile(request, response, filePath);
+    }
+
     if (request.method === "POST" && url.pathname === "/api/auth/dev-login") {
       if (process.env.ENABLE_DEV_LOGIN !== "true") return sendJson(response, 404, { error: "Introuvable" });
       if (!config.sessionSecret) return sendJson(response, 500, { error: "SESSION_SECRET manquant" });
@@ -499,11 +687,11 @@ const server = createServer(async (request, response) => {
         response.writeHead(404, { "Content-Type": "text/javascript; charset=utf-8" });
         return response.end("/* jQuery indisponible : executez npm install. */");
       }
-      return streamFile(response, jqueryPath);
+      return streamFile(request, response, jqueryPath);
     }
 
     if (request.method !== "GET" && request.method !== "HEAD") return sendJson(response, 405, { error: "Methode non autorisee" });
-    return serveStatic(response, url.pathname);
+    return serveStatic(request, response, url.pathname);
   } catch (error) {
     console.error(error);
     return sendJson(response, 500, { error: error.message });
@@ -546,6 +734,7 @@ server.listen(port, "127.0.0.1", () => {
   console.log(`Streamer Lab : http://localhost:${port}`);
   if (!config.channelId || !config.token) console.log("Mode simulation. Configurez .env pour activer les evenements reels.");
   if (!authConfigured) console.log("Connexion Twitch desactivee. Renseignez TWITCH_CLIENT_ID/SECRET et SESSION_SECRET dans .env pour l'activer.");
+  if (!seOAuthConfigured) console.log("Section Medias (StreamElements OAuth2) desactivee. Renseignez SE_OAUTH_CLIENT_ID/SECRET dans .env pour l'activer.");
   if (process.argv.includes("--open")) openBrowser(`http://localhost:${port}`);
 });
 
@@ -671,7 +860,9 @@ async function loadWidget(widgetInfo, platform = "streamelements") {
       name: widgetInfo.name,
       description: widgetInfo.description,
       icon: widgetInfo.icon,
-      archived: widgetInfo.archived
+      archived: widgetInfo.archived,
+      width: widgetInfo.width,
+      height: widgetInfo.height
     },
     files: {
       html: "widget.html",
@@ -712,6 +903,21 @@ async function readRequestJson(request) {
   }
 }
 
+// Corps brut (pas du JSON) pour l'upload de medias : le client poste
+// directement les octets du fichier (fetch(url, {body: file})), sans
+// multipart - plus simple qu'un vrai parseur multipart/form-data pour un
+// seul fichier a la fois.
+async function readRequestBuffer(request, maxBytes) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > maxBytes) throw new Error("Fichier trop volumineux");
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 function broadcast(event, data) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const client of sseClients) client.write(payload);
@@ -722,21 +928,56 @@ function sendJson(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-function serveStatic(response, requestPath) {
+function serveStatic(request, response, requestPath) {
   const relative = requestPath === "/" ? "index.html" : decodeURIComponent(requestPath.slice(1));
   const normalized = normalize(relative).replace(/^([.][.][/\\])+/, "");
   const path = resolve(PUBLIC_ROOT, normalized);
   if (!path.startsWith(resolve(PUBLIC_ROOT))) return sendJson(response, 403, { error: "Chemin interdit" });
   if (!existsSync(path)) return sendJson(response, 404, { error: "Introuvable" });
-  return streamFile(response, path);
+  return streamFile(request, response, path);
 }
 
-function streamFile(response, path) {
-  response.writeHead(200, {
-    "Content-Type": mimeTypes[extname(path).toLowerCase()] || "application/octet-stream",
+// Le support des requetes Range (+ Content-Length) est indispensable pour la
+// video/audio : sans lui, le navigateur ne connait ni la duree totale ni la
+// possibilite de seeker, et certains (Chrome inclus, au-dela d'un fichier
+// minuscule) refusent d'afficher la premiere frame ou de lire le fichier.
+function streamFile(request, response, path) {
+  const contentType = mimeTypes[extname(path).toLowerCase()] || "application/octet-stream";
+  const { size } = statSync(path);
+  const range = request.headers.range;
+
+  if (!range) {
+    response.writeHead(200, {
+      "Content-Type": contentType,
+      "Content-Length": size,
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "no-store"
+    });
+    createReadStream(path).pipe(response);
+    return;
+  }
+
+  const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+  if (!match || (!match[1] && !match[2])) {
+    response.writeHead(416, { "Content-Range": `bytes */${size}` });
+    return response.end();
+  }
+  const start = match[1] ? Number(match[1]) : size - Number(match[2]);
+  const end = match[1] && match[2] ? Number(match[2]) : size - 1;
+  if (Number.isNaN(start) || Number.isNaN(end) || start > end || start >= size) {
+    response.writeHead(416, { "Content-Range": `bytes */${size}` });
+    return response.end();
+  }
+  const clampedEnd = Math.min(end, size - 1);
+
+  response.writeHead(206, {
+    "Content-Type": contentType,
+    "Content-Length": clampedEnd - start + 1,
+    "Content-Range": `bytes ${start}-${clampedEnd}/${size}`,
+    "Accept-Ranges": "bytes",
     "Cache-Control": "no-store"
   });
-  createReadStream(path).pipe(response);
+  createReadStream(path, { start, end: clampedEnd }).pipe(response);
 }
 
 async function connectAstro(reconnectToken = "") {

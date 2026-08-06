@@ -1,12 +1,17 @@
 // Right-side account drawer: Twitch login, StreamElements/Streamlabs cards.
 
+// Même schéma que .controls (sidebar gauche, styles/layouts/_sidebar.scss) :
+// colonne flex à hauteur fixe, seul &__body (flex:1) scrolle, header/footer
+// sont de simples éléments de flux épinglés en haut/bas par le flex — pas de
+// position:sticky qui les ferait flotter par-dessus le contenu au scroll.
 .account-panel-drawer {
   position: fixed;
   top: 0;
   right: 0;
   z-index: 40;
-  overflow: auto;
-  width: min(420px, 92vw);
+  display: flex;
+  flex-direction: column;
+  width: var(--side-panel-width);
   height: 100vh;
   height: 100dvh;
   border-left: 1px solid #343944;
@@ -26,38 +31,35 @@
   }
 
   &__header {
-    position: sticky;
-    z-index: 1;
-    top: 0;
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
     min-height: var(--topbar-height);
     padding: var(--space-14) clamp(var(--space-18), 3vw, 42px);
     border-bottom: 1px solid var(--line);
-    background: color-mix(in srgb, var(--panel) 92%, transparent);
-    backdrop-filter: blur(14px);
 
     h2 { font-size: clamp(17px, 2vw, 22px); letter-spacing: -0.025em; }
   }
 
-  &__body { padding: var(--space-24); }
+  &__body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--space-24);
+  }
 
-  // Pied de panneau persistant : sticky sur .account-panel-drawer lui-même
-  // (c'est lui qui scroll, pas __body), donc toujours visible en bas quel
-  // que soit l'état connecté/déconnecté ou la longueur du contenu au-dessus.
+  // Pied de panneau : simple élément de flux (comme .controls__footer à
+  // gauche), naturellement poussé en bas par &__body en flex:1 au-dessus —
+  // toujours visible sans jamais recouvrir le contenu au scroll.
   &__footer {
-    position: sticky;
-    z-index: 1;
-    bottom: 0;
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-14);
     padding: var(--space-14) clamp(var(--space-18), 3vw, 42px);
     border-top: 1px solid var(--line);
-    background: color-mix(in srgb, var(--panel) 92%, transparent);
-    backdrop-filter: blur(14px);
   }
 
   &__footer-label { color: var(--muted); font-size: var(--text-12); font-weight: 650; }
@@ -185,6 +187,48 @@
 
     &:hover { text-decoration: underline; }
     .material-symbols-rounded { font-size: 14px; }
+    &[hidden] { display: none; }
+  }
+
+  // Bouton "Se connecter en OAuth2" (uniquement StreamElements, cf.
+  // index.html) : même largeur/hauteur que .button--wide, mais icône +
+  // libellé centrés comme .widget-library__add plutôt que le texte seul par
+  // défaut de .button.
+  [data-role="oauth-connect"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+
+    &[hidden] { display: none; }
+  }
+
+  &__hint {
+    margin: var(--space-8) 0 0;
+    color: var(--muted);
+    font-size: var(--text-10);
+    line-height: 1.4;
+
+    &[hidden] { display: none; }
+  }
+
+  &__divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    margin: var(--space-14) 0;
+    color: var(--muted);
+    font-size: var(--text-10);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+
+    &::before, &::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+
     &[hidden] { display: none; }
   }
 

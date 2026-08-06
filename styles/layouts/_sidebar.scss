@@ -91,15 +91,6 @@
     // state — the expanded row layout is untouched.
     .sidebar-toggle { order: -1; margin: 0 auto; }
   }
-
-  // The platform switch/export menu and the "Champs" section only make
-  // sense while actually editing a widget/alert — hidden on the dashboard,
-  // where nothing is selected. Toggled alongside .is-sidebar-collapsed by
-  // setEditingChromeVisible() in app.js.
-  &.is-dashboard {
-    #fields-nav { display: none; }
-    [data-sidebar-section="fields"] { display: none; }
-  }
 }
 
 .panel {
@@ -240,7 +231,7 @@
 }
 
 // Dashboard is the only nav item always visible in the expanded toolbar
-// (Bibliothèque/Champs stay rail-only) — restyled here to match
+// (Bibliothèque/Médias stay rail-only) — restyled here to match
 // .sidebar-section__summary/.sidebar-section__step's look (icon + divider,
 // larger type, no pill/border) instead of the plain bordered box other
 // nav items use. Scoped to `:not(.is-sidebar-rail)` rather than
@@ -261,7 +252,12 @@
   // not from padding, so it can't drift out of sync with the toggle again.
   height: 38px;
   gap: var(--space-12);
-  padding: 0 var(--space-9);
+  // No horizontal padding here : .controls__toolbar's own padding (25px,
+  // matching .sidebar-section__summary's — see its comment) already gives
+  // this row the exact left inset the sections below it have. Adding more
+  // here used to double it up, so this icon sat 9px further right than
+  // "Ma bibliothèque"/"Médias" right underneath it.
+  padding: 0;
   // No border-radius/inset margin here (unlike the plain .sidebar-nav-item
   // pill below): this row is meant to look flush, like
   // .sidebar-section__summary right underneath it, not like a floating
@@ -334,11 +330,7 @@
 
     &::-webkit-details-marker { display: none; }
     .sidebar-section__heading { margin: 0; }
-    // Same look as #dashboard-fab right above it (accent-bright text over a
-    // 10% tint) — that row is always in this state (it's the current page),
-    // this one only reaches it on hover, but the two are meant to read as
-    // the same highlight language.
-    &:hover { color: var(--accent-bright); background: color-mix(in srgb, var(--accent-bright) 10%, transparent); }
+    &:hover { color: var(--accent-bright); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
   }
 
@@ -425,6 +417,83 @@
   margin: var(--space-4) 0 15px;
 
   &__label { color: #adb2bd; font-size: var(--text-11); font-weight: 650; }
+}
+
+// "Champs" widget/alerte : chaque champ devient une ligne compacte façon
+// panneau Calques (icône de type + libellé + fond arrondi au survol, cf.
+// .overlay-layers__item) au lieu d'un bloc libellé-au-dessus/input-en-
+// dessous — voir renderFields() côté JS. Scopé à #fields-form : ne doit pas
+// déteindre sur .field/.checkbox-field ailleurs (formulaire de contact,
+// simulateur d'événements, réglages d'un calque overlay…).
+#fields-form {
+  .field-group__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .field,
+  .checkbox-field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-8);
+    margin: 0;
+    padding: var(--space-6) var(--space-8);
+    border-radius: var(--radius-6);
+    transition: background var(--duration-fast);
+
+    &:hover { background: var(--panel-soft); }
+  }
+
+  .field__icon { flex: 0 0 auto; font-size: 16px; color: var(--muted); }
+
+  .field__label,
+  .checkbox-field__label {
+    // flex-basis: auto (implicite avec flex: 1 1 auto) ferait démarrer le
+    // calcul de retour à la ligne depuis la largeur NATURELLE du texte (donc
+    // non tronquée malgré white-space: nowrap ci-dessous) : un conteneur
+    // flex-wrap décide s'il faut passer à la ligne suivante AVANT tout
+    // rétrécissement, à partir de cette taille hypothétique — un libellé
+    // long ferait donc systématiquement passer l'input à la ligne d'après,
+    // même en mode --inline. Une base à 0 force au contraire le libellé à
+    // partir de rien et à grandir seulement dans l'espace qu'il reste une
+    // fois l'input posé, d'où la troncature ellipsis qui marche enfin.
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  // Par défaut l'input repasse à la ligne, pleine largeur : la plupart des
+  // libellés + leur contrôle (texte, police, URL, slider…) ne tiennent pas
+  // sur une seule ligne dans les ~300px du panneau.
+  .field input,
+  .field select,
+  .field .field-group__control-row {
+    flex: 1 1 100%;
+  }
+
+  // Types compacts (nombre, couleur, liste courte) : le contrôle reste sur
+  // la ligne du libellé plutôt que de forcer un retour à la ligne inutile.
+  // flex-wrap: nowrap ici est nécessaire en plus de la base à 0 ci-dessus :
+  // sans lui, un conteneur qui wrap peut quand même choisir de faire passer
+  // l'input à la ligne suivante dès que le libellé ET l'input demandés
+  // dépassent la largeur dispo, au lieu de laisser le libellé rétrécir.
+  .field--inline {
+    flex-wrap: nowrap;
+
+    input, select { flex: 0 0 108px; }
+
+    &:has(input[type="color"]) input { flex: 0 0 44px; padding: 2px; }
+  }
+
+  input, select {
+    min-height: 30px;
+    padding: var(--space-4) var(--space-8);
+    font-size: var(--text-11);
+  }
 }
 
 .advanced {

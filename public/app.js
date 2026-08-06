@@ -18,6 +18,8 @@ const elements = {
   alertCount: document.querySelector("#alert-count"),
   addAlertButton: document.querySelector("#add-alert"),
   sidebarSections: document.querySelectorAll("[data-sidebar-section]"),
+  mediaSection: document.querySelector('[data-sidebar-section="media"]'),
+  mediaLibraryList: document.querySelector("#media-library"),
   widgetSettingsDialog: document.querySelector("#widget-settings-dialog"),
   widgetSettingsForm: document.querySelector("#widget-settings-form"),
   widgetSettingsTitle: document.querySelector("#widget-settings-title"),
@@ -63,6 +65,8 @@ const elements = {
   overlayAddTrigger: document.querySelector("#overlay-add-tool-trigger"),
   overlayToolGroupButton: document.querySelector("#overlay-tool-group"),
   overlayDuplicateButton: document.querySelector("#overlay-tool-duplicate"),
+  overlayDeleteButton: document.querySelector("#overlay-tool-delete"),
+  overlayCenterButton: document.querySelector("#overlay-tool-center"),
   overlayUndoButton: document.querySelector("#overlay-tool-undo"),
   overlayRedoButton: document.querySelector("#overlay-tool-redo"),
   overlayZoomOutButton: document.querySelector("#overlay-zoom-out"),
@@ -102,6 +106,11 @@ const elements = {
   dashboardAddFabWidget: document.querySelector("#dashboard-add-fab-widget"),
   dashboardAddFabAlert: document.querySelector("#dashboard-add-fab-alert"),
   dashboardConnectionList: document.querySelector("#dashboard-connection-list"),
+  dashboardMediaList: document.querySelector("#dashboard-media-library"),
+  dashboardOverlayPagination: document.querySelector("#dashboard-overlay-pagination"),
+  dashboardWidgetPagination: document.querySelector("#dashboard-widget-pagination"),
+  dashboardAlertPagination: document.querySelector("#dashboard-alert-pagination"),
+  dashboardMediaPagination: document.querySelector("#dashboard-media-pagination"),
   workspace: document.querySelector(".workspace"),
   sidebarControls: document.querySelector(".workspace .controls"),
   sidebarToggle: document.querySelector("#sidebar-toggle"),
@@ -366,10 +375,47 @@ const DEFAULT_WIDGET_SIZE = { width: 320, height: 180 };
 // suspend le reste du module tant qu'il n'est pas résolu, et initialize()
 // peut appeler setOverlayTool() (via openOverlayEditor) avant d'y arriver.
 const OVERLAY_ADD_MENU_TOOLS = new Set(["image", "video", "embed", "icon", "shape"]);
+// Icône par type de champ (panneau "Champs" widget/alerte), même principe
+// que overlayLayerIcon pour le panneau Calques : un repère visuel rapide du
+// type de contrôle, avant même de lire le libellé. Doit rester déclaré
+// avant `await initialize()` plus bas, même remarque qu'au-dessus.
+const FIELD_TYPE_ICON = {
+  dropdown: "list",
+  colorpicker: "palette",
+  slider: "tune",
+  googleFont: "font_download",
+  fontpicker: "font_download",
+  textfield: "text_fields",
+  text: "text_fields",
+  imagepicker: "image",
+  soundpicker: "music_note",
+  videopicker: "videocam",
+  number: "numbers",
+  checkbox: "check_box",
+  button: "smart_button"
+};
+// Types dont l'input tient raisonnablement à côté du libellé sur une seule
+// ligne (panneau étroit, ~300px) : les autres (texte long, police, URL,
+// slider…) gardent leur input en pleine largeur sous le libellé.
+const FIELD_INLINE_TYPES = new Set(["number", "colorpicker", "dropdown"]);
 // Marge sous le canevas mis à l'échelle pour ne jamais coller au bord du
 // viewport (cf. updateOverlayCanvasScale). Même remarque qu'au-dessus : doit
 // être déclarée avant `await initialize()`.
 const OVERLAY_CANVAS_BOTTOM_MARGIN = 24;
+// Doit aussi rester déclaré avant `await initialize()` plus bas :
+// showDashboard() (appelée depuis initialize() elle-même) rend la
+// bibliothèque de médias, qui construit son bouton d'upload avec ceci.
+// Les extensions sont listées en plus des types MIME (pas juste eux) : sans
+// QuickTime installé, Windows n'associe aucun type MIME à .mov, et le
+// sélecteur de fichiers grise silencieusement ces fichiers si le filtre ne
+// matche que par MIME — l'extension seule suffit à les laisser passer.
+const MEDIA_UPLOAD_ACCEPT = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml,video/mp4,video/webm,video/quicktime,.png,.jpg,.jpeg,.gif,.webp,.svg,.mp4,.webm,.mov";
+// Pagination des 4 listes du dashboard. Même remarque qu'au-dessus : doit
+// rester déclaré avant `await initialize()`, renderOverlayLibrary/
+// renderWidgetLibrary/renderMediaLibrary (appelées depuis showDashboard, elle
+// même appelée depuis initialize()) lisent ces deux objets.
+const DASHBOARD_PAGE_SIZE = { overlay: 3, widget: 5, alert: 5, media: 8 };
+const dashboardPage = { overlay: 0, widget: 0, alert: 0, media: 0 };
 // Cible des raccourcis .url (widgets/alertes/overlays) : le Lab ne crée
 // jamais rien à distance, donc aucun ID StreamElements/Streamlabs connu pour
 // pointer vers "ce" widget précis sur la plateforme — seul son tableau de
@@ -486,12 +532,14 @@ initializeExportMenu();
 initializePreviewControls();
 initializePreviewTheme();
 initializeSidebarSections();
+initializeMediaLibrary();
 initializeLibraryGroups();
 initializeWidgetSettings();
 initializeOverlaySettings();
 initializeOverlayCanvas();
 initializeDropdowns();
 initializeDashboardLibraryControls();
+initializeDashboardPagination();
 initializeEditorCopyButton();
 initializeContactForm();
 await initialize();
@@ -511,6 +559,24 @@ function loadPreviewSize() {
 function clampPreviewDimension(value, fallback) {
   const number = Math.round(Number(value));
   return Number.isFinite(number) ? Math.min(4096, Math.max(64, number)) : fallback;
+}
+
+// Recale l'aperçu sur la taille par défaut réglée dans les paramètres du
+// widget/alerte concerné (widget.widgetMeta.width/height, cf. les champs
+// "Largeur"/"Hauteur" de openWidgetSettings) — appelé à chaque ouverture ou
+// changement de widget, jamais lors d'un simple rechargement de code/champs
+// sur le MÊME widget (cf. ses appelants), pour ne pas écraser un
+// redimensionnement manuel fait en cours d'édition.
+function applyWidgetDefaultPreviewSize(widgetBundle) {
+  const meta = widgetBundle?.widgetMeta || {};
+  previewSize = {
+    width: clampPreviewDimension(meta.width, DEFAULT_WIDGET_SIZE.width),
+    height: clampPreviewDimension(meta.height, DEFAULT_WIDGET_SIZE.height)
+  };
+  elements.previewWidth.value = previewSize.width;
+  elements.previewHeight.value = previewSize.height;
+  localStorage.setItem(previewSizeStorageKey, JSON.stringify(previewSize));
+  applyPreviewSize();
 }
 
 function loadPreviewTheme() {
@@ -871,6 +937,9 @@ function initializeWidgetSettings() {
 function initializeDashboardLibraryControls() {
   elements.dashboardLibrarySearch.addEventListener("input", () => {
     librarySearchTerm = elements.dashboardLibrarySearch.value;
+    dashboardPage.overlay = 0;
+    dashboardPage.widget = 0;
+    dashboardPage.alert = 0;
     renderWidgetLibrary();
     renderOverlayLibrary();
   });
@@ -891,6 +960,7 @@ function initializeDashboardLibraryControls() {
         localStorage.setItem(librarySortStorageKey, JSON.stringify(librarySortMode));
         updateFilterPanelChecks(panel, librarySortMode[scope]);
         closeAllDropdowns();
+        dashboardPage[scope] = 0;
         renderWidgetLibrary();
         renderOverlayLibrary();
       });
@@ -1073,6 +1143,7 @@ async function saveWidgetMetadata() {
     if (activeWidgetId === updatedWidget.id && widget) {
       widget.widgetMeta = { ...widget.widgetMeta, ...updatedWidget };
       applyWidgetMeta();
+      applyWidgetDefaultPreviewSize(widget);
     }
     revealLibraryGroupForWidget(updatedWidget.id);
     renderWidgetLibrary();
@@ -1129,12 +1200,14 @@ function renderOverlayLibrary() {
   }
 
   const filteredOverlays = filterAndSortLibraryEntries(overlayCatalog, "overlay");
+  const { pageEntries: overlayPageEntries, pageCount: overlayPageCount } = paginateDashboardEntries("overlay", filteredOverlays);
   elements.dashboardOverlayList.replaceChildren();
-  if (filteredOverlays.length) {
-    for (const entry of filteredOverlays) elements.dashboardOverlayList.append(buildOverlayLibraryRow(entry, { showMeta: true, showPreview: true }));
+  if (overlayPageEntries.length) {
+    for (const entry of overlayPageEntries) elements.dashboardOverlayList.append(buildOverlayLibraryRow(entry, { showMeta: true, showPreview: true }));
   } else {
     elements.dashboardOverlayList.append(buildLibraryEmptyState(dashboardLibraryEmptyMessage("Aucun overlay pour l’instant.")));
   }
+  renderDashboardPagination(elements.dashboardOverlayPagination, "overlay", overlayPageCount);
 
   updateDashboardLibrarySuggestions();
 }
@@ -1171,14 +1244,7 @@ function buildOverlayLibraryRow(entry, { showMeta = false, showPreview = false }
     copy.append(meta);
   }
 
-  const status = document.createElement("span");
-  if (isActive) {
-    status.className = "material-symbols-rounded widget-library__active-mark";
-    status.textContent = "check_circle";
-    status.setAttribute("aria-hidden", "true");
-  }
-
-  button.append(icon, copy, status);
+  button.append(icon, copy);
   button.addEventListener("click", () => void openOverlayEditor(entry.id));
 
   const menu = document.createElement("div");
@@ -1482,6 +1548,8 @@ function initializeOverlayCanvas() {
     else createOverlayGroup();
   });
   elements.overlayDuplicateButton.addEventListener("click", duplicateOverlaySelection);
+  elements.overlayDeleteButton.addEventListener("click", removeOverlaySelection);
+  elements.overlayCenterButton.addEventListener("click", centerOverlaySelection);
   elements.overlayUndoButton.addEventListener("click", undoOverlay);
   elements.overlayRedoButton.addEventListener("click", redoOverlay);
   elements.overlayZoomOutButton.addEventListener("click", () => stepOverlayZoom(-1));
@@ -1516,6 +1584,20 @@ function initializeOverlayCanvas() {
       const itemEl = event.target.closest(".overlay-item");
       if (itemEl) handleOverlayEyedropperClick(itemEl.dataset.itemId);
       return;
+    }
+    // Un clic sur un texte déjà posé, outil Texte actif, l'édite sur place
+    // au lieu d'en empiler un nouveau par-dessus — seul un clic dans le vide
+    // tombe encore dans le placement générique juste en dessous.
+    if (activeOverlayTool === "text") {
+      const textItemEl = event.target.closest(".overlay-item--text");
+      if (textItemEl) {
+        const textEl = textItemEl.querySelector(".overlay-item__text");
+        selectedOverlayItemIds = new Set([textItemEl.dataset.itemId]);
+        updateOverlaySelectionUI();
+        setOverlayTool("select");
+        if (textEl) enterOverlayTextEdit(textItemEl.dataset.itemId, textItemEl, textEl);
+        return;
+      }
     }
     if (activeOverlayTool !== "select" && !event.target.closest("[data-handle]")) {
       const point = canvasPointFromEvent(event);
@@ -1784,15 +1866,34 @@ function updateOverlaySelectionUI() {
   // n'a pas de sens, mais dégrouper l'unique groupe sélectionné si).
   const soleSelection = selectionCount === 1 ? findOverlayItem([...selectedOverlayItemIds][0]) : null;
   const isUngroupMode = soleSelection?.type === "group";
+  const groupVisible = isUngroupMode || selectionCount >= 2;
   elements.overlayToolGroupButton.dataset.mode = isUngroupMode ? "ungroup" : "group";
   elements.overlayToolGroupButton.disabled = isUngroupMode ? false : selectionCount < 2;
+  elements.overlayToolGroupButton.hidden = !groupVisible;
   elements.overlayToolGroupButton.title = isUngroupMode ? "Dégrouper" : "Grouper la sélection";
   elements.overlayToolGroupButton.setAttribute("aria-label", isUngroupMode ? "Dégrouper" : "Grouper la sélection");
   const groupButtonIcon = elements.overlayToolGroupButton.querySelector(".material-symbols-rounded");
   if (groupButtonIcon) groupButtonIcon.textContent = isUngroupMode ? "call_split" : "select_all";
+  // Dupliquer/Supprimer/Centrer/alignement n'ont de sens que sur une
+  // sélection non vide ; masqués (pas juste désactivés) en dehors de ce cas
+  // pour ne pas encombrer la barre d'outils par défaut.
   elements.overlayDuplicateButton.disabled = selectionCount < 1;
-  for (const button of elements.overlayAlignButtons) button.disabled = selectionCount < 1;
-  for (const button of elements.overlayDistributeButtons) button.disabled = selectionCount < 3;
+  elements.overlayDuplicateButton.hidden = selectionCount < 1;
+  elements.overlayDeleteButton.disabled = selectionCount < 1;
+  elements.overlayDeleteButton.hidden = selectionCount < 1;
+  elements.overlayCenterButton.disabled = selectionCount < 1;
+  elements.overlayCenterButton.hidden = selectionCount < 1;
+  for (const button of elements.overlayAlignButtons) {
+    button.disabled = selectionCount < 1;
+    button.hidden = selectionCount < 1;
+  }
+  // La distribution ne fait quelque chose qu'à partir de 3 items (cf.
+  // distributeOverlaySelection), mais reste visible dès 2 pour annoncer la
+  // fonctionnalité avant qu'elle ne devienne utilisable.
+  for (const button of elements.overlayDistributeButtons) {
+    button.disabled = selectionCount < 3;
+    button.hidden = selectionCount < 2;
+  }
   if (overlaySettingsItemId && !(selectionCount === 1 && selectedOverlayItemIds.has(overlaySettingsItemId))) {
     overlaySettingsItemId = null;
   }
@@ -1924,23 +2025,25 @@ function moveOverlayItemTo(item, newX, newY) {
   }
 }
 
+// Bornes de référence pour aligner/centrer : celles de tout le canevas si un
+// seul item est sélectionné (l'aligner par rapport à sa propre boîte ne
+// bougerait rien), sinon celles de la boîte englobante de la sélection.
+function overlaySelectionBounds(items) {
+  const canvas = activeOverlay.canvas || DEFAULT_OVERLAY_CANVAS;
+  if (items.length === 1) return { minX: 0, maxX: canvas.width, minY: 0, maxY: canvas.height };
+  return {
+    minX: Math.min(...items.map((entry) => entry.x)),
+    maxX: Math.max(...items.map((entry) => entry.x + entry.w)),
+    minY: Math.min(...items.map((entry) => entry.y)),
+    maxY: Math.max(...items.map((entry) => entry.y + entry.h))
+  };
+}
+
 function alignOverlaySelection(mode) {
   if (!activeOverlay) return;
   const items = selectedOverlayItemsList();
   if (items.length < 1) return;
-  // Un seul item sélectionné : sa propre boîte englobante vaudrait tout
-  // seul, ce qui rendrait l'alignement un no-op — on aligne alors par
-  // rapport à la surface entière de l'overlay plutôt qu'à la sélection.
-  const canvas = activeOverlay.canvas || DEFAULT_OVERLAY_CANVAS;
-  const bounds = items.length === 1
-    ? { minX: 0, maxX: canvas.width, minY: 0, maxY: canvas.height }
-    : {
-        minX: Math.min(...items.map((entry) => entry.x)),
-        maxX: Math.max(...items.map((entry) => entry.x + entry.w)),
-        minY: Math.min(...items.map((entry) => entry.y)),
-        maxY: Math.max(...items.map((entry) => entry.y + entry.h))
-      };
-  const { minX, maxX, minY, maxY } = bounds;
+  const { minX, maxX, minY, maxY } = overlaySelectionBounds(items);
   for (const item of items) {
     if (mode === "left") moveOverlayItemTo(item, Math.round(minX), item.y);
     else if (mode === "center") moveOverlayItemTo(item, Math.round(minX + (maxX - minX) / 2 - item.w / 2), item.y);
@@ -1948,6 +2051,25 @@ function alignOverlaySelection(mode) {
     else if (mode === "top") moveOverlayItemTo(item, item.x, Math.round(minY));
     else if (mode === "middle") moveOverlayItemTo(item, item.x, Math.round(minY + (maxY - minY) / 2 - item.h / 2));
     else if (mode === "bottom") moveOverlayItemTo(item, item.x, Math.round(maxY - item.h));
+  }
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+}
+
+// Centre chaque item à la fois horizontalement et verticalement en un seul
+// geste (un historique/une persistance), plutôt que deux clics successifs
+// sur "center" puis "middle".
+function centerOverlaySelection() {
+  if (!activeOverlay) return;
+  const items = selectedOverlayItemsList();
+  if (items.length < 1) return;
+  const { minX, maxX, minY, maxY } = overlaySelectionBounds(items);
+  for (const item of items) {
+    moveOverlayItemTo(
+      item,
+      Math.round(minX + (maxX - minX) / 2 - item.w / 2),
+      Math.round(minY + (maxY - minY) / 2 - item.h / 2)
+    );
   }
   pushOverlayHistory();
   scheduleOverlayPersist();
@@ -2357,22 +2479,6 @@ function buildOverlayItemElement(item) {
   else if (item.type === "video") chrome.append(buildVideoInspector(item, el));
   else if (item.type === "embed") chrome.append(buildEmbedInspector(item, el));
 
-  // Un groupe se redimensionne uniquement par ses poignées (mise à l'échelle
-  // proportionnelle de ses enfants) : des champs largeur/hauteur libres
-  // casseraient cette garantie sans re-répercuter la mise à l'échelle.
-  if (item.type !== "group") chrome.append(buildOverlaySizeInputs(item, el));
-
-  const removeButton = document.createElement("button");
-  removeButton.type = "button";
-  removeButton.className = "icon-button overlay-item__remove";
-  removeButton.setAttribute("aria-label", "Retirer");
-  removeButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">close_small</span>';
-  removeButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    removeOverlayItem(item.id);
-  });
-  chrome.append(removeButton);
-
   el.append(chrome);
 
   if (item.type === "widget" || item.type === "alert") buildWidgetItemContent(item, el, label);
@@ -2392,42 +2498,6 @@ function buildOverlayItemElement(item) {
   }
 
   return el;
-}
-
-function buildOverlaySizeInputs(item, el) {
-  const sizeLabel = document.createElement("label");
-  sizeLabel.className = "overlay-item__size";
-  const widthInput = document.createElement("input");
-  widthInput.type = "number";
-  widthInput.min = String(MIN_OVERLAY_ITEM_SIZE);
-  widthInput.value = String(item.w);
-  widthInput.dataset.dim = "w";
-  const separator = document.createElement("span");
-  separator.textContent = "×";
-  const heightInput = document.createElement("input");
-  heightInput.type = "number";
-  heightInput.min = String(MIN_OVERLAY_ITEM_SIZE);
-  heightInput.value = String(item.h);
-  heightInput.dataset.dim = "h";
-  widthInput.disabled = Boolean(item.locked);
-  heightInput.disabled = Boolean(item.locked);
-  sizeLabel.append(widthInput, separator, heightInput);
-
-  const onSizeChange = () => {
-    const target = findOverlayItem(item.id);
-    if (!target) return;
-    target.w = Math.max(MIN_OVERLAY_ITEM_SIZE, Number(widthInput.value) || target.w);
-    target.h = Math.max(MIN_OVERLAY_ITEM_SIZE, Number(heightInput.value) || target.h);
-    applyOverlayItemStyle(el, target);
-    pushOverlayHistory();
-    scheduleOverlayPersist();
-  };
-  widthInput.addEventListener("change", onSizeChange);
-  heightInput.addEventListener("change", onSizeChange);
-  for (const input of [widthInput, heightInput]) {
-    input.addEventListener("pointerdown", (event) => event.stopPropagation());
-  }
-  return sizeLabel;
 }
 
 async function buildWidgetItemContent(item, el, label) {
@@ -2581,16 +2651,7 @@ function commitOverlayItemPosition(itemId, key, rawValue) {
   item[key] = (key === "w" || key === "h") ? Math.max(MIN_OVERLAY_ITEM_SIZE, Math.round(value)) : Math.round(value);
 
   const el = elements.overlayCanvas.querySelector(`[data-item-id="${itemId}"]`);
-  if (el) {
-    applyOverlayItemStyle(el, item);
-    // Les inputs w/h du chrome de l'item (au-dessus de lui sur le canevas)
-    // affichent aussi w/h : les garder synchronisés pour ne pas laisser une
-    // valeur périmée si l'utilisateur rouvre ce chrome ensuite.
-    const widthInput = el.querySelector('[data-dim="w"]');
-    const heightInput = el.querySelector('[data-dim="h"]');
-    if (widthInput) widthInput.value = String(item.w);
-    if (heightInput) heightInput.value = String(item.h);
-  }
+  if (el) applyOverlayItemStyle(el, item);
   pushOverlayHistory();
   scheduleOverlayPersist();
 }
@@ -2639,7 +2700,7 @@ function buildOverlayItemPositionFields(item) {
 // qui écrit dans item.props.fieldData et redessine un iframe de widget —
 // aucun des deux ne s'applique à un item texte.
 
-function buildOverlayFieldGroup(title, open) {
+function buildOverlayFieldGroup(title, open, onToggle) {
   const details = document.createElement("details");
   details.className = "field-group";
   details.open = open;
@@ -2648,8 +2709,10 @@ function buildOverlayFieldGroup(title, open) {
   summary.textContent = title;
   summary.addEventListener("click", (event) => {
     event.preventDefault();
+    const willOpen = !details.open;
     if (details.open) collapseDetails(details);
     else expandDetails(details);
+    onToggle?.(willOpen);
   });
   const body = document.createElement("div");
   body.className = "field-group__body";
@@ -2687,8 +2750,88 @@ const OVERLAY_TEXT_FONT_WEIGHTS = {
   "800": "ExtraBold (800)",
   "900": "Black (900)"
 };
+
+// Sélection volontairement restreinte aux polices Google Fonts les plus
+// utilisées (plutôt que le catalogue complet, ~1500 familles) pour un menu
+// déroulant qui reste consultable d'un coup d'œil.
+const OVERLAY_TEXT_FONTS = [
+  "Roboto", "Open Sans", "Montserrat", "Lato", "Poppins", "Oswald", "Raleway",
+  "Inter", "Nunito", "Playfair Display", "Merriweather", "Rubik", "Work Sans",
+  "Bebas Neue", "Anton", "Inconsolata", "Source Sans Pro", "PT Sans", "Ubuntu", "Quicksand"
+];
+
+// Charge une seule fois (garde sur l'id du <link>) le CSS Google Fonts pour
+// TOUTES les polices ci-dessus, plutôt qu'à la demande par police
+// sélectionnée : nécessaire pour que l'aperçu direct dans le <select>
+// (chaque <option> stylée avec sa propre font-family, cf.
+// buildOverlayFontFamilyInput) affiche autre chose que la police de repli.
+function loadOverlayTextFonts() {
+  if (document.querySelector("#overlay-text-fonts-link")) return;
+  const link = document.createElement("link");
+  link.id = "overlay-text-fonts-link";
+  link.rel = "stylesheet";
+  const families = OVERLAY_TEXT_FONTS
+    .map((name) => `family=${encodeURIComponent(name)}:wght@400;500;600;700;800;900`)
+    .join("&");
+  link.href = `https://fonts.googleapis.com/css2?${families}&display=swap`;
+  document.head.append(link);
+}
+
+function buildOverlayFontFamilyInput(value, onCommit) {
+  loadOverlayTextFonts();
+  const select = document.createElement("select");
+
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "inherit";
+  defaultOption.textContent = "Police par défaut";
+  select.append(defaultOption);
+
+  for (const font of OVERLAY_TEXT_FONTS) {
+    const option = document.createElement("option");
+    option.value = font;
+    option.textContent = font;
+    option.style.fontFamily = `'${font}', sans-serif`;
+    select.append(option);
+  }
+
+  // Une valeur déjà enregistrée mais absente de la liste (ancien champ texte
+  // libre, ou police non listée ici) doit rester sélectionnée et visible
+  // plutôt que de silencieusement retomber sur la police par défaut.
+  if (value && value !== "inherit" && !OVERLAY_TEXT_FONTS.includes(value)) {
+    const customOption = document.createElement("option");
+    customOption.value = value;
+    customOption.textContent = value;
+    select.append(customOption);
+  }
+
+  select.value = value || "inherit";
+  select.addEventListener("change", () => onCommit(select.value));
+  return select;
+}
 const OVERLAY_TEXT_ALIGNS = { left: "Gauche", center: "Centré", right: "Droite" };
 const OVERLAY_TEXT_COLOR_MODES = { solid: "Couleur unie", gradient: "Dégradé" };
+
+// Groupes de réglages (Police/Couleur/Ombre/Contour) ouverts par calque
+// texte — le panneau est entièrement redessiné à chaque champ modifié (cf.
+// commitOverlayTextProp -> renderOverlayItemSettings), donc sans cet état
+// explicite un <details> rouvrirait/refermerait tout seul à chaque frappe
+// au lieu de rester tel que l'utilisateur l'a laissé. Fermé par défaut
+// (absent de la Map) pour tout calque jamais déplié.
+const overlayTextSettingsOpenGroups = new Map();
+
+function isOverlayTextGroupOpen(itemId, title) {
+  return overlayTextSettingsOpenGroups.get(itemId)?.has(title) ?? false;
+}
+
+function setOverlayTextGroupOpen(itemId, title, open) {
+  let openTitles = overlayTextSettingsOpenGroups.get(itemId);
+  if (!openTitles) {
+    openTitles = new Set();
+    overlayTextSettingsOpenGroups.set(itemId, openTitles);
+  }
+  if (open) openTitles.add(title);
+  else openTitles.delete(title);
+}
 
 function commitOverlayTextProp(itemId, key, value) {
   const item = findOverlayItem(itemId);
@@ -2708,10 +2851,12 @@ function buildOverlayTextSettingsFields(item) {
   const fragment = document.createDocumentFragment();
   const props = item.props;
   const commit = (key) => (value) => commitOverlayTextProp(item.id, key, value);
+  const groupOpen = (title) => isOverlayTextGroupOpen(item.id, title);
+  const onGroupToggle = (title) => (open) => setOverlayTextGroupOpen(item.id, title, open);
 
-  const typo = buildOverlayFieldGroup("Police", true);
+  const typo = buildOverlayFieldGroup("Police", groupOpen("Police"), onGroupToggle("Police"));
   typo.body.append(
-    buildOverlayField("Police (nom CSS)", createOverlayItemFieldInput("fontFamily", { type: "text" }, props.fontFamily, commit("fontFamily"))),
+    buildOverlayField("Police", buildOverlayFontFamilyInput(props.fontFamily, commit("fontFamily"))),
     buildOverlayField("Taille (px)", createOverlayItemFieldInput("fontSize", { type: "number", min: 6, max: 400, step: 1 }, props.fontSize, (value) => commit("fontSize")(Math.max(6, value)))),
     buildOverlayField("Graisse", createOverlayItemFieldInput("fontWeight", { type: "dropdown", options: OVERLAY_TEXT_FONT_WEIGHTS }, String(props.fontWeight), (value) => commit("fontWeight")(Number(value)))),
     buildOverlayField("Interlettrage (px)", createOverlayItemFieldInput("letterSpacing", { type: "number", min: -20, max: 100, step: 0.5 }, props.letterSpacing, commit("letterSpacing"))),
@@ -2720,7 +2865,7 @@ function buildOverlayTextSettingsFields(item) {
   );
   fragment.append(typo.details);
 
-  const colorGroup = buildOverlayFieldGroup("Couleur", true);
+  const colorGroup = buildOverlayFieldGroup("Couleur", groupOpen("Couleur"), onGroupToggle("Couleur"));
   colorGroup.body.append(
     buildOverlayField("Type", createOverlayItemFieldInput("colorMode", { type: "dropdown", options: OVERLAY_TEXT_COLOR_MODES }, props.colorMode, commit("colorMode")))
   );
@@ -2737,7 +2882,7 @@ function buildOverlayTextSettingsFields(item) {
   }
   fragment.append(colorGroup.details);
 
-  const shadowGroup = buildOverlayFieldGroup("Ombre", Boolean(props.shadowEnabled));
+  const shadowGroup = buildOverlayFieldGroup("Ombre", groupOpen("Ombre"), onGroupToggle("Ombre"));
   shadowGroup.body.append(buildOverlayCheckboxField("Activer l'ombre", props.shadowEnabled, commit("shadowEnabled")));
   if (props.shadowEnabled) {
     shadowGroup.body.append(
@@ -2749,7 +2894,7 @@ function buildOverlayTextSettingsFields(item) {
   }
   fragment.append(shadowGroup.details);
 
-  const strokeGroup = buildOverlayFieldGroup("Contour", Boolean(props.strokeEnabled));
+  const strokeGroup = buildOverlayFieldGroup("Contour", groupOpen("Contour"), onGroupToggle("Contour"));
   strokeGroup.body.append(buildOverlayCheckboxField("Activer le contour", props.strokeEnabled, commit("strokeEnabled")));
   if (props.strokeEnabled) {
     strokeGroup.body.append(
@@ -3642,6 +3787,21 @@ function removeOverlayItem(itemId) {
   scheduleOverlayPersist();
 }
 
+// Supprime toute la sélection en un seul geste (un historique/une
+// persistance/un rendu), plutôt qu'un appel répété à removeOverlayItem qui
+// re-rendrait le canevas une fois par item supprimé. Comme pour un item
+// seul, un groupe sélectionné ne supprime jamais ses enfants en cascade.
+function removeOverlaySelection() {
+  if (!activeOverlay || !selectedOverlayItemIds.size) return;
+  const idsToRemove = selectedOverlayItemIds;
+  activeOverlay.items = activeOverlay.items.filter((item) => !idsToRemove.has(item.id));
+  selectedOverlayItemIds = new Set();
+  renderOverlayCanvas();
+  updateOverlaySelectionUI();
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+}
+
 function toggleOverlayItemVisibility(itemId) {
   const item = findOverlayItem(itemId);
   if (!item) return;
@@ -3778,10 +3938,6 @@ function startOverlayItemResize(event, itemEl, handlePosition) {
       item.y = Math.round(origin.y + origin.h - item.h);
     }
     applyOverlayItemStyle(itemEl, item);
-    const widthInput = itemEl.querySelector('[data-dim="w"]');
-    const heightInput = itemEl.querySelector('[data-dim="h"]');
-    if (widthInput) widthInput.value = String(item.w);
-    if (heightInput) heightInput.value = String(item.h);
   };
   const onUp = () => {
     itemEl.releasePointerCapture(event.pointerId);
@@ -3890,6 +4046,7 @@ async function initialize() {
     widget = await widgetResponse.json();
     widget.fields = normalizeFieldDefinitions(widget.fields);
     configureEditorFiles(widget);
+    applyWidgetDefaultPreviewSize(widget);
     const state = await stateResponse.json();
     session = state.session;
     channel = state.channel;
@@ -3918,11 +4075,15 @@ function renderWidgetLibrary() {
 
   elements.widgetCount.textContent = String(widgets.length);
   populateWidgetLibraryList(elements.widgetList, widgets, "Aucun widget pour l’instant.");
-  populateWidgetLibraryList(elements.dashboardWidgetList, filterAndSortLibraryEntries(widgets, "widget"), dashboardLibraryEmptyMessage("Aucun widget pour l’instant."), { showMeta: true });
+  const { pageEntries: widgetPageEntries, pageCount: widgetPageCount } = paginateDashboardEntries("widget", filterAndSortLibraryEntries(widgets, "widget"));
+  populateWidgetLibraryList(elements.dashboardWidgetList, widgetPageEntries, dashboardLibraryEmptyMessage("Aucun widget pour l’instant."), { showMeta: true });
+  renderDashboardPagination(elements.dashboardWidgetPagination, "widget", widgetPageCount);
 
   elements.alertCount.textContent = String(alerts.length);
   populateWidgetLibraryList(elements.alertList, alerts, "Aucune alerte pour l’instant.");
-  populateWidgetLibraryList(elements.dashboardAlertList, filterAndSortLibraryEntries(alerts, "alert"), dashboardLibraryEmptyMessage("Aucune alerte pour l’instant."), { showMeta: true });
+  const { pageEntries: alertPageEntries, pageCount: alertPageCount } = paginateDashboardEntries("alert", filterAndSortLibraryEntries(alerts, "alert"));
+  populateWidgetLibraryList(elements.dashboardAlertList, alertPageEntries, dashboardLibraryEmptyMessage("Aucune alerte pour l’instant."), { showMeta: true });
+  renderDashboardPagination(elements.dashboardAlertPagination, "alert", alertPageCount);
 
   updateDashboardLibrarySuggestions();
 }
@@ -3969,11 +4130,300 @@ function populateWidgetLibraryList(container, entries, emptyMessage, options) {
   }
 }
 
+// Découpe `entries` à la page courante de `scope` (cf. DASHBOARD_PAGE_SIZE /
+// dashboardPage) et recale cette page si elle est devenue hors bornes (ex :
+// suppression d'un item, ou changement de recherche/tri qui réduit le total).
+function paginateDashboardEntries(scope, entries) {
+  const pageSize = DASHBOARD_PAGE_SIZE[scope];
+  const pageCount = Math.max(1, Math.ceil(entries.length / pageSize));
+  dashboardPage[scope] = Math.min(Math.max(dashboardPage[scope], 0), pageCount - 1);
+  const start = dashboardPage[scope] * pageSize;
+  return { pageEntries: entries.slice(start, start + pageSize), pageCount };
+}
+
+function renderDashboardPagination(nav, scope, pageCount) {
+  if (!nav) return;
+  nav.hidden = pageCount <= 1;
+  nav.querySelector('[data-role="label"]').textContent = `${dashboardPage[scope] + 1} / ${pageCount}`;
+  nav.querySelector('[data-role="prev"]').disabled = dashboardPage[scope] <= 0;
+  nav.querySelector('[data-role="next"]').disabled = dashboardPage[scope] >= pageCount - 1;
+}
+
+function initializeDashboardPagination() {
+  const configs = [
+    { nav: elements.dashboardOverlayPagination, scope: "overlay", render: renderOverlayLibrary },
+    { nav: elements.dashboardWidgetPagination, scope: "widget", render: renderWidgetLibrary },
+    { nav: elements.dashboardAlertPagination, scope: "alert", render: renderWidgetLibrary },
+    { nav: elements.dashboardMediaPagination, scope: "media", render: () => void renderMediaLibrary(elements.dashboardMediaList) }
+  ];
+  for (const { nav, scope, render } of configs) {
+    if (!nav) continue;
+    nav.querySelector('[data-role="prev"]').addEventListener("click", () => {
+      dashboardPage[scope] -= 1;
+      render();
+    });
+    nav.querySelector('[data-role="next"]').addEventListener("click", () => {
+      dashboardPage[scope] += 1;
+      render();
+    });
+  }
+}
+
 function buildLibraryEmptyState(message) {
   const empty = document.createElement("p");
   empty.className = "widget-library__empty";
   empty.textContent = message;
   return empty;
+}
+
+// Ne scanne les overlays StreamElements (potentiellement lent : liste +
+// détail de chacun, cf. /api/integrations/streamelements/media côté serveur)
+// qu'à la toute première ouverture du panneau — jamais au chargement de la
+// page pour un utilisateur qui ne l'ouvre jamais.
+let mediaLibraryLoaded = false;
+
+function initializeMediaLibrary() {
+  if (!elements.mediaSection) return;
+  elements.mediaSection.addEventListener("toggle", () => {
+    if (elements.mediaSection.open && !mediaLibraryLoaded) {
+      mediaLibraryLoaded = true;
+      void renderMediaLibrary(elements.mediaLibraryList);
+    }
+  });
+}
+
+// Deux instances rendent dans des conteneurs distincts (le panneau replié de
+// la sidebar, et le bloc toujours visible du dashboard) : mêmes appels
+// réseau (le StreamElements est mis en cache côté serveur, cf.
+// /api/integrations/streamelements/media), juste une cible différente à
+// chaque fois. La bibliothèque locale (upload direct dans le Lab) est
+// toujours affichée, StreamElements vient s'y ajouter quand disponible — en
+// attendant de pouvoir aussi récupérer les médias Streamlabs (aucune API
+// publique équivalente trouvée, cf. recherche précédente).
+async function renderMediaLibrary(container) {
+  if (!container) return;
+  const uploadControl = buildMediaUploadControl(container);
+  container.replaceChildren(uploadControl, buildLibraryEmptyState("Chargement…"));
+
+  let localMedia = [];
+  try {
+    const response = await fetch("/api/media");
+    if (response.ok) {
+      const body = await response.json();
+      localMedia = body.media.map((item) => ({ ...item, source: "local" }));
+    }
+  } catch {
+    // Best-effort : une bibliothèque locale indisponible ne doit pas bloquer
+    // l'affichage des médias StreamElements ci-dessous.
+  }
+
+  let remoteMedia = [];
+  let connectPrompt = null;
+  try {
+    const response = await fetch("/api/integrations/streamelements/media");
+    if (response.status === 401 || response.status === 404) {
+      connectPrompt = buildMediaConnectPrompt("Connecte aussi StreamElements (OAuth2 ou jeton JWT/apikey, dans Mon compte) pour retrouver les images et vidéos déjà utilisées dans tes overlays.");
+    } else if (response.ok) {
+      const body = await response.json();
+      remoteMedia = body.media.map((item) => ({ ...item, source: "streamelements" }));
+    }
+  } catch {
+    // Idem : une erreur réseau côté StreamElements n'empêche pas d'afficher
+    // la bibliothèque locale.
+  }
+
+  const allMedia = [...localMedia, ...remoteMedia];
+  // Seul l'aperçu du dashboard est paginé (8/page) : le panneau complet de la
+  // sidebar (élément dashboardMediaList vs mediaLibraryList) reste une seule
+  // liste, cohérent avec le reste de la bibliothèque (Overlays/Widgets/
+  // Alertes) qui suit la même distinction.
+  const isDashboard = container === elements.dashboardMediaList;
+  const { pageEntries, pageCount } = isDashboard
+    ? paginateDashboardEntries("media", allMedia)
+    : { pageEntries: allMedia, pageCount: 1 };
+
+  const nodes = [uploadControl];
+  if (connectPrompt) nodes.push(connectPrompt);
+  if (pageEntries.length) nodes.push(...pageEntries.map((item) => buildMediaLibraryItem(item, container)));
+  else if (!connectPrompt) nodes.push(buildLibraryEmptyState("Aucun média pour l’instant."));
+  container.replaceChildren(...nodes);
+
+  if (isDashboard) renderDashboardPagination(elements.dashboardMediaPagination, "media", pageCount);
+}
+
+// <label> pleine largeur (pas un simple <button>) : c'est ce qui permet de
+// cliquer n'importe où dessus pour ouvrir le sélecteur de fichiers de
+// l'<input type="file"> qu'il contient, sans JS dédié au clic — le glisser-
+// déposer vient s'ajouter par-dessus via les événements drag*/drop.
+function buildMediaUploadControl(container) {
+  const zone = document.createElement("label");
+  zone.className = "media-library__dropzone";
+  const icon = document.createElement("span");
+  icon.className = "material-symbols-rounded";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = "upload";
+  const text = document.createElement("span");
+  text.className = "media-library__dropzone-text";
+  text.textContent = "Glisser un média ici, ou cliquer pour parcourir";
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = MEDIA_UPLOAD_ACCEPT;
+  input.multiple = true;
+  input.hidden = true;
+
+  const importFiles = async (fileList) => {
+    const files = [...fileList];
+    if (!files.length) return;
+    for (const file of files) await uploadLocalMedia(file);
+    void renderMediaLibrary(container);
+  };
+
+  input.addEventListener("change", () => {
+    // Snapshot en tableau AVANT de vider input.value : FileList est une vue
+    // live sur l'input, la vider efface aussi les fichiers qu'on vient de
+    // lire si on ne les a pas déjà copiés.
+    const files = [...input.files];
+    input.value = "";
+    void importFiles(files);
+  });
+
+  // dragenter/dragleave se déclenchent aussi pour les enfants (icône, texte)
+  // du label : un compteur de profondeur évite que is-dragover clignote en
+  // survolant ces enfants pendant le survol.
+  let dragDepth = 0;
+  zone.addEventListener("dragenter", (event) => {
+    event.preventDefault();
+    dragDepth += 1;
+    zone.classList.add("is-dragover");
+  });
+  zone.addEventListener("dragover", (event) => event.preventDefault());
+  zone.addEventListener("dragleave", () => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) zone.classList.remove("is-dragover");
+  });
+  zone.addEventListener("drop", (event) => {
+    event.preventDefault();
+    dragDepth = 0;
+    zone.classList.remove("is-dragover");
+    void importFiles(event.dataTransfer?.files || []);
+  });
+
+  zone.append(icon, text, input);
+  return zone;
+}
+
+async function uploadLocalMedia(file) {
+  try {
+    const response = await fetch(`/api/media?filename=${encodeURIComponent(file.name)}`, {
+      method: "POST",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `Erreur HTTP ${response.status}`);
+    }
+    showToast(`${file.name} ajouté`);
+  } catch (error) {
+    showToast(`Import impossible : ${error.message}`);
+  }
+}
+
+function buildMediaConnectPrompt(message) {
+  const wrap = document.createElement("div");
+  wrap.className = "media-library__empty";
+  const text = document.createElement("p");
+  text.className = "widget-library__empty";
+  text.textContent = message;
+  // Ouvre le panneau "Mon compte" (choix entre OAuth2 et JWT/apikey, cf. la
+  // carte StreamElements) plutôt qu'un lien direct vers /auth/streamelements/start :
+  // ce dernier ne couvrait que la moitié des façons de se connecter.
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "button button--wide";
+  button.textContent = "Connecter StreamElements";
+  button.addEventListener("click", () => setAccountPanelOpen(true));
+  wrap.append(text, button);
+  return wrap;
+}
+
+// Clic = copie l'URL dans le presse-papiers (usage universel : elle peut
+// ensuite être collée dans n'importe quel champ image/vidéo, widget ou
+// overlay, sans dépendre du contexte d'où le panneau Médias a été ouvert).
+// Un média local porte en plus un bouton de suppression (on possède ce
+// fichier) ; un média StreamElements reste en lecture seule.
+function buildMediaLibraryItem(item, container) {
+  const wrap = document.createElement("div");
+  wrap.className = "media-library__item-wrap";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "media-library__item";
+  button.title = item.source === "local"
+    ? item.name
+    : (item.overlayName ? `Depuis l'overlay "${item.overlayName}"` : item.url);
+
+  if (item.type === "video") {
+    // preload="metadata" seul (pas "auto", pas de lecture) : assez pour que
+    // le navigateur affiche la première frame comme aperçu statique, sans
+    // télécharger toute la vidéo juste pour une vignette.
+    const frame = document.createElement("span");
+    frame.className = "media-library__thumb-frame";
+    const thumb = document.createElement("video");
+    thumb.className = "media-library__thumb media-library__thumb--video";
+    thumb.src = item.url;
+    thumb.muted = true;
+    thumb.playsInline = true;
+    thumb.preload = "metadata";
+    const playBadge = document.createElement("span");
+    playBadge.className = "material-symbols-rounded media-library__play-badge";
+    playBadge.textContent = "play_circle";
+    playBadge.setAttribute("aria-hidden", "true");
+    frame.append(thumb, playBadge);
+    button.append(frame);
+  } else {
+    const thumb = document.createElement("img");
+    thumb.className = "media-library__thumb";
+    thumb.src = item.url;
+    thumb.alt = "";
+    thumb.loading = "lazy";
+    button.append(thumb);
+  }
+
+  const label = document.createElement("span");
+  label.className = "media-library__label";
+  label.textContent = item.source === "local" ? item.name : decodeURIComponent(item.url.split("/").pop().split("?")[0] || item.url);
+  button.append(label);
+
+  button.addEventListener("click", () => {
+    navigator.clipboard.writeText(item.url)
+      .then(() => showToast("URL copiée"))
+      .catch(() => showToast("Copie impossible"));
+  });
+
+  wrap.append(button);
+
+  if (item.source === "local") {
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "icon-button media-library__delete";
+    deleteButton.setAttribute("aria-label", "Supprimer");
+    deleteButton.title = "Supprimer";
+    deleteButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">delete</span>';
+    deleteButton.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      try {
+        const response = await fetch(`/api/media?id=${encodeURIComponent(item.id)}`, { method: "DELETE" });
+        if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+        void renderMediaLibrary(container);
+      } catch {
+        showToast("Suppression impossible");
+      }
+    });
+    wrap.append(deleteButton);
+  }
+
+  return wrap;
 }
 
 function buildWidgetLibraryRow(entry, { showMeta = false } = {}) {
@@ -4012,11 +4462,7 @@ function buildWidgetLibraryRow(entry, { showMeta = false } = {}) {
   }
 
   const status = document.createElement("span");
-  if (isActive) {
-    status.className = "material-symbols-rounded widget-library__active-mark";
-    status.textContent = "check_circle";
-    status.setAttribute("aria-hidden", "true");
-  } else if (entry.archived) {
+  if (entry.archived) {
     status.className = "widget-library__badge";
     status.textContent = "Archive";
   }
@@ -4164,7 +4610,7 @@ async function switchWidget(nextWidgetId) {
   const loaded = await refreshWidgetPreview(
     { file: widgetCatalog.find(entry => entry.id === nextWidgetId)?.name || nextWidgetId },
     false,
-    { resetEditor: true, resetFields: true }
+    { resetEditor: true, resetFields: true, resetPreviewSize: true }
   );
 
   if (loaded) {
@@ -4174,7 +4620,8 @@ async function switchWidget(nextWidgetId) {
     activeWidgetId = previousWidgetId;
     await refreshWidgetPreview({ file: "restauration du widget" }, false, {
       resetEditor: true,
-      resetFields: true
+      resetFields: true,
+      resetPreviewSize: true
     });
   }
 
@@ -4430,6 +4877,10 @@ function fieldStorageKey() {
   return `se-lab-fields-${activeWidgetId}-${previewPlatform}`;
 }
 
+function fieldTypeIcon(definition) {
+  return FIELD_TYPE_ICON[definition.type] || "tune";
+}
+
 function renderFields() {
   elements.fields.replaceChildren();
   const groups = new Map();
@@ -4456,6 +4907,14 @@ function renderFields() {
     return body;
   };
 
+  const buildIcon = (definition) => {
+    const icon = document.createElement("span");
+    icon.className = "material-symbols-rounded field__icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = fieldTypeIcon(definition);
+    return icon;
+  };
+
   for (const [key, definition] of Object.entries(widget.fields)) {
     if (definition.type === "hidden") continue;
     const container = getContainer(definition);
@@ -4476,7 +4935,11 @@ function renderFields() {
     if (definition.type === "checkbox") {
       const label = document.createElement("label");
       label.className = "checkbox-field";
-      label.innerHTML = `<span class="checkbox-field__label">${escapeHtml(definition.label || key)}</span>`;
+      const caption = document.createElement("span");
+      caption.className = "checkbox-field__label";
+      caption.textContent = definition.label || key;
+      caption.title = caption.textContent;
+      label.append(buildIcon(definition), caption);
       const input = document.createElement("input");
       input.type = "checkbox";
       input.checked = Boolean(fieldData[key]);
@@ -4487,11 +4950,12 @@ function renderFields() {
     }
 
     const label = document.createElement("label");
-    label.className = "field";
+    label.className = `field${FIELD_INLINE_TYPES.has(definition.type) ? " field--inline" : ""}`;
     const caption = document.createElement("span");
     caption.className = "field__label";
     caption.textContent = definition.label || key;
-    label.append(caption);
+    caption.title = caption.textContent;
+    label.append(buildIcon(definition), caption);
     const input = createFieldInput(key, definition);
 
     if (definition.type === "slider") {
@@ -4896,6 +5360,11 @@ async function refreshWidgetPreview(change = {}, showSuccessToast = true, option
       widget = nextWidget;
       configureEditorFiles(widget);
       applyWidgetMeta();
+      // Uniquement lors d'un vrai changement de widget (cf. switchWidget) :
+      // les autres appelants (rechargement de code, changement de
+      // plateforme…) concernent le MÊME widget et ne doivent pas écraser un
+      // redimensionnement manuel fait en cours d'édition.
+      if (options.resetPreviewSize) applyWidgetDefaultPreviewSize(widget);
       if (options.resetFields) {
         fieldData = loadFieldData(nextWidget.fields);
       } else {
@@ -5205,7 +5674,18 @@ document.addEventListener("pointerdown", (event) => {
 const ACCOUNT_ERROR_MESSAGES = {
   twitch_not_configured: "La connexion Twitch n’est pas encore configurée sur ce serveur.",
   cancelled: "Connexion Twitch annulée.",
-  failed: "La connexion Twitch a échoué. Réessaie."
+  failed: "La connexion Twitch a échoué. Réessaie.",
+  login_required: "Connecte-toi avec Twitch avant de connecter StreamElements.",
+  streamelements_not_configured: "La connexion StreamElements (médias) n’est pas encore configurée sur ce serveur — SE_OAUTH_CLIENT_ID/SECRET manquants dans .env."
+};
+
+// Issue du callback /auth/streamelements/callback (cf. server.mjs) : un
+// paramètre "streamelements" séparé de "error"/"login" (ceux-ci restent
+// Twitch-only) pour ne jamais faire porter à ces derniers le résultat d'un
+// flux OAuth différent.
+const STREAMELEMENTS_STATUS_MESSAGES = {
+  cancelled: "Connexion StreamElements annulée.",
+  failed: "La connexion StreamElements a échoué. Réessaie."
 };
 
 async function fetchAccountJson(url, options) {
@@ -5224,6 +5704,11 @@ function renderIntegrationCard(card, integration) {
   const helpEl = card.querySelector(".integration-card__help");
   const formEl = card.querySelector('[data-role="form"]');
   const connectedEl = card.querySelector('[data-role="connected"]');
+  // Uniquement présents sur la carte StreamElements (cf. index.html) : le
+  // bouton OAuth2 et sa séparation "ou" au-dessus du formulaire manuel.
+  const oauthButton = card.querySelector('[data-role="oauth-connect"]');
+  const oauthHint = card.querySelector('[data-role="oauth-hint"]');
+  const oauthDivider = card.querySelector('[data-role="oauth-divider"]');
 
   if (integration) {
     statusEl.textContent = "Connecté";
@@ -5231,6 +5716,9 @@ function renderIntegrationCard(card, integration) {
     helpEl.hidden = true;
     formEl.hidden = true;
     connectedEl.hidden = false;
+    if (oauthButton) oauthButton.hidden = true;
+    if (oauthHint) oauthHint.hidden = true;
+    if (oauthDivider) oauthDivider.hidden = true;
     connectedEl.querySelector('[data-role="channel-name"]').textContent = integration.channelName || integration.channelId || "Connecté";
     connectedEl.querySelector('[data-role="connected-at"]').textContent = `Connecté le ${formatAccountDate(integration.connectedAt)}`;
   } else {
@@ -5239,6 +5727,9 @@ function renderIntegrationCard(card, integration) {
     helpEl.hidden = false;
     formEl.hidden = false;
     connectedEl.hidden = true;
+    if (oauthButton) oauthButton.hidden = false;
+    if (oauthHint) oauthHint.hidden = false;
+    if (oauthDivider) oauthDivider.hidden = false;
     formEl.reset();
   }
 }
@@ -5320,6 +5811,19 @@ async function initializeAccountPanel() {
   const queryMessage = ACCOUNT_ERROR_MESSAGES[params.get("error")] || ACCOUNT_ERROR_MESSAGES[params.get("login")];
   if (queryMessage) showAccountError(queryMessage);
 
+  const seStatus = params.get("streamelements");
+  if (STREAMELEMENTS_STATUS_MESSAGES[seStatus]) showAccountError(STREAMELEMENTS_STATUS_MESSAGES[seStatus]);
+  else if (seStatus === "connected") {
+    showToast("StreamElements connecté");
+    // La section Médias a pu être ouverte (et donc chargée, cf.
+    // initializeMediaLibrary) avant que la connexion n'aboutisse — sans ce
+    // reset, elle resterait figée sur son message "non connecté" jusqu'au
+    // prochain repli/dépli manuel.
+    mediaLibraryLoaded = false;
+    if (elements.mediaLibraryList) void renderMediaLibrary(elements.mediaLibraryList);
+    if (elements.dashboardMediaList) void renderMediaLibrary(elements.dashboardMediaList);
+  }
+
   for (const card of elements.integrationCards) wireIntegrationCard(card);
 
   elements.logoutButton.addEventListener("click", async () => {
@@ -5392,6 +5896,7 @@ function showDashboard() {
   setEventSimulatorOpen(false);
   renderWidgetLibrary();
   renderDashboard();
+  void renderMediaLibrary(elements.dashboardMediaList);
 }
 
 function hideDashboard() {
@@ -5589,7 +6094,7 @@ elements.sidebarToggle.addEventListener("click", () => {
 
 elements.dashboardFab.addEventListener("click", () => showDashboard());
 document.querySelector("#library-nav").addEventListener("click", () => jumpToSidebarSection("library"));
-document.querySelector("#fields-nav").addEventListener("click", () => jumpToSidebarSection("fields"));
+document.querySelector("#media-nav").addEventListener("click", () => jumpToSidebarSection("media"));
 
 if (new URLSearchParams(window.location.search).get("account") === "open") {
   setAccountPanelOpen(true);

@@ -103,9 +103,9 @@
             <span class="material-symbols-rounded" aria-hidden="true">topic</span>
             <span>Ma bibliothèque</span>
           </button>
-          <button class="sidebar-nav-item sidebar-nav-item--rail-only" id="fields-nav" type="button" aria-label="Champs" title="Champs">
-            <span class="material-symbols-rounded" aria-hidden="true">dynamic_form</span>
-            <span>Champs</span>
+          <button class="sidebar-nav-item sidebar-nav-item--rail-only" id="media-nav" type="button" aria-label="Médias" title="Médias">
+            <span class="material-symbols-rounded" aria-hidden="true">perm_media</span>
+            <span>Médias</span>
           </button>
           <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Déplier le panneau" aria-expanded="false">
             <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
@@ -172,21 +172,20 @@
             </details>
           </div>
         </details>
-        <details class="sidebar-section" data-sidebar-section="fields" open>
+        <details class="sidebar-section" data-sidebar-section="media">
           <summary class="sidebar-section__summary">
             <div class="sidebar-section__heading">
               <div class="sidebar-section__heading-actions">
-                <span class="sidebar-section__step material-symbols-rounded" aria-hidden="true">dynamic_form</span>
-                <h2>Champs</h2>
+                <span class="sidebar-section__step material-symbols-rounded" aria-hidden="true">perm_media</span>
+                <h2>Médias</h2>
               </div>
               <span class="sidebar-section__meta">
-                <span class="hint" id="fields-filename-hint">fields.streamelements.json</span>
                 <span class="material-symbols-rounded sidebar-section__chevron" aria-hidden="true">expand_more</span>
               </span>
             </div>
           </summary>
           <div class="sidebar-section__body">
-            <div id="fields-form" class="fields-form"></div>
+            <div class="media-library" id="media-library"></div>
           </div>
         </details>
         </div>
@@ -245,6 +244,11 @@
                   </div>
                 </div>
                 <div class="widget-library dashboard-view__overlays-grid" id="dashboard-overlay-list" aria-label="Overlays"></div>
+                <div class="library-pagination" id="dashboard-overlay-pagination" hidden>
+                  <button class="icon-button" type="button" data-role="prev" aria-label="Page précédente"><span class="material-symbols-rounded" aria-hidden="true">chevron_left</span></button>
+                  <span class="library-pagination__label" data-role="label"></span>
+                  <button class="icon-button" type="button" data-role="next" aria-label="Page suivante"><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></button>
+                </div>
               </div>
               <div class="dashboard-view__group-columns">
                 <div class="dashboard-view__column">
@@ -265,6 +269,11 @@
                     </div>
                   </div>
                   <div class="widget-library" id="dashboard-widget-list" aria-label="Widgets"></div>
+                  <div class="library-pagination" id="dashboard-widget-pagination" hidden>
+                    <button class="icon-button" type="button" data-role="prev" aria-label="Page précédente"><span class="material-symbols-rounded" aria-hidden="true">chevron_left</span></button>
+                    <span class="library-pagination__label" data-role="label"></span>
+                    <button class="icon-button" type="button" data-role="next" aria-label="Page suivante"><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></button>
+                  </div>
                 </div>
 
                 <div class="dashboard-view__column">
@@ -285,14 +294,30 @@
                     </div>
                   </div>
                   <div class="widget-library" id="dashboard-alert-list" aria-label="Alertes"></div>
+                  <div class="library-pagination" id="dashboard-alert-pagination" hidden>
+                    <button class="icon-button" type="button" data-role="prev" aria-label="Page précédente"><span class="material-symbols-rounded" aria-hidden="true">chevron_left</span></button>
+                    <span class="library-pagination__label" data-role="label"></span>
+                    <button class="icon-button" type="button" data-role="next" aria-label="Page suivante"><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></button>
+                  </div>
                 </div>
               </div>
             </section>
 
-            <section class="dashboard-view__column">
-              <h3 class="dashboard-view__group-title">Comptes</h3>
-              <ul class="dashboard-view__connections-list" id="dashboard-connection-list"></ul>
-            </section>
+            <div class="dashboard-view__column dashboard-view__side">
+              <section>
+                <h3 class="dashboard-view__group-title">Médias</h3>
+                <div class="media-library" id="dashboard-media-library"></div>
+                <div class="library-pagination" id="dashboard-media-pagination" hidden>
+                  <button class="icon-button" type="button" data-role="prev" aria-label="Page précédente"><span class="material-symbols-rounded" aria-hidden="true">chevron_left</span></button>
+                  <span class="library-pagination__label" data-role="label"></span>
+                  <button class="icon-button" type="button" data-role="next" aria-label="Page suivante"><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></button>
+                </div>
+              </section>
+              <section>
+                <h3 class="dashboard-view__group-title">Comptes</h3>
+                <ul class="dashboard-view__connections-list" id="dashboard-connection-list"></ul>
+              </section>
+            </div>
           </div>
 
           <div class="dashboard-add-fab">
@@ -411,6 +436,14 @@
           </div>
           <div class="console-panel__output" id="console-output" aria-live="polite"></div>
         </section>
+
+        <aside class="widget-fields" id="widget-fields" aria-label="Champs">
+          <div class="widget-fields__header">
+            <h3 class="widget-fields__title">Champs</h3>
+            <span class="hint" id="fields-filename-hint">fields.streamelements.json</span>
+          </div>
+          <div id="fields-form" class="fields-form widget-fields__list"></div>
+        </aside>
         </div>
 
         <div class="overlay-editor" id="overlay-editor-view" hidden>
@@ -474,39 +507,45 @@
                   </div>
                 </div>
                 <div class="overlay-toolbar__divider" aria-hidden="true"></div>
-                <button class="overlay-toolbar__button" type="button" id="overlay-tool-group" disabled aria-label="Grouper la sélection" title="Grouper la sélection">
+                <button class="overlay-toolbar__button" type="button" id="overlay-tool-group" disabled hidden aria-label="Grouper la sélection" title="Grouper la sélection">
                   <span class="material-symbols-rounded" aria-hidden="true">select_all</span>
                 </button>
-                <button class="icon-button" type="button" id="overlay-tool-duplicate" disabled aria-label="Dupliquer" title="Dupliquer (Ctrl+D)">
+                <button class="icon-button" type="button" id="overlay-tool-duplicate" disabled hidden aria-label="Dupliquer" title="Dupliquer (Ctrl+D)">
                   <span class="material-symbols-rounded" aria-hidden="true">content_copy</span>
+                </button>
+                <button class="icon-button" type="button" id="overlay-tool-delete" disabled hidden aria-label="Supprimer" title="Supprimer">
+                  <span class="material-symbols-rounded" aria-hidden="true">delete</span>
                 </button>
                 <div class="overlay-toolbar__divider" aria-hidden="true"></div>
                 <div class="overlay-toolbar__group" role="group" aria-label="Alignement">
-                  <button class="icon-button" type="button" data-overlay-align="left" disabled aria-label="Aligner à gauche" title="Aligner à gauche">
+                  <button class="icon-button" type="button" data-overlay-align="left" disabled hidden aria-label="Aligner à gauche" title="Aligner à gauche">
                     <span class="material-symbols-rounded" aria-hidden="true">align_horizontal_left</span>
                   </button>
-                  <button class="icon-button" type="button" data-overlay-align="center" disabled aria-label="Centrer horizontalement" title="Centrer horizontalement">
+                  <button class="icon-button" type="button" data-overlay-align="center" disabled hidden aria-label="Centrer horizontalement" title="Centrer horizontalement">
                     <span class="material-symbols-rounded" aria-hidden="true">align_horizontal_center</span>
                   </button>
-                  <button class="icon-button" type="button" data-overlay-align="right" disabled aria-label="Aligner à droite" title="Aligner à droite">
+                  <button class="icon-button" type="button" data-overlay-align="right" disabled hidden aria-label="Aligner à droite" title="Aligner à droite">
                     <span class="material-symbols-rounded" aria-hidden="true">align_horizontal_right</span>
                   </button>
-                  <button class="icon-button" type="button" data-overlay-align="top" disabled aria-label="Aligner en haut" title="Aligner en haut">
+                  <button class="icon-button" type="button" data-overlay-align="top" disabled hidden aria-label="Aligner en haut" title="Aligner en haut">
                     <span class="material-symbols-rounded" aria-hidden="true">align_vertical_top</span>
                   </button>
-                  <button class="icon-button" type="button" data-overlay-align="middle" disabled aria-label="Centrer verticalement" title="Centrer verticalement">
+                  <button class="icon-button" type="button" data-overlay-align="middle" disabled hidden aria-label="Centrer verticalement" title="Centrer verticalement">
                     <span class="material-symbols-rounded" aria-hidden="true">align_vertical_center</span>
                   </button>
-                  <button class="icon-button" type="button" data-overlay-align="bottom" disabled aria-label="Aligner en bas" title="Aligner en bas">
+                  <button class="icon-button" type="button" data-overlay-align="bottom" disabled hidden aria-label="Aligner en bas" title="Aligner en bas">
                     <span class="material-symbols-rounded" aria-hidden="true">align_vertical_bottom</span>
+                  </button>
+                  <button class="icon-button" type="button" id="overlay-tool-center" disabled hidden aria-label="Centrer horizontalement et verticalement" title="Centrer horizontalement et verticalement">
+                    <span class="material-symbols-rounded" aria-hidden="true">filter_center_focus</span>
                   </button>
                 </div>
                 <div class="overlay-toolbar__divider" aria-hidden="true"></div>
                 <div class="overlay-toolbar__group" role="group" aria-label="Distribution">
-                  <button class="icon-button" type="button" data-overlay-distribute="horizontal" disabled aria-label="Distribuer horizontalement" title="Distribuer horizontalement">
+                  <button class="icon-button" type="button" data-overlay-distribute="horizontal" disabled hidden aria-label="Distribuer horizontalement" title="Distribuer horizontalement">
                     <span class="material-symbols-rounded" aria-hidden="true">horizontal_distribute</span>
                   </button>
-                  <button class="icon-button" type="button" data-overlay-distribute="vertical" disabled aria-label="Distribuer verticalement" title="Distribuer verticalement">
+                  <button class="icon-button" type="button" data-overlay-distribute="vertical" disabled hidden aria-label="Distribuer verticalement" title="Distribuer verticalement">
                     <span class="material-symbols-rounded" aria-hidden="true">vertical_distribute</span>
                   </button>
                 </div>
@@ -770,6 +809,12 @@
                 <h3>StreamElements</h3>
                 <span class="integration-card__status" data-role="status">Non connecté</span>
               </header>
+              <a class="button button--primary button--wide" href="/auth/streamelements/start" data-role="oauth-connect">
+                <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+                <span>Se connecter en OAuth2</span>
+              </a>
+              <p class="integration-card__hint" data-role="oauth-hint">Nécessaire pour la bibliothèque de médias — donne accès à tes overlays sans copier de token.</p>
+              <div class="integration-card__divider" data-role="oauth-divider"><span>ou</span></div>
               <a class="integration-card__help" href="https://streamelements.com/dashboard/account/channels" target="_blank" rel="noopener noreferrer">
                 <span class="material-symbols-rounded" aria-hidden="true">open_in_new</span>
                 <span>Récupérer mon Channel ID et mon token</span>

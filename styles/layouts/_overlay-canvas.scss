@@ -5,10 +5,9 @@
 // down via CSS transform so stored x/y/w/h never need unit conversion).
 @use "../base/primitives";
 
-// Même largeur que .account-panel-drawer (panneau "Mon compte", voir
-// styles/components/_account-panel.scss) : les deux panneaux latéraux
-// droits doivent s'aligner visuellement.
-$overlay-layers-width: min(420px, 92vw);
+// Même largeur que les autres panneaux latéraux droits fixes (Mon compte,
+// Champs d'un widget/alerte) : cf. --side-panel-width dans base/_tokens.scss.
+$overlay-layers-width: var(--side-panel-width);
 
 .overlay-editor__toolbar {
   @include primitives.heading-row;
@@ -294,6 +293,10 @@ $ruler-size: 20px;
     }
     &.is-active { color: #fff; border-color: transparent; background: var(--accent-gradient); }
     &:disabled { opacity: .4; pointer-events: none; }
+    // display:flex ci-dessus a la même spécificité que [hidden] (une classe
+    // vs un attribut) : sans cette redéclaration, .overlay-toolbar__button
+    // gagnerait la cascade et resterait affiché malgré l'attribut hidden.
+    &[hidden] { display: none; }
   }
 
   &__zoom {
@@ -430,30 +433,6 @@ $ruler-size: 20px;
   &.is-active &__chrome { opacity: 1; pointer-events: auto; }
 
   &__label { font-weight: 650; color: var(--text); }
-
-  &__size {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-
-    input {
-      width: 52px;
-      height: 22px;
-      padding: 0 var(--space-6);
-      color: var(--text);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-5);
-      background: var(--panel-soft);
-      font-size: var(--text-10);
-    }
-  }
-
-  &__remove {
-    width: 20px;
-    height: 20px;
-
-    .material-symbols-rounded { font-size: 14px; }
-  }
 
   &__frame {
     display: block;
