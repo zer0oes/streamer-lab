@@ -526,6 +526,113 @@ async function copyActiveEditorFile() {
   }
 }
 
+// Remplace les tooltips natifs (attribut title, moche et non stylable) par
+// la bulle maison de styles/components/_tooltip.scss (déclenchée sur
+// data-tooltip). Un MutationObserver plutôt qu'un simple scan au chargement :
+// des dizaines d'éléments avec title sont créés après coup par l'appli (ex.
+// items de la bibliothèque média, pagination du dashboard), un scan unique
+// les manquerait tous.
+function initializeTooltips() {
+  const convertTooltip = (el) => {
+    const title = el.getAttribute("title");
+    if (!title) return;
+    el.removeAttribute("title");
+    el.setAttribute("data-tooltip", title);
+    // Filet de sécurité : si l'élément ne porte pas déjà de nom accessible
+    // par un autre moyen, title en faisait office — on ne veut pas régresser
+    // l'accessibilité en le retirant.
+    if (!el.hasAttribute("aria-label") && !el.hasAttribute("aria-labelledby")) {
+      el.setAttribute("aria-label", title);
+    }
+  };
+  for (const el of document.querySelectorAll("[title]")) convertTooltip(el);
+  new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type === "attributes") {
+        convertTooltip(mutation.target);
+        continue;
+      }
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+        if (node.hasAttribute("title")) convertTooltip(node);
+        for (const el of node.querySelectorAll?.("[title]") || []) convertTooltip(el);
+      }
+    }
+  }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["title"] });
+
+  // Élément unique repositionné en JS (position: fixed) plutôt qu'un
+  // pseudo-élément par déclencheur : échappe à l'overflow:hidden de
+  // .overlay-canvas-stage (panning/zoom de l'éditeur d'overlay), qui
+  // aurait sinon rogné la bulle de tout bouton de la barre d'outils.
+  const bubble = document.createElement("div");
+  bubble.className = "app-tooltip";
+  bubble.setAttribute("role", "tooltip");
+  bubble.hidden = true;
+  document.body.append(bubble);
+
+  let showTimer = null;
+  let activeTrigger = null;
+  let hideTimer = null;
+
+  const placeTooltip = (trigger) => {
+    const text = trigger.getAttribute("data-tooltip");
+    if (!text) return;
+    clearTimeout(hideTimer);
+    bubble.textContent = text;
+    bubble.hidden = false;
+    const triggerRect = trigger.getBoundingClientRect();
+    const bubbleRect = bubble.getBoundingClientRect();
+    const gap = 9;
+    const below = triggerRect.top < bubbleRect.height + gap + 8;
+    bubble.classList.toggle("is-below", below);
+    let left = triggerRect.left + triggerRect.width / 2 - bubbleRect.width / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - bubbleRect.width - 8));
+    const top = below ? triggerRect.bottom + gap : triggerRect.top - gap - bubbleRect.height;
+    bubble.style.left = `${Math.round(left)}px`;
+    bubble.style.top = `${Math.round(top)}px`;
+    // Décalage horizontal de la flèche pour qu'elle continue de pointer le
+    // centre du déclencheur même quand la bulle est recalée près d'un bord.
+    bubble.style.setProperty("--tooltip-arrow-left", `${Math.round(triggerRect.left + triggerRect.width / 2 - left)}px`);
+    requestAnimationFrame(() => bubble.classList.add("is-visible"));
+  };
+
+  const hideTooltip = () => {
+    clearTimeout(showTimer);
+    activeTrigger = null;
+    bubble.classList.remove("is-visible");
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => { bubble.hidden = true; }, 160);
+  };
+
+  document.addEventListener("mouseover", (event) => {
+    const trigger = event.target.closest("[data-tooltip]");
+    if (!trigger || trigger === activeTrigger) return;
+    activeTrigger = trigger;
+    clearTimeout(showTimer);
+    // Léger délai avant apparition (pas au survol furtif) : lecture plus
+    // posée, comme les tooltips de Linear/Figma, plutôt que le tooltip
+    // natif qui saute immédiatement.
+    showTimer = setTimeout(() => { if (activeTrigger === trigger) placeTooltip(trigger); }, 350);
+  });
+  document.addEventListener("mouseout", (event) => {
+    const trigger = event.target.closest("[data-tooltip]");
+    if (!trigger || (event.relatedTarget && trigger.contains(event.relatedTarget))) return;
+    hideTooltip();
+  });
+  document.addEventListener("focusin", (event) => {
+    const trigger = event.target.closest("[data-tooltip]");
+    if (!trigger) return;
+    activeTrigger = trigger;
+    placeTooltip(trigger);
+  });
+  document.addEventListener("focusout", (event) => {
+    if (event.target.closest("[data-tooltip]")) hideTooltip();
+  });
+  window.addEventListener("scroll", hideTooltip, true);
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") hideTooltip(); });
+}
+
+initializeTooltips();
 initializePreviewPlatform();
 initializeAppTheme();
 initializeExportMenu();
@@ -1897,8 +2004,31 @@ function updateOverlaySelectionUI() {
   if (overlaySettingsItemId && !(selectionCount === 1 && selectedOverlayItemIds.has(overlaySettingsItemId))) {
     overlaySettingsItemId = null;
   }
+  updateOverlayToolbarDividers();
   renderOverlayLayers();
   renderOverlayItemSettings();
+}
+
+// Un séparateur n'a de sens que s'il sépare deux groupes de boutons
+// effectivement visibles : sans ça, masquer Grouper/Dupliquer/Supprimer/
+// Alignement/Distribution (ci-dessus, selon la sélection) laisse leurs
+// séparateurs voisins affichés côte à côte au-dessus d'un vide. Découpe les
+// enfants de la barre d'outils en segments [avant, séparateur, après, ...] et
+// ne montre chaque séparateur que si les deux segments qui l'entourent
+// contiennent au moins un bouton visible.
+function updateOverlayToolbarDividers() {
+  if (!elements.overlayToolbar) return;
+  const hasVisibleControl = (el) => (el.matches("button") ? !el.hidden : !!el.querySelector("button:not([hidden])"));
+  const segments = [[]];
+  for (const child of elements.overlayToolbar.children) {
+    if (child.classList.contains("overlay-toolbar__divider")) segments.push(child, []);
+    else segments[segments.length - 1].push(child);
+  }
+  for (let i = 1; i < segments.length; i += 2) {
+    const before = segments[i - 1];
+    const after = segments[i + 1] || [];
+    segments[i].hidden = !(before.some(hasVisibleControl) && after.some(hasVisibleControl));
+  }
 }
 
 function toggleOverlaySelection(itemId) {

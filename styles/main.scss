@@ -28,6 +28,7 @@
 
 // Small leftovers.
 @use "components/toast";
+@use "components/tooltip";
 
 // Responsive overrides last, so they can override any component rule
 // above at equal specificity within their media query.

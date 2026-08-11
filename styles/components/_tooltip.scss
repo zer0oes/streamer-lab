@@ -1,0 +1,74 @@
+// Bulle d'info au survol : remplace les tooltips natifs du navigateur
+// (attribut title, converti en data-tooltip par initializeTooltips() dans
+// app.js). Élément unique repositionné en JS (position: fixed) plutôt que
+// des pseudo-éléments par déclencheur : la barre d'outils de l'éditeur
+// d'overlay vit dans .overlay-canvas-stage (overflow: hidden pour le
+// panning/zoom), qui aurait rogné toute bulle ancrée en position: absolute
+// sur un bouton à l'intérieur — position: fixed échappe à ce clipping
+// puisque le seul ancêtre de la bulle est <body>.
+.app-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 80;
+  max-width: 220px;
+  padding: var(--space-6) var(--space-10);
+  border: 1px solid #343944;
+  border-radius: var(--radius-7);
+  background: color-mix(in srgb, var(--panel) 98%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 40%);
+  color: var(--text);
+  font-size: var(--text-11);
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity var(--duration-fast) ease, transform var(--duration-fast) ease;
+
+  &[hidden] { display: none; }
+
+  &.is-visible { opacity: 1; transform: translateY(0); }
+  // Bulle affichée sous le déclencheur (pas assez de place au-dessus, cf.
+  // placeTooltip() dans app.js) : direction du léger glissement d'entrée
+  // inversée pour rester cohérente avec le sens d'apparition.
+  &.is-below { transform: translateY(-4px); }
+  &.is-below.is-visible { transform: translateY(0); }
+
+  // Petite flèche pointant vers le déclencheur : --tooltip-arrow-left est
+  // posée en JS (offset horizontal du centre du déclencheur par rapport au
+  // coin de la bulle), pour rester correcte même quand la bulle est décalée
+  // afin de ne pas déborder les bords de la fenêtre.
+  &::after {
+    content: "";
+    position: absolute;
+    left: var(--tooltip-arrow-left, 50%);
+    bottom: -4px;
+    width: 8px;
+    height: 8px;
+    margin-left: -4px;
+    border-right: 1px solid #343944;
+    border-bottom: 1px solid #343944;
+    background: var(--panel);
+    transform: rotate(45deg);
+  }
+
+  &.is-below::after {
+    top: -4px;
+    bottom: auto;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 1px solid #343944;
+    border-top: 1px solid #343944;
+  }
+}
+
+// transition: opacity seule (pas transform) : le glissement d'entrée
+// disparaît (transform passe alors instantanément à sa valeur finale au lieu
+// d'être animé), mais le fondu léger reste — même logique que les autres
+// animations de l'appli sous ce media query (fondu conservé, mouvement coupé).
+@media (prefers-reduced-motion: reduce) {
+  .app-tooltip { transition: opacity var(--duration-fast) ease; }
+}
