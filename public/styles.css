@@ -2029,7 +2029,23 @@ input[type=range] {
   display: flex;
   align-items: flex-start;
   gap: var(--space-12);
-  padding-right: calc(var(--side-panel-width) + var(--space-12));
+  padding-right: calc(min(300px, 92vw) + var(--space-12));
+  transition: padding-right var(--duration-base) ease;
+}
+.overlay-editor.is-layers-collapsed .overlay-editor__body {
+  padding-right: 0;
+}
+
+.overlay-layers-toggle {
+  position: fixed;
+  z-index: 7;
+  top: calc(var(--topbar-height) + var(--space-24) + 10px);
+  right: calc(min(300px, 92vw) + var(--space-8));
+  transform: translateY(-50%);
+  transition: right var(--duration-base) ease;
+}
+.overlay-editor.is-layers-collapsed .overlay-layers-toggle {
+  right: var(--space-8);
 }
 
 .overlay-canvas-wrap {
@@ -2329,6 +2345,7 @@ input[type=range] {
   border: 1px solid transparent;
   border-radius: var(--radius-6);
   cursor: grab;
+  user-select: none;
   transition: border-color var(--duration-fast);
 }
 .overlay-item:hover, .overlay-item.is-active {
@@ -2424,6 +2441,7 @@ input[type=range] {
 }
 .overlay-item--text.is-editing .overlay-item__text {
   outline: 1px dashed var(--accent-bright);
+  user-select: text;
 }
 .overlay-item__image {
   display: block;
@@ -2474,13 +2492,20 @@ input[type=range] {
   z-index: 6;
   display: flex;
   flex-direction: column;
-  width: var(--side-panel-width);
+  width: min(300px, 92vw);
   padding: var(--space-24);
   border-left: 1px solid var(--line);
   background: var(--panel);
+  transition: width var(--duration-base) ease, padding var(--duration-base) ease, border-color var(--duration-base) ease;
 }
 .overlay-layers[hidden] {
   display: none;
+}
+.overlay-layers.is-collapsed {
+  overflow: hidden;
+  width: 0;
+  padding: 0;
+  border-left-color: transparent;
 }
 .overlay-layers__title {
   margin: 0 0 var(--space-8);
@@ -2502,6 +2527,7 @@ input[type=range] {
   padding: var(--space-6) var(--space-8);
   border-radius: var(--radius-6);
   cursor: grab;
+  user-select: none;
   transition: background var(--duration-fast);
 }
 .overlay-layers__item .material-symbols-rounded {
@@ -3770,5 +3796,3 @@ input[type=range] {
     width: auto;
   }
 }
-
-/*# sourceMappingURL=styles.css.map */

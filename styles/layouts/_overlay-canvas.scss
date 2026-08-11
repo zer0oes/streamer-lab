@@ -5,9 +5,13 @@
 // down via CSS transform so stored x/y/w/h never need unit conversion).
 @use "../base/primitives";
 
-// Même largeur que les autres panneaux latéraux droits fixes (Mon compte,
-// Champs d'un widget/alerte) : cf. --side-panel-width dans base/_tokens.scss.
-$overlay-layers-width: var(--side-panel-width);
+// Volontairement plus étroit que --side-panel-width (Mon compte, Champs d'un
+// widget/alerte, cf. base/_tokens.scss) : une liste de calques n'a pas
+// besoin d'autant de place que ces panneaux de formulaire, et sur un écran
+// de portable (~1366-1440px) chaque pixel repris ici profite directement au
+// canevas. Les noms de calque trop longs tronquent avec une ellipse
+// (cf. &__label plus bas) plutôt que de forcer une largeur plus généreuse.
+$overlay-layers-width: min(300px, 92vw);
 
 .overlay-editor__toolbar {
   @include primitives.heading-row;
@@ -24,8 +28,38 @@ $overlay-layers-width: var(--side-panel-width);
   gap: var(--space-12);
   // .overlay-layers est position: fixed (ancré au viewport, cf. plus bas),
   // donc hors du flux de ce flex-row : cette marge réserve la place qu'il
-  // occupe, pour que .overlay-canvas-wrap ne passe pas dessous.
+  // occupe, pour que .overlay-canvas-wrap ne passe pas dessous. Repliement
+  // manuel du panneau (bouton .overlay-layers-toggle ci-dessous) : la classe
+  // .is-layers-collapsed posée sur .overlay-editor supprime cette réserve,
+  // rendant au canevas toute la largeur qu'il occupait — nécessaire sur un
+  // écran de portable (~1366-1440px), où la sidebar gauche + ce panneau fixe
+  // ne laissaient plus assez de place pour travailler confortablement sur le
+  // canevas.
   padding-right: calc(#{$overlay-layers-width} + var(--space-12));
+  transition: padding-right var(--duration-base) ease;
+
+  .overlay-editor.is-layers-collapsed & { padding-right: 0; }
+}
+
+// Onglet accolé au bord du panneau Calques plutôt que rangé dans la barre
+// d'outils tout en haut : la distance visuelle entre un bouton là-haut et le
+// panneau qu'il contrôle, en bas à droite, ne se lisait pas comme un contrôle
+// du panneau. position: fixed (pas un enfant positionné de .overlay-layers)
+// pour qu'il reste atteignable même quand celui-ci passe à width: 0 en
+// .is-collapsed — c'est justement ce qui permet de le rouvrir.
+.overlay-layers-toggle {
+  position: fixed;
+  z-index: 7;
+  // Aligné sur le titre "Calques" (padding-top du panneau + moitié de sa
+  // ligne de titre), pas centré verticalement sur tout le viewport : plus
+  // proche du haut, il se lit comme le contrôle du panneau juste à côté,
+  // plutôt que comme un élément flottant sans rapport avec lui.
+  top: calc(var(--topbar-height) + var(--space-24) + 10px);
+  right: calc(#{$overlay-layers-width} + var(--space-8));
+  transform: translateY(-50%);
+  transition: right var(--duration-base) ease;
+
+  .overlay-editor.is-layers-collapsed & { right: var(--space-8); }
 }
 
 // Simple coquille de mise en page dans le flex-row .overlay-editor__body :
@@ -390,6 +424,13 @@ $ruler-size: 20px;
   border: 1px solid transparent;
   border-radius: var(--radius-6);
   cursor: grab;
+  // Même remarque que .overlay-layers__item (panneau Calques) : sans ça, un
+  // Maj+clic pour étendre la sélection sur le canevas (cf. le shiftKey dans
+  // le handler pointerdown de .overlay-canvas, app.js) déclenche AUSSI la
+  // sélection de texte native du navigateur sur le libellé d'un item texte.
+  // Réactivé ci-dessous sur .overlay-item__text pendant une édition réelle
+  // (&--text.is-editing), où la sélection redevient nécessaire.
+  user-select: none;
   transition: border-color var(--duration-fast);
 
   &:hover,
@@ -497,7 +538,7 @@ $ruler-size: 20px;
   &--text.is-editing {
     cursor: text;
 
-    .overlay-item__text { outline: 1px dashed var(--accent-bright); }
+    .overlay-item__text { outline: 1px dashed var(--accent-bright); user-select: text; }
   }
 
   &__image {
@@ -574,8 +615,21 @@ $ruler-size: 20px;
   padding: var(--space-24);
   border-left: 1px solid var(--line);
   background: var(--panel);
+  transition: width var(--duration-base) ease, padding var(--duration-base) ease, border-color var(--duration-base) ease;
 
   &[hidden] { display: none; }
+
+  // Repliement manuel (cf. #overlay-layers-toggle) : le contenu (liste de
+  // calques + réglages d'item) est simplement masqué avec le panneau plutôt
+  // que reconstruit en mode "rail" icônes-seules comme .controls à gauche —
+  // une liste de calques n'a pas d'équivalent icône-seule lisible, la seule
+  // action utile ici est de tout redéplier.
+  &.is-collapsed {
+    overflow: hidden;
+    width: 0;
+    padding: 0;
+    border-left-color: transparent;
+  }
 
   &__title { margin: 0 0 var(--space-8); color: var(--muted); font-size: var(--text-12); }
 
@@ -603,6 +657,13 @@ $ruler-size: 20px;
     // ligne amorce un glisser-déposer au-delà d'un seuil de mouvement, d'où
     // le curseur "grab" partout plutôt que sur une icône isolée.
     cursor: grab;
+    // Sans ça, un Maj+clic pour étendre la sélection (cf. toggleOverlaySelection
+    // dans app.js) déclenche AUSSI la sélection de texte native du navigateur
+    // sur le libellé — comportement par défaut du navigateur pour Maj+clic,
+    // indépendant de l'écouteur "click". N'affecte pas .overlay-layers__rename-input
+    // (les navigateurs laissent toujours sélectionner le texte d'un champ de
+    // saisie, quel que soit le user-select hérité d'un ancêtre).
+    user-select: none;
     transition: background var(--duration-fast);
 
     .material-symbols-rounded { font-size: 16px; color: var(--muted); }

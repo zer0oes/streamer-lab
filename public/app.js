@@ -73,6 +73,7 @@ const elements = {
   overlayZoomInButton: document.querySelector("#overlay-zoom-in"),
   overlayZoomLabel: document.querySelector("#overlay-zoom-label"),
   overlayLayers: document.querySelector("#overlay-layers"),
+  overlayLayersToggle: document.querySelector("#overlay-layers-toggle"),
   overlayLayersList: document.querySelector("#overlay-layers-list"),
   overlayItemSettingsPanel: document.querySelector("#overlay-item-settings"),
   overlayItemSettingsTitle: document.querySelector("#overlay-item-settings-title"),
@@ -6220,6 +6221,26 @@ function onSidebarWidthSettled(event) {
 
 elements.sidebarToggle.addEventListener("click", () => {
   setSidebarCollapsed(!elements.workspace.classList.contains("is-sidebar-collapsed"));
+});
+
+// Repli manuel du panneau Calques : sur un écran de portable (~1366-1440px),
+// la sidebar gauche + ce panneau fixe ne laissaient plus assez de place pour
+// travailler confortablement sur le canevas (cf. .overlay-layers dans
+// _overlay-canvas.scss). Pas de setOverlayCanvasScale() explicite ici : le
+// ResizeObserver déjà posé sur .overlay-canvas-wrap (cf. plus haut) réagit de
+// lui-même à chaque frame de la transition CSS, exactement comme pour le
+// repli de la sidebar gauche.
+function setOverlayLayersCollapsed(collapsed) {
+  elements.overlayLayers.classList.toggle("is-collapsed", collapsed);
+  elements.overlayEditorView.classList.toggle("is-layers-collapsed", collapsed);
+  elements.overlayLayersToggle.setAttribute("aria-expanded", String(!collapsed));
+  elements.overlayLayersToggle.setAttribute("aria-label", collapsed ? "Déplier le panneau Calques" : "Replier le panneau Calques");
+  elements.overlayLayersToggle.title = collapsed ? "Déplier le panneau Calques" : "Replier le panneau Calques";
+  elements.overlayLayersToggle.querySelector(".material-symbols-rounded").textContent = collapsed ? "right_panel_open" : "right_panel_close";
+}
+
+elements.overlayLayersToggle.addEventListener("click", () => {
+  setOverlayLayersCollapsed(!elements.overlayLayers.classList.contains("is-collapsed"));
 });
 
 elements.dashboardFab.addEventListener("click", () => showDashboard());
