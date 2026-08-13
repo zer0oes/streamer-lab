@@ -35,6 +35,7 @@ const elements = {
   overlayList: document.querySelector("#overlay-list"),
   overlayCount: document.querySelector("#overlay-count"),
   addOverlayButton: document.querySelector("#add-overlay"),
+  importStreamElementsOverlayButton: document.querySelector("#dashboard-import-streamelements-overlay"),
   overlaySettingsDialog: document.querySelector("#overlay-settings-dialog"),
   overlaySettingsForm: document.querySelector("#overlay-settings-form"),
   overlaySettingsTitle: document.querySelector("#overlay-settings-title"),
@@ -59,6 +60,11 @@ const elements = {
   overlayRulerToggle: document.querySelector("#overlay-tool-rulers"),
   overlayItemPickerDialog: document.querySelector("#overlay-item-picker"),
   overlayItemPickerList: document.querySelector("#overlay-item-picker-list"),
+  seOverlayPickerDialog: document.querySelector("#streamelements-overlay-picker"),
+  seOverlayPickerList: document.querySelector("#streamelements-overlay-picker-list"),
+  mediaPreviewDialog: document.querySelector("#media-preview-dialog"),
+  mediaPreviewBody: document.querySelector("#media-preview-body"),
+  mediaPreviewCaption: document.querySelector("#media-preview-caption"),
   overlayToolbar: document.querySelector("#overlay-toolbar"),
   overlayToolbarHandle: document.querySelector(".overlay-toolbar__handle"),
   overlayToolButtons: document.querySelectorAll("[data-overlay-tool]"),
@@ -429,6 +435,11 @@ const PLATFORM_DASHBOARD_URLS = {
   [PLATFORM_STREAM_ELEMENTS]: "https://streamelements.com/dashboard/overlays",
   [PLATFORM_STREAMLABS]: "https://streamlabs.com/dashboard#/widgets/customwidget"
 };
+// Déclaré tôt (module-level, avant les appels d'init en bas de fichier) :
+// overlayLayerIcon peut être invoqué pendant le rendu initial du dashboard,
+// bien avant que le script atteigne la zone du canevas d'overlay — une
+// const définie plus bas y serait encore dans sa zone morte temporelle.
+const PLACEHOLDER_ICONS = { video: "videocam", group: "select_all", "alert-box": "campaign", native: "widgets" };
 let previewSize = loadPreviewSize();
 let previewTheme = loadPreviewTheme();
 let previewPlatform = normalizePlatform(localStorage.getItem(previewPlatformStorageKey));
@@ -1087,6 +1098,8 @@ function initializeDashboardLibraryControls() {
     closeAllDropdowns();
     openWidgetCreation("alert");
   });
+
+  elements.importStreamElementsOverlayButton.addEventListener("click", () => openStreamElementsOverlayPicker());
 }
 
 function updateFilterPanelChecks(panel, activeSort) {
@@ -1341,9 +1354,12 @@ function buildOverlayLibraryRow(entry, { showMeta = false, showPreview = false }
   copy.className = "widget-library__copy";
   const name = document.createElement("strong");
   name.textContent = entry.name;
-  const description = document.createElement("small");
-  description.textContent = entry.description;
-  copy.append(name, description);
+  copy.append(name);
+  if (entry.description) {
+    const description = document.createElement("small");
+    description.textContent = entry.description;
+    copy.append(description);
+  }
 
   if (showMeta && entry.updatedAt) {
     const meta = document.createElement("small");
@@ -1454,6 +1470,15 @@ function buildOverlayPreviewThumb(entry) {
       mini.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${escapeHtml(overlayPreviewItemIcon(item))}</span>`;
     }
     thumb.append(mini);
+  }
+
+  if (entry.sourcePlatform) {
+    const badge = document.createElement("img");
+    badge.className = "overlay-preview-card__badge";
+    badge.src = `/assets/platforms/${entry.sourcePlatform}.svg`;
+    badge.alt = entry.sourcePlatform === "streamlabs" ? "Importé depuis Streamlabs" : "Importé depuis StreamElements";
+    badge.title = badge.alt;
+    thumb.append(badge);
   }
 
   thumb.addEventListener("click", () => void openOverlayEditor(entry.id));
@@ -1632,6 +1657,24 @@ function initializeOverlayCanvas() {
   document.querySelector("#close-overlay-item-picker").addEventListener("click", closePicker);
   elements.overlayItemPickerDialog.addEventListener("click", event => {
     if (event.target === elements.overlayItemPickerDialog) closePicker();
+  });
+
+  const closeSeOverlayPicker = () => elements.seOverlayPickerDialog.close();
+  document.querySelector("#close-streamelements-overlay-picker").addEventListener("click", closeSeOverlayPicker);
+  elements.seOverlayPickerDialog.addEventListener("click", event => {
+    if (event.target === elements.seOverlayPickerDialog) closeSeOverlayPicker();
+  });
+
+  const closeMediaPreview = () => elements.mediaPreviewDialog.close();
+  document.querySelector("#close-media-preview").addEventListener("click", closeMediaPreview);
+  elements.mediaPreviewDialog.addEventListener("click", event => {
+    if (event.target === elements.mediaPreviewDialog) closeMediaPreview();
+  });
+  // Coupe la lecture vidéo à la fermeture (croix, clic hors-cadre, Échap) :
+  // sinon l'aperçu continue de jouer en arrière-plan, invisible et inaudible
+  // seulement si la vidéo était mute, ce qui masquerait un bug de fuite.
+  elements.mediaPreviewDialog.addEventListener("close", () => {
+    elements.mediaPreviewBody.replaceChildren();
   });
 
   for (const button of elements.overlayToolButtons) {
@@ -2586,6 +2629,7 @@ function overlayItemDefaultLabel(item) {
     case "icon": return "Icône";
     case "shape": return "Forme";
     case "group": return `Groupe (${item.props.children.length})`;
+    case "placeholder": return item.name || "Élément StreamElements";
     default: return item.widgetId;
   }
 }
@@ -2620,6 +2664,7 @@ function buildOverlayItemElement(item) {
   else if (item.type === "icon") buildIconItemContent(item, el);
   else if (item.type === "shape") buildShapeItemContent(item, el);
   else if (item.type === "group") buildGroupItemContent(item, el);
+  else if (item.type === "placeholder") buildPlaceholderItemContent(item, el);
 
   for (const position of ["nw", "ne", "sw", "se"]) {
     const handle = document.createElement("div");
@@ -3413,6 +3458,28 @@ function buildGroupItemContent(item, el) {
   el.append(frame);
 }
 
+// Repère non éditable posé par l'import d'overlay StreamElements (widget
+// natif StreamElements sans code custom accessible : Chat Box, Alert Box,
+// Event List non personnalisé, groupe SE...) — garde la position/taille
+// d'origine pour la mise en page, sans iframe ni panneau de réglages.
+function buildPlaceholderItemContent(item, el) {
+  const frame = document.createElement("div");
+  frame.className = "overlay-item__placeholder-frame";
+
+  const icon = document.createElement("span");
+  icon.className = "material-symbols-rounded";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = PLACEHOLDER_ICONS[item.props?.sourceType] || PLACEHOLDER_ICONS.native;
+  frame.append(icon);
+
+  const hint = document.createElement("span");
+  hint.className = "overlay-item__placeholder-hint";
+  hint.textContent = "Non modifiable dans Streamer Lab";
+  frame.append(hint);
+
+  el.append(frame);
+}
+
 async function loadOverlayItemBundle(widgetId) {
   if (overlayItemBundleCache.has(widgetId)) return overlayItemBundleCache.get(widgetId);
   try {
@@ -3548,6 +3615,7 @@ function overlayLayerIcon(item) {
     case "icon": return "star";
     case "shape": return "category";
     case "group": return "select_all";
+    case "placeholder": return PLACEHOLDER_ICONS[item.props?.sourceType] || PLACEHOLDER_ICONS.native;
     default: return widgetCatalog.find((entry) => entry.id === item.widgetId)?.icon || "widgets";
   }
 }
@@ -4534,6 +4602,18 @@ function buildMediaLibraryItem(item, container) {
 
   wrap.append(button);
 
+  const zoomButton = document.createElement("button");
+  zoomButton.type = "button";
+  zoomButton.className = "icon-button media-library__zoom";
+  zoomButton.setAttribute("aria-label", "Agrandir l'aperçu");
+  zoomButton.title = "Agrandir l'aperçu";
+  zoomButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">search</span>';
+  zoomButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openMediaPreview(item);
+  });
+  wrap.append(zoomButton);
+
   if (item.source === "local") {
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
@@ -4555,6 +4635,27 @@ function buildMediaLibraryItem(item, container) {
   }
 
   return wrap;
+}
+
+function openMediaPreview(item) {
+  elements.mediaPreviewBody.replaceChildren();
+  if (item.type === "video") {
+    const video = document.createElement("video");
+    video.src = item.url;
+    video.controls = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    elements.mediaPreviewBody.append(video);
+  } else {
+    const img = document.createElement("img");
+    img.src = item.url;
+    img.alt = "";
+    elements.mediaPreviewBody.append(img);
+  }
+  elements.mediaPreviewCaption.textContent = item.source === "local"
+    ? item.name
+    : (item.overlayName ? `Depuis l'overlay "${item.overlayName}"` : item.url);
+  elements.mediaPreviewDialog.showModal();
 }
 
 function buildWidgetLibraryRow(entry, { showMeta = false } = {}) {
@@ -4581,9 +4682,12 @@ function buildWidgetLibraryRow(entry, { showMeta = false } = {}) {
   copy.className = "widget-library__copy";
   const name = document.createElement("strong");
   name.textContent = entry.name;
-  const description = document.createElement("small");
-  description.textContent = entry.description;
-  copy.append(name, description);
+  copy.append(name);
+  if (entry.description) {
+    const description = document.createElement("small");
+    description.textContent = entry.description;
+    copy.append(description);
+  }
 
   if (showMeta && entry.updatedAt) {
     const meta = document.createElement("small");
@@ -5916,6 +6020,69 @@ function wireIntegrationCard(card) {
     icon.textContent = revealed ? "visibility" : "visibility_off";
     revealButton.setAttribute("aria-label", revealed ? "Afficher le token" : "Masquer le token");
   });
+
+  if (provider === "streamelements") {
+    card.querySelector("#streamelements-import-overlay")?.addEventListener("click", () => {
+      openStreamElementsOverlayPicker();
+    });
+  }
+}
+
+async function openStreamElementsOverlayPicker() {
+  elements.seOverlayPickerList.replaceChildren(buildLibraryEmptyState("Chargement…"));
+  elements.seOverlayPickerDialog.showModal();
+  try {
+    const { overlays } = await fetchAccountJson("/api/integrations/streamelements/overlays");
+    elements.seOverlayPickerList.replaceChildren();
+    if (!overlays.length) {
+      elements.seOverlayPickerList.append(buildLibraryEmptyState("Aucun overlay sur ce compte StreamElements."));
+      return;
+    }
+    for (const overlay of overlays) {
+      const row = document.createElement("div");
+      row.className = "widget-library__row";
+
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "widget-library__item";
+      const icon = document.createElement("span");
+      icon.className = "widget-library__icon";
+      icon.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">desktop_landscape</span>';
+      const copy = document.createElement("span");
+      copy.className = "widget-library__copy";
+      const name = document.createElement("strong");
+      name.textContent = overlay.name;
+      const description = document.createElement("small");
+      description.textContent = overlay.widgetCount != null ? `${overlay.widgetCount} élément(s)` : "";
+      copy.append(name, description);
+      item.append(icon, copy);
+      item.addEventListener("click", () => importStreamElementsOverlay(overlay.id, item));
+      row.append(item);
+      elements.seOverlayPickerList.append(row);
+    }
+  } catch (error) {
+    elements.seOverlayPickerList.replaceChildren(buildLibraryEmptyState(`Erreur : ${error.message}`));
+  }
+}
+
+async function importStreamElementsOverlay(overlayId, triggerButton) {
+  if (triggerButton) triggerButton.disabled = true;
+  try {
+    const result = await fetchAccountJson("/api/integrations/streamelements/overlays/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ overlayId })
+    });
+    elements.seOverlayPickerDialog.close();
+    setAccountPanelOpen(false);
+    const verb = result.updated ? "mis à jour" : "importé";
+    showToast(`Overlay ${verb} · ${result.placeholders} élément(s) en repère non éditable`);
+    await openOverlayEditor(result.overlay.id);
+  } catch (error) {
+    showToast(`Import impossible : ${error.message}`);
+  } finally {
+    if (triggerButton) triggerButton.disabled = false;
+  }
 }
 
 async function applyEnvDefaults(card, provider) {

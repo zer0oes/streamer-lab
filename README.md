@@ -1,6 +1,6 @@
 # Streamer Lab
 
-Un environnement local pour développer et tester des **Custom Widgets StreamElements et Streamlabs** sans modifier un overlay déjà publié.
+Un environnement local pour développer et tester des **Custom Widgets StreamElements et Streamlabs** sans modifier un overlay déjà publié, avec en complément un **éditeur d’overlays** visuel (mise en page par calques) qui réutilise cette même bibliothèque de widgets.
 
 Le widget s’exécute dans une iframe isolée et reçoit les mêmes événements navigateur que sur StreamElements :
 
@@ -68,6 +68,31 @@ L’onglet **DATA** contient un objet JSON libre (`{}` par défaut) fusionné so
 
 Les données initiales de session se trouvent dans `mocks/session.json`. Le panneau **Événement JSON personnalisé** permet d’envoyer directement le contenu de `detail` attendu par `onEventReceived`.
 
+## Éditeur d’overlays
+
+En plus du mode simulation, un éditeur visuel permet de composer un overlay complet par calques, en réutilisant les widgets et alertes de la bibliothèque. Il partage la même application que le simulateur : la bibliothèque de gauche propose un onglet **Overlays** à côté de **Widgets** et **Alertes**, et ouvrir un overlay bascule le panneau principal vers la vue édition (lien direct possible via `?overlay=<id>`).
+
+Un overlay est composé d’éléments positionnés librement sur un canevas : widget ou alerte de la bibliothèque, texte, image, vidéo, embed (URL uniquement — les `data:` URI sont refusées), icône, forme ou groupe. Le canevas propose des formats prédéfinis 16:9 et 9:16, ou des dimensions personnalisées (100 à 7680 px).
+
+- **Calques** : réordonner, renommer, masquer, verrouiller et replier les groupes depuis le panneau dédié.
+- **Barre d’outils** déplaçable : outils sélection / texte / pipette de style, menu « Ajouter » (widget, alerte, image, icône, forme, vidéo, embed depuis un lien), groupement, duplication, suppression, alignement (6 directions) et répartition horizontale/verticale.
+- **Zoom** avec boutons `+`/`−` et pourcentage cliquable pour ajuster à la fenêtre.
+- **Règles et guides** : règles horizontale et verticale activables, guides déplaçables mémorisés par overlay.
+- **Annuler/rétablir** : `Ctrl/Cmd + Z`, `Ctrl/Cmd + Maj + Z` ou `Ctrl/Cmd + Y` ; `Ctrl/Cmd + D` duplique la sélection ; `Échap` repasse à l’outil sélection. Ces raccourcis ne sont actifs que lorsque la vue overlay a le focus et qu’aucun champ texte n’est en cours d’édition.
+
+Chaque overlay est enregistré dans `library/overlays/<id>/overlay.json` (taille de canevas, éléments, guides, dates), sur le même principe que les widgets dans `library/widgets/`.
+
+## Comptes et médias
+
+Un panneau compte, accessible depuis la barre du haut, permet de connecter des comptes externes — ces connexions sont optionnelles et indépendantes du flux d’événements réels décrit ci-dessous.
+
+- **Twitch** (`dev.twitch.tv/console/apps`) active le panneau compte et une session locale signée.
+- **StreamElements (OAuth2)** sert uniquement à alimenter la section **Médias** de la bibliothèque, en retrouvant les images/vidéos déjà utilisées dans les overlays existants du compte connecté. C’est une connexion **en lecture seule** : le laboratoire ne publie ni ne modifie rien sur StreamElements, y compris pour les overlays composés dans l’éditeur. Les identifiants ne sont pas en self-service (à demander au support StreamElements) et StreamElements n’accepte pas `localhost` comme `redirect_uri` ; la procédure de contournement (fichier hosts) est détaillée dans `.env.example`. Un jeton manuel (JWT ou clé API) déjà renseigné pour les événements réels alimente aussi cette section Médias, sans passer par l’OAuth2.
+
+La bibliothèque propose également une section **Médias locaux**, indépendante de tout compte : import de fichiers (25 Mo max, nom normalisé), stockés dans `library/media/` et servis sous `/library-media/`.
+
+Les jetons des comptes connectés sont chiffrés (`TOKEN_ENCRYPTION_KEY`) et stockés dans `data/app.sqlite`.
+
 ## Recevoir les événements réels
 
 1. Copier le fichier d’exemple :
@@ -120,7 +145,7 @@ Le statut passe à `connected` dès que la plateforme simulée sélectionnée en
 - jQuery est chargé avant le code du widget, comme dans l’environnement StreamElements.
 - `SE_API.store.get/set`, `getOverlayStatus`, `setField`, `resumeQueue`, `sanitize`, `cheerFilter` et `counters.get` possèdent une émulation locale. Les compteurs renvoient actuellement `0`, et la reprise de queue est simulée.
 - Les payloads chat Astro Twitch, YouTube et Kick sont normalisés vers la forme historique `obj.detail.event.data`. Le payload original reste disponible dans `_raw`.
-- Le laboratoire ne publie rien sur StreamElements. La mise en production reste volontaire : copier les quatre fichiers dans un nouveau Custom Widget, valider, puis seulement remplacer le widget utilisé par l’overlay.
+- Le laboratoire ne publie rien sur StreamElements, ni pour les widgets ni pour les overlays composés dans l’éditeur (la connexion OAuth2 associée est en lecture seule). La mise en production reste volontaire : copier les quatre fichiers dans un nouveau Custom Widget, valider, puis seulement remplacer le widget utilisé par l’overlay.
 
 ## Vérification
 
@@ -143,8 +168,8 @@ npm run dev
 
 - `node_modules/` : réinstallé par `npm install` à partir de `package-lock.json`.
 - `public/styles.css` et `.map` : régénérés automatiquement au prochain `npm run dev` ou `npm run build:css` (le CSS source vit dans `styles/`).
-- `data/app.sqlite` : base SQLite locale (comptes Twitch liés, sessions). La supprimer réinitialise l'authentification et l'historique local ; elle est recréée automatiquement au démarrage du serveur.
-- `.env` n'est **pas** supprimé par cette procédure : il contient les jetons (`SE_TOKEN`, `SL_SOCKET_TOKEN`, secrets OAuth Twitch) et n'est pas versionné. Le recréer avec `Copy-Item .env.example .env` uniquement si besoin de repartir aussi de zéro sur la config.
+- `data/app.sqlite` : base SQLite locale (comptes Twitch et StreamElements liés, jetons chiffrés, sessions). La supprimer réinitialise l'authentification et l'historique local ; elle est recréée automatiquement au démarrage du serveur.
+- `.env` n'est **pas** supprimé par cette procédure : il contient les jetons (`SE_TOKEN`, `SL_SOCKET_TOKEN`, secrets OAuth Twitch et StreamElements, `SESSION_SECRET`, `TOKEN_ENCRYPTION_KEY`) et n'est pas versionné. Le recréer avec `Copy-Item .env.example .env` uniquement si besoin de repartir aussi de zéro sur la config.
 
 ## Références officielles
 

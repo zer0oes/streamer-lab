@@ -13,7 +13,8 @@ import {
   fetchStreamElementsChannel,
   fetchStreamElementsOverlays,
   fetchStreamElementsOverlay,
-  extractMediaFromOverlay
+  extractMediaFromOverlay,
+  convertOverlayWidget
 } from "./lib/streamelements.mjs";
 import { streamlabsEventToLabEvents } from "./lib/streamlabs.mjs";
 import { parseCookies, serializeCookie } from "./lib/cookies.mjs";
@@ -162,19 +163,10 @@ const server = createServer(async (request, response) => {
       if (!editableWidgetFiles.has(body.file)) {
         return sendJson(response, 400, { error: "Fichier de widget non autorise" });
       }
-      if (typeof body.content !== "string") return sendJson(response, 400, { error: "Contenu invalide" });
-      if (body.content.length > 2_000_000) return sendJson(response, 413, { error: "Fichier trop volumineux" });
-      if (
-        body.file === "fields.streamelements.json" ||
-        body.file === "fields.streamlabs.json" ||
-        body.file === "data.streamelements.json" ||
-        body.file === "data.streamlabs.json"
-      ) {
-        try {
-          JSON.parse(body.content);
-        } catch (error) {
-          return sendJson(response, 400, { error: `JSON invalide : ${error.message}` });
-        }
+      try {
+        assertValidWidgetFileContent(body.file, body.content);
+      } catch (error) {
+        return sendJson(response, error.status || 400, { error: error.message });
       }
       const path = join(widgetInfo.directory, body.file);
       await writeFile(path, body.content, "utf8");
@@ -465,29 +457,11 @@ const server = createServer(async (request, response) => {
         return sendJson(response, 200, { media: cached.media, cached: true });
       }
 
-      // /channels/me et /overlays/* acceptent aussi bien un jeton JWT/apikey
-      // (formulaire de connexion manuel existant) qu'OAuth2 - jamais besoin
-      // d'exiger specifiquement OAuth2 ici. On tente d'abord l'integration
-      // liee a cet utilisateur, puis on retombe sur le SE_TOKEN/SE_CHANNEL_ID
-      // du .env (simulation) s'il n'y en a pas : un SE_TOKEN deja configure
-      // pour les evenements live suffit aussi a peupler les medias, sans
-      // connexion dediee supplementaire dans "Mon compte".
-      const integrationRow = store.getIntegration(auth.user.id, "streamelements");
-      let token, tokenType, channelId;
-      if (integrationRow) {
-        tokenType = ["jwt", "apikey", "oauth2"].includes(integrationRow.token_type) ? integrationRow.token_type : "jwt";
-        const decrypted = decryptIntegrationToken(integrationRow);
-        token = tokenType === "oauth2" ? JSON.parse(decrypted).accessToken : decrypted;
-        channelId = integrationRow.channel_id;
-      } else if (config.token && config.channelId) {
-        tokenType = ["jwt", "apikey", "oauth2"].includes(config.tokenType) ? config.tokenType : "jwt";
-        token = config.token;
-        channelId = config.channelId;
-      } else {
-        return sendJson(response, 404, { error: "StreamElements non connecte" });
-      }
+      const credentials = resolveStreamElementsCredentials(auth);
+      if (!credentials) return sendJson(response, 404, { error: "StreamElements non connecte" });
 
       try {
+        const { token, tokenType, channelId } = credentials;
         const overlays = await fetchStreamElementsOverlays(token, channelId, tokenType);
         const media = [];
         const seen = new Set();
@@ -505,6 +479,100 @@ const server = createServer(async (request, response) => {
         return sendJson(response, 200, { media, cached: false });
       } catch (error) {
         return sendJson(response, 502, { error: `Recuperation des medias StreamElements impossible : ${error.message}` });
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/integrations/streamelements/overlays") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
+
+      const credentials = resolveStreamElementsCredentials(auth);
+      if (!credentials) return sendJson(response, 404, { error: "StreamElements non connecte" });
+
+      try {
+        const { token, tokenType, channelId } = credentials;
+        const overlays = await fetchStreamElementsOverlays(token, channelId, tokenType);
+        return sendJson(response, 200, {
+          overlays: overlays.map((summary) => ({
+            id: summary._id || summary.id,
+            name: summary.name || "Overlay",
+            preview: summary.preview || null,
+            widgetCount: Array.isArray(summary.widgets) ? summary.widgets.length : null
+          })).filter((entry) => entry.id)
+        });
+      } catch (error) {
+        return sendJson(response, 502, { error: `Recuperation des overlays StreamElements impossible : ${error.message}` });
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/integrations/streamelements/overlays/import") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
+
+      const credentials = resolveStreamElementsCredentials(auth);
+      if (!credentials) return sendJson(response, 404, { error: "StreamElements non connecte" });
+
+      const body = await readRequestJson(request);
+      if (typeof body.overlayId !== "string" || !body.overlayId) {
+        return sendJson(response, 400, { error: "overlayId manquant" });
+      }
+
+      try {
+        const { token, tokenType, channelId } = credentials;
+        const detail = await fetchStreamElementsOverlay(token, channelId, body.overlayId, tokenType);
+        const overlayName = detail.name || "Overlay StreamElements";
+        const canvas = { width: detail.settings?.width, height: detail.settings?.height };
+
+        // Un meme overlay StreamElements deja importe est retrouve via
+        // sourcePlatform+sourceOverlayId et mis a jour sur place plutot que
+        // recree, pour ne jamais accumuler de doublons a chaque reimport.
+        const existingOverlays = await listOverlays();
+        const alreadyImported = existingOverlays.find(
+          (entry) => entry.sourcePlatform === "streamelements" && entry.sourceOverlayId === body.overlayId
+        );
+
+        let overlay;
+        if (alreadyImported) {
+          overlay = await updateOverlayMetadata(alreadyImported.id, {
+            name: overlayName,
+            description: alreadyImported.description,
+            icon: alreadyImported.icon,
+            canvas
+          });
+        } else {
+          const overlayId = uniqueWidgetId(slugify(overlayName), new Set(existingOverlays.map((entry) => entry.id)));
+          overlay = await createOverlay({
+            id: overlayId,
+            name: overlayName,
+            description: "",
+            icon: "desktop_landscape",
+            canvas,
+            sourcePlatform: "streamelements",
+            sourceOverlayId: body.overlayId
+          });
+        }
+
+        // Le Lab ne cree plus de widget dans la bibliotheque a l'import : un
+        // overlay StreamElements est reproduit uniquement comme mise en page
+        // (position/taille de chaque element), tous en reperes non editables
+        // - y compris les anciens Custom Widgets - pour eviter les doublons
+        // dans la bibliotheque a chaque import/reimport.
+        const items = detail.widgets?.map((rawWidget, index) => {
+          const converted = convertOverlayWidget(rawWidget);
+          const sourceType = converted.kind === "custom" ? "native" : converted.sourceType;
+          return {
+            id: `se-placeholder-${index + 1}-${randomUUID().slice(0, 8)}`,
+            type: "placeholder",
+            name: placeholderLabel(sourceType, converted.name),
+            x: converted.x, y: converted.y, w: converted.w, h: converted.h, z: converted.z,
+            props: { sourceType }
+          };
+        }) || [];
+
+        const savedOverlay = await replaceOverlayItems(overlay.id, items);
+        return sendJson(response, 201, { overlay: savedOverlay, placeholders: items.length, updated: Boolean(alreadyImported) });
+      } catch (error) {
+        return sendJson(response, 502, { error: `Import de l'overlay StreamElements impossible : ${error.message}` });
       }
     }
 
@@ -836,6 +904,57 @@ async function createWidgetFiles(directory) {
   await Promise.all(
     Object.entries(WIDGET_TEMPLATE_FILES).map(([file, content]) => writeFile(join(directory, file), content, "utf8"))
   );
+}
+
+// Memes garde-fous que PUT /api/widget/file (taille, JSON valide pour les
+// fichiers fields.*/data.*), reutilises pour tout endroit qui ecrit du
+// contenu de widget arbitraire (import StreamElements notamment).
+function assertValidWidgetFileContent(file, content) {
+  if (typeof content !== "string") throw Object.assign(new Error("Contenu invalide"), { status: 400 });
+  if (content.length > 2_000_000) throw Object.assign(new Error("Fichier trop volumineux"), { status: 413 });
+  if (
+    file === "fields.streamelements.json" ||
+    file === "fields.streamlabs.json" ||
+    file === "data.streamelements.json" ||
+    file === "data.streamlabs.json"
+  ) {
+    try {
+      JSON.parse(content);
+    } catch (error) {
+      throw Object.assign(new Error(`JSON invalide : ${error.message}`), { status: 400 });
+    }
+  }
+}
+
+// /channels/me et /overlays/* acceptent aussi bien un jeton JWT/apikey
+// (formulaire de connexion manuel existant) qu'OAuth2 - jamais besoin
+// d'exiger specifiquement OAuth2 ici. On tente d'abord l'integration liee a
+// cet utilisateur, puis on retombe sur le SE_TOKEN/SE_CHANNEL_ID du .env
+// (simulation) s'il n'y en a pas.
+function resolveStreamElementsCredentials(auth) {
+  const integrationRow = store.getIntegration(auth.user.id, "streamelements");
+  if (integrationRow) {
+    const tokenType = ["jwt", "apikey", "oauth2"].includes(integrationRow.token_type) ? integrationRow.token_type : "jwt";
+    const decrypted = decryptIntegrationToken(integrationRow);
+    const token = tokenType === "oauth2" ? JSON.parse(decrypted).accessToken : decrypted;
+    return { token, tokenType, channelId: integrationRow.channel_id };
+  }
+  if (config.token && config.channelId) {
+    const tokenType = ["jwt", "apikey", "oauth2"].includes(config.tokenType) ? config.tokenType : "jwt";
+    return { token: config.token, tokenType, channelId: config.channelId };
+  }
+  return null;
+}
+
+const PLACEHOLDER_LABELS = {
+  video: "Vidéo StreamElements",
+  group: "Groupe StreamElements",
+  "alert-box": "Alert Box StreamElements",
+  native: "Widget StreamElements natif"
+};
+
+function placeholderLabel(sourceType, name) {
+  return name && name !== "Widget StreamElements" ? name : (PLACEHOLDER_LABELS[sourceType] || PLACEHOLDER_LABELS.native);
 }
 
 async function loadWidget(widgetInfo, platform = "streamelements") {

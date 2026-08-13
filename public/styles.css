@@ -1349,7 +1349,20 @@ input[type=range] {
 .media-library__delete .material-symbols-rounded {
   font-size: 14px;
 }
-.media-library__item-wrap:hover .media-library__delete, .media-library__delete:focus-visible {
+.media-library__zoom {
+  position: absolute;
+  bottom: var(--space-4);
+  right: var(--space-4);
+  width: 24px;
+  height: 24px;
+  opacity: 0;
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  transition: opacity var(--duration-fast);
+}
+.media-library__zoom .material-symbols-rounded {
+  font-size: 14px;
+}
+.media-library__item-wrap:hover .media-library__delete, .media-library__delete:focus-visible, .media-library__item-wrap:hover .media-library__zoom, .media-library__zoom:focus-visible {
   opacity: 1;
 }
 .media-library__thumb {
@@ -1492,6 +1505,56 @@ input[type=range] {
   margin: calc(var(--space-13) * -1) 0 var(--space-13);
   color: var(--muted);
   font-size: var(--text-10);
+}
+
+.media-preview-dialog {
+  position: relative;
+  width: min(90vw, 1100px);
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 1px solid #343944;
+  border-radius: var(--radius-14);
+  color: var(--text);
+  background: var(--panel);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.65);
+}
+.media-preview-dialog::backdrop {
+  background: color-mix(in srgb, var(--shadow) 72%, transparent);
+  backdrop-filter: blur(5px);
+}
+.media-preview-dialog__close {
+  position: absolute;
+  top: var(--space-12);
+  right: var(--space-12);
+  z-index: 1;
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+}
+.media-preview-dialog__body {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+  max-height: calc(100vh - 130px);
+  padding: var(--space-24);
+  border-radius: var(--radius-14) var(--radius-14) 0 0;
+  background-color: #15171c;
+  background-image: linear-gradient(45deg, #1f2229 25%, transparent 25%), linear-gradient(-45deg, #1f2229 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #1f2229 75%), linear-gradient(-45deg, transparent 75%, #1f2229 75%);
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
+}
+.media-preview-dialog__body img, .media-preview-dialog__body video {
+  max-width: 100%;
+  max-height: calc(100vh - 130px);
+  object-fit: contain;
+}
+.media-preview-dialog__caption {
+  margin: 0;
+  padding: var(--space-13) var(--space-18);
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--text-11);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-top: 1px solid var(--line);
 }
 
 .widget-type-field {
@@ -1721,6 +1784,11 @@ input[type=range] {
   margin: 0;
   font-size: var(--text-13);
 }
+.dashboard-view__column-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
 .dashboard-view__filter-trigger[aria-expanded=true] {
   color: #fff;
   border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
@@ -1900,6 +1968,7 @@ input[type=range] {
   border: 0;
   border-top: 1px solid var(--line);
   border-radius: 0 0 var(--radius-9) var(--radius-9);
+  height: 84px;
 }
 
 .overlay-preview-card__thumb {
@@ -1929,6 +1998,20 @@ input[type=range] {
 }
 .overlay-preview-card__item .material-symbols-rounded {
   font-size: clamp(8px, 40%, 18px);
+}
+
+.overlay-preview-card__badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  overflow: hidden;
+  object-fit: cover;
+  object-position: left center;
+  border-radius: 50%;
+  background: color-mix(in srgb, #0b0c10 82%, transparent);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
 .dashboard-add-fab {
@@ -2482,6 +2565,25 @@ input[type=range] {
   border: 1px dashed color-mix(in srgb, var(--accent-bright) 60%, transparent);
   border-radius: var(--radius-6);
   background: color-mix(in srgb, var(--accent-bright) 6%, transparent);
+}
+.overlay-item__placeholder-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  border: 1px dashed color-mix(in srgb, var(--text-secondary) 50%, transparent);
+  border-radius: var(--radius-6);
+  background: color-mix(in srgb, var(--text-secondary) 8%, transparent);
+  color: var(--text-secondary);
+}
+.overlay-item__placeholder-hint {
+  padding: 0 6px;
+  font-size: 11px;
+  text-align: center;
 }
 
 .overlay-layers {
@@ -3796,3 +3898,5 @@ input[type=range] {
     width: auto;
   }
 }
+
+/*# sourceMappingURL=styles.css.map */

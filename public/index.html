@@ -229,18 +229,24 @@
               <div class="dashboard-view__overlays">
                 <div class="dashboard-view__column-header">
                   <h4 class="dashboard-view__column-title">Overlays</h4>
-                  <button class="icon-button dashboard-view__filter-trigger" type="button"
-                          data-dropdown-trigger data-role="filter-trigger" data-scope="overlay"
-                          aria-haspopup="menu" aria-expanded="false" aria-label="Trier les overlays">
-                    <span class="material-symbols-rounded" aria-hidden="true">filter_list</span>
-                  </button>
-                  <div class="dashboard-view__filter-panel" role="menu" hidden>
-                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="name-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Nom (A→Z)</span></button>
-                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="name-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Nom (Z→A)</span></button>
-                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="updated-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Modifié (récent d'abord)</span></button>
-                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="updated-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Modifié (ancien d'abord)</span></button>
-                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="created-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Créé (récent d'abord)</span></button>
-                    <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="created-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Créé (ancien d'abord)</span></button>
+                  <div class="dashboard-view__column-actions">
+                    <button class="icon-button" type="button" id="dashboard-import-streamelements-overlay"
+                            aria-label="Importer un overlay depuis StreamElements" title="Importer depuis StreamElements">
+                      <span class="material-symbols-rounded" aria-hidden="true">cloud_download</span>
+                    </button>
+                    <button class="icon-button dashboard-view__filter-trigger" type="button"
+                            data-dropdown-trigger data-role="filter-trigger" data-scope="overlay"
+                            aria-haspopup="menu" aria-expanded="false" aria-label="Trier les overlays">
+                      <span class="material-symbols-rounded" aria-hidden="true">filter_list</span>
+                    </button>
+                    <div class="dashboard-view__filter-panel" role="menu" hidden>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="name-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Nom (A→Z)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="name-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Nom (Z→A)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="updated-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Modifié (récent d'abord)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="updated-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Modifié (ancien d'abord)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="created-desc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Créé (récent d'abord)</span></button>
+                      <button class="dashboard-view__filter-item" type="button" role="menuitemradio" data-sort="created-asc"><span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>Créé (ancien d'abord)</span></button>
+                    </div>
                   </div>
                 </div>
                 <div class="widget-library dashboard-view__overlays-grid" id="dashboard-overlay-list" aria-label="Overlays"></div>
@@ -850,6 +856,10 @@
               <div class="integration-card__connected" data-role="connected" hidden>
                 <p><span data-role="channel-name"></span></p>
                 <p class="integration-card__meta" data-role="connected-at"></p>
+                <button class="button button--quiet button--wide" id="streamelements-import-overlay" type="button">
+                  <span class="material-symbols-rounded" aria-hidden="true">cloud_download</span>
+                  <span>Importer un overlay…</span>
+                </button>
                 <button class="button button--quiet button--wide" data-role="disconnect" type="button">Déconnecter</button>
               </div>
             </article>
@@ -1037,6 +1047,31 @@
         </header>
         <div class="widget-settings__body">
           <div class="widget-library" id="overlay-item-picker-list" aria-label="Widgets et alertes disponibles"></div>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="media-preview-dialog" id="media-preview-dialog" aria-label="Aperçu du média">
+      <button class="icon-button media-preview-dialog__close" id="close-media-preview" type="button" aria-label="Fermer">
+        <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+      </button>
+      <div class="media-preview-dialog__body" id="media-preview-body"></div>
+      <p class="media-preview-dialog__caption" id="media-preview-caption"></p>
+    </dialog>
+
+    <dialog class="widget-settings" id="streamelements-overlay-picker" aria-labelledby="streamelements-overlay-picker-title">
+      <div class="widget-settings__form">
+        <header class="widget-settings__header">
+          <div>
+            <span class="eyebrow">STREAMELEMENTS</span>
+            <h2 id="streamelements-overlay-picker-title">Importer un overlay</h2>
+          </div>
+          <button class="icon-button" id="close-streamelements-overlay-picker" type="button" aria-label="Fermer">
+            <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+          </button>
+        </header>
+        <div class="widget-settings__body">
+          <div class="widget-library" id="streamelements-overlay-picker-list" aria-label="Overlays StreamElements disponibles"></div>
         </div>
       </div>
     </dialog>

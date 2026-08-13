@@ -98,6 +98,12 @@
     font-size: var(--text-13);
   }
 
+  &__column-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+  }
+
   &__filter-trigger[aria-expanded="true"] {
     color: #fff;
     border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
@@ -268,6 +274,12 @@
     border: 0;
     border-top: 1px solid var(--line);
     border-radius: 0 0 var(--radius-9) var(--radius-9);
+    // Hauteur fixe (pas juste min-height) : une carte sans description n'a
+    // que 2 lignes (nom + date) contre 3 pour une carte qui en a une - sans
+    // ça, les cartes d'une même rangée de grille n'ont pas la même hauteur.
+    // align-items: center (hérité de .widget-library__row) centre alors le
+    // contenu à 2 lignes dans cet espace fixe.
+    height: 84px;
   }
 }
 
@@ -305,6 +317,27 @@
   color: #fff;
 
   .material-symbols-rounded { font-size: clamp(8px, 40%, 18px); }
+}
+
+// Logo de la plateforme d'origine (cf. entry.sourcePlatform) pour un overlay
+// importé - seul StreamElements a un flux d'import aujourd'hui, mais le
+// champ (et donc ce badge) supporte aussi Streamlabs pour ne pas avoir à y
+// retoucher le jour où cet import existera. object-fit: cover + object-
+// position: left ne montre que la partie gauche du logo (le seul symbole,
+// sans le nom de marque) - même intention que .dashboard-view__connections-logo,
+// implémentée en une seule <img> ici plutôt qu'un conteneur + image séparés.
+.overlay-preview-card__badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  overflow: hidden;
+  object-fit: cover;
+  object-position: left center;
+  border-radius: 50%;
+  background: color-mix(in srgb, #0b0c10 82%, transparent);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 45%);
 }
 
 .dashboard-add-fab {
