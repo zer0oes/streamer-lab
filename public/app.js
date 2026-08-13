@@ -62,6 +62,7 @@ const elements = {
   overlayItemPickerList: document.querySelector("#overlay-item-picker-list"),
   seOverlayPickerDialog: document.querySelector("#streamelements-overlay-picker"),
   seOverlayPickerList: document.querySelector("#streamelements-overlay-picker-list"),
+  seOverlayPickerTitle: document.querySelector("#streamelements-overlay-picker-title"),
   mediaPreviewDialog: document.querySelector("#media-preview-dialog"),
   mediaPreviewBody: document.querySelector("#media-preview-body"),
   mediaPreviewCaption: document.querySelector("#media-preview-caption"),
@@ -1399,6 +1400,24 @@ function buildOverlayLibraryRow(entry, { showMeta = false, showPreview = false }
     openOverlaySettings(entry);
   });
 
+  const linkItem = document.createElement("button");
+  linkItem.type = "button";
+  linkItem.className = "widget-library__options-item";
+  linkItem.setAttribute("role", "menuitem");
+  if (entry.sourcePlatform) {
+    linkItem.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">link_off</span><span>Dissocier de ${platformDisplayName(entry.sourcePlatform)}</span>`;
+    linkItem.addEventListener("click", () => {
+      closeAllDropdowns();
+      void unlinkOverlaySource(entry);
+    });
+  } else {
+    linkItem.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">link</span><span>Associer à StreamElements…</span>';
+    linkItem.addEventListener("click", () => {
+      closeAllDropdowns();
+      void openStreamElementsOverlayPicker({ linkToOverlayId: entry.id });
+    });
+  }
+
   const duplicateItem = document.createElement("button");
   duplicateItem.type = "button";
   duplicateItem.className = "widget-library__options-item";
@@ -1419,7 +1438,7 @@ function buildOverlayLibraryRow(entry, { showMeta = false, showPreview = false }
     void deleteOverlayEntry(entry);
   });
 
-  menuPanel.append(editItem, duplicateItem, deleteItem);
+  menuPanel.append(editItem, linkItem, duplicateItem, deleteItem);
   menuTrigger.addEventListener("click", (event) => {
     event.stopPropagation();
     toggleDropdown(menuTrigger);
@@ -2650,9 +2669,6 @@ function buildOverlayItemElement(item) {
 
   if (item.type === "icon") chrome.append(buildIconInspector(item, el));
   else if (item.type === "shape") chrome.append(buildShapeInspector(item, el));
-  else if (item.type === "image") chrome.append(buildImageInspector(item, el));
-  else if (item.type === "video") chrome.append(buildVideoInspector(item, el));
-  else if (item.type === "embed") chrome.append(buildEmbedInspector(item, el));
 
   el.append(chrome);
 
@@ -2986,6 +3002,58 @@ function buildOverlayFontFamilyInput(value, onCommit) {
 }
 const OVERLAY_TEXT_ALIGNS = { left: "Gauche", center: "Centré", right: "Droite" };
 const OVERLAY_TEXT_COLOR_MODES = { solid: "Couleur unie", gradient: "Dégradé" };
+const OVERLAY_MEDIA_FITS = { cover: "Cover (remplit, peut rogner)", contain: "Contain (visible en entier)", fill: "Fill (étire)" };
+
+// Répercute un changement de props d'un item image/vidéo/lien intégré à la
+// fois sur le modèle (persistance) et directement sur le nœud DOM du
+// canevas — plus léger qu'un re-render complet de l'item pour un simple
+// changement d'URL/ajustement/lecture.
+function commitOverlayMediaProp(itemId, key, value) {
+  const item = findOverlayItem(itemId);
+  if (!item) return;
+  item.props[key] = value;
+  const wrap = elements.overlayCanvas.querySelector(`[data-item-id="${itemId}"]`);
+  const media = wrap?.querySelector(".overlay-item__image, .overlay-item__video, .overlay-item__embed");
+  if (media) {
+    if (key === "src") media.src = value;
+    else if (key === "fit") media.style.objectFit = value;
+    else if (key === "loop") media.loop = value;
+    else if (key === "muted") media.muted = value;
+  }
+  pushOverlayHistory();
+  scheduleOverlayPersist();
+}
+
+function buildOverlayImageSettingsFields(item) {
+  const fragment = document.createDocumentFragment();
+  const props = item.props;
+  const commit = (key) => (value) => commitOverlayMediaProp(item.id, key, value);
+  fragment.append(
+    buildOverlayField("URL de l'image", createOverlayItemFieldInput("src", { type: "url" }, props.src, commit("src"))),
+    buildOverlayField("Ajustement", createOverlayItemFieldInput("fit", { type: "dropdown", options: OVERLAY_MEDIA_FITS }, props.fit, commit("fit")))
+  );
+  return fragment;
+}
+
+function buildOverlayVideoSettingsFields(item) {
+  const fragment = document.createDocumentFragment();
+  const props = item.props;
+  const commit = (key) => (value) => commitOverlayMediaProp(item.id, key, value);
+  fragment.append(
+    buildOverlayField("URL de la vidéo", createOverlayItemFieldInput("src", { type: "url" }, props.src, commit("src"))),
+    buildOverlayField("Ajustement", createOverlayItemFieldInput("fit", { type: "dropdown", options: OVERLAY_MEDIA_FITS }, props.fit, commit("fit"))),
+    buildOverlayCheckboxField("Boucle", props.loop !== false, commit("loop")),
+    buildOverlayCheckboxField("Muet", props.muted !== false, commit("muted"))
+  );
+  return fragment;
+}
+
+function buildOverlayEmbedSettingsFields(item) {
+  const fragment = document.createDocumentFragment();
+  const commit = (key) => (value) => commitOverlayMediaProp(item.id, key, value);
+  fragment.append(buildOverlayField("URL du contenu à intégrer", createOverlayItemFieldInput("src", { type: "url" }, item.props.src, commit("src"))));
+  return fragment;
+}
 
 // Groupes de réglages (Police/Couleur/Ombre/Contour) ouverts par calque
 // texte — le panneau est entièrement redessiné à chaque champ modifié (cf.
@@ -3085,7 +3153,7 @@ function buildOverlayTextSettingsFields(item) {
 
 async function renderOverlayItemSettings() {
   const item = overlaySettingsItemId ? findOverlayItem(overlaySettingsItemId) : null;
-  if (!item || !["widget", "alert", "text"].includes(item.type)) {
+  if (!item || !["widget", "alert", "text", "image", "video", "embed"].includes(item.type)) {
     elements.overlayItemSettingsPanel.hidden = true;
     return;
   }
@@ -3101,6 +3169,13 @@ async function renderOverlayItemSettings() {
     // (dégradé/ombre/contour) toujours en phase avec leurs cases à cocher.
     elements.overlayItemSettingsTitle.textContent = "Texte";
     elements.overlayItemSettingsFields.append(buildOverlayTextSettingsFields(item));
+    return;
+  }
+
+  if (item.type === "image" || item.type === "video" || item.type === "embed") {
+    elements.overlayItemSettingsTitle.textContent = { image: "Image", video: "Vidéo", embed: "Lien" }[item.type];
+    const builder = { image: buildOverlayImageSettingsFields, video: buildOverlayVideoSettingsFields, embed: buildOverlayEmbedSettingsFields }[item.type];
+    elements.overlayItemSettingsFields.append(builder(item));
     return;
   }
 
@@ -3266,30 +3341,6 @@ function buildImageItemContent(item, el) {
   el.append(img);
 }
 
-function buildImageInspector(item, el) {
-  const wrap = document.createElement("span");
-  wrap.className = "overlay-item__image-inspector";
-  const editButton = document.createElement("button");
-  editButton.type = "button";
-  editButton.className = "text-button";
-  editButton.textContent = "URL";
-  editButton.addEventListener("pointerdown", (event) => event.stopPropagation());
-  editButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    const target = findOverlayItem(item.id);
-    if (!target) return;
-    const nextUrl = window.prompt("URL de l'image", target.props.src);
-    if (!nextUrl) return;
-    target.props.src = nextUrl;
-    const img = el.querySelector(".overlay-item__image");
-    if (img) img.src = nextUrl;
-    pushOverlayHistory();
-    scheduleOverlayPersist();
-  });
-  wrap.append(editButton);
-  return wrap;
-}
-
 function buildVideoItemContent(item, el) {
   const video = document.createElement("video");
   video.className = "overlay-item__video";
@@ -3300,30 +3351,6 @@ function buildVideoItemContent(item, el) {
   video.muted = item.props.muted !== false;
   video.playsInline = true;
   el.append(video);
-}
-
-function buildVideoInspector(item, el) {
-  const wrap = document.createElement("span");
-  wrap.className = "overlay-item__image-inspector";
-  const editButton = document.createElement("button");
-  editButton.type = "button";
-  editButton.className = "text-button";
-  editButton.textContent = "URL";
-  editButton.addEventListener("pointerdown", (event) => event.stopPropagation());
-  editButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    const target = findOverlayItem(item.id);
-    if (!target) return;
-    const nextUrl = window.prompt("URL de la vidéo", target.props.src);
-    if (!nextUrl) return;
-    target.props.src = nextUrl;
-    const video = el.querySelector(".overlay-item__video");
-    if (video) video.src = nextUrl;
-    pushOverlayHistory();
-    scheduleOverlayPersist();
-  });
-  wrap.append(editButton);
-  return wrap;
 }
 
 function buildEmbedItemContent(item, el) {
@@ -3337,30 +3364,6 @@ function buildEmbedItemContent(item, el) {
   // des iframes de widgets, adaptée à une URL externe arbitraire.
   frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-forms allow-presentation");
   el.append(frame);
-}
-
-function buildEmbedInspector(item, el) {
-  const wrap = document.createElement("span");
-  wrap.className = "overlay-item__image-inspector";
-  const editButton = document.createElement("button");
-  editButton.type = "button";
-  editButton.className = "text-button";
-  editButton.textContent = "URL";
-  editButton.addEventListener("pointerdown", (event) => event.stopPropagation());
-  editButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    const target = findOverlayItem(item.id);
-    if (!target) return;
-    const nextUrl = window.prompt("URL du contenu à intégrer", target.props.src);
-    if (!nextUrl) return;
-    target.props.src = nextUrl;
-    const frame = el.querySelector(".overlay-item__embed");
-    if (frame) frame.src = nextUrl;
-    pushOverlayHistory();
-    scheduleOverlayPersist();
-  });
-  wrap.append(editButton);
-  return wrap;
 }
 
 function buildIconItemContent(item, el) {
@@ -3701,7 +3704,7 @@ function buildOverlayLayerRow(item, dragUnit, expandable = false) {
   });
 
   let settingsButton = null;
-  if (item.type === "widget" || item.type === "alert" || item.type === "text") {
+  if (["widget", "alert", "text", "image", "video", "embed"].includes(item.type)) {
     settingsButton = document.createElement("button");
     settingsButton.type = "button";
     settingsButton.className = "icon-button";
@@ -6028,7 +6031,12 @@ function wireIntegrationCard(card) {
   }
 }
 
-async function openStreamElementsOverlayPicker() {
+// linkToOverlayId : mode "association" (depuis le menu ⋮ d'un overlay local
+// déjà existant) plutôt que mode "import" (depuis le dashboard) - même
+// fenêtre de sélection des overlays StreamElements dans les deux cas, seule
+// l'action au clic sur une ligne diffère.
+async function openStreamElementsOverlayPicker({ linkToOverlayId = null } = {}) {
+  elements.seOverlayPickerTitle.textContent = linkToOverlayId ? "Associer à un overlay StreamElements" : "Importer un overlay";
   elements.seOverlayPickerList.replaceChildren(buildLibraryEmptyState("Chargement…"));
   elements.seOverlayPickerDialog.showModal();
   try {
@@ -6056,7 +6064,9 @@ async function openStreamElementsOverlayPicker() {
       description.textContent = overlay.widgetCount != null ? `${overlay.widgetCount} élément(s)` : "";
       copy.append(name, description);
       item.append(icon, copy);
-      item.addEventListener("click", () => importStreamElementsOverlay(overlay.id, item));
+      item.addEventListener("click", () => linkToOverlayId
+        ? linkOverlayToStreamElements(linkToOverlayId, overlay.id, item)
+        : importStreamElementsOverlay(overlay.id, item));
       row.append(item);
       elements.seOverlayPickerList.append(row);
     }
@@ -6073,6 +6083,8 @@ async function importStreamElementsOverlay(overlayId, triggerButton) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ overlayId })
     });
+    if (result.updated) applyUpdatedOverlayToCatalog(result.overlay);
+    else overlayCatalog = [...overlayCatalog, result.overlay];
     elements.seOverlayPickerDialog.close();
     setAccountPanelOpen(false);
     const verb = result.updated ? "mis à jour" : "importé";
@@ -6082,6 +6094,55 @@ async function importStreamElementsOverlay(overlayId, triggerButton) {
     showToast(`Import impossible : ${error.message}`);
   } finally {
     if (triggerButton) triggerButton.disabled = false;
+  }
+}
+
+async function linkOverlayToStreamElements(localOverlayId, remoteOverlayId, triggerButton) {
+  if (triggerButton) triggerButton.disabled = true;
+  try {
+    const { overlay } = await fetchAccountJson("/api/overlay/source", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ overlayId: localOverlayId, sourcePlatform: "streamelements", sourceOverlayId: remoteOverlayId })
+    });
+    applyUpdatedOverlayToCatalog(overlay);
+    elements.seOverlayPickerDialog.close();
+    showToast(`"${overlay.name}" associé à StreamElements`);
+    renderOverlayLibrary();
+  } catch (error) {
+    showToast(`Association impossible : ${error.message}`);
+  } finally {
+    if (triggerButton) triggerButton.disabled = false;
+  }
+}
+
+// overlayCatalog n'est jamais refetché après une mutation ponctuelle (cf. le
+// même motif dans saveOverlayMetadata) - une mise à jour serveur doit donc
+// être répercutée à la main dans le catalogue en mémoire, sinon
+// renderOverlayLibrary() ne fait que redessiner les données périmées.
+function applyUpdatedOverlayToCatalog(overlay) {
+  overlayCatalog = overlayCatalog.map(entry => entry.id === overlay.id ? { ...entry, ...overlay } : entry);
+  if (activeOverlayId === overlay.id && activeOverlay) {
+    activeOverlay = { ...activeOverlay, ...overlay };
+  }
+}
+
+function platformDisplayName(sourcePlatform) {
+  return sourcePlatform === "streamlabs" ? "Streamlabs" : "StreamElements";
+}
+
+async function unlinkOverlaySource(entry) {
+  try {
+    const { overlay } = await fetchAccountJson("/api/overlay/source", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ overlayId: entry.id, sourcePlatform: null, sourceOverlayId: null })
+    });
+    applyUpdatedOverlayToCatalog(overlay);
+    showToast(`"${overlay.name}" dissocié de ${platformDisplayName(entry.sourcePlatform)}`);
+    renderOverlayLibrary();
+  } catch (error) {
+    showToast(`Dissociation impossible : ${error.message}`);
   }
 }
 

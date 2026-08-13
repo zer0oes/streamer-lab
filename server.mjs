@@ -45,6 +45,7 @@ import {
   getOverlayInfo,
   createOverlay,
   updateOverlayMetadata,
+  updateOverlaySource,
   replaceOverlayItems,
   replaceOverlayGuides,
   deleteOverlay,
@@ -269,6 +270,33 @@ const server = createServer(async (request, response) => {
         return sendJson(response, 400, { error: error.message });
       }
       const overlay = await updateOverlayMetadata(body.overlayId, { ...metadata, canvas: { width: body.width, height: body.height } });
+      if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
+      return sendJson(response, 200, { overlay });
+    }
+
+    if (request.method === "PUT" && url.pathname === "/api/overlay/source") {
+      const body = await readRequestJson(request);
+      const sourcePlatform = ["streamelements", "streamlabs"].includes(body.sourcePlatform) ? body.sourcePlatform : null;
+      // Dissocier (sourcePlatform null) efface aussi sourceOverlayId : les
+      // deux champs vivent ou meurent ensemble, jamais l'un sans l'autre.
+      const sourceOverlayId = sourcePlatform && typeof body.sourceOverlayId === "string" && body.sourceOverlayId
+        ? body.sourceOverlayId
+        : null;
+      if (sourcePlatform && !sourceOverlayId) {
+        return sendJson(response, 400, { error: "sourceOverlayId manquant" });
+      }
+
+      if (sourcePlatform) {
+        const overlays = await listOverlays();
+        const conflict = overlays.find(
+          (entry) => entry.id !== body.overlayId && entry.sourcePlatform === sourcePlatform && entry.sourceOverlayId === sourceOverlayId
+        );
+        if (conflict) {
+          return sendJson(response, 409, { error: `Deja associe a l'overlay local "${conflict.name}"` });
+        }
+      }
+
+      const overlay = await updateOverlaySource(body.overlayId, { sourcePlatform, sourceOverlayId });
       if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
       return sendJson(response, 200, { overlay });
     }
