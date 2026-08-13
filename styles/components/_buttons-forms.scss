@@ -108,6 +108,17 @@ input {
   &:hover { border-color: #3b404b; background: #1d2027; }
   &:active { transform: translateY(1px); }
 
+  // Icône + libellé (ex. "Voir le code", "Importer un overlay…") : sans ça,
+  // le bouton de base n'est pas flex, donc l'icône et le texte ne sont ni
+  // centrés ensemble ni alignés sur la même ligne de base - visible surtout
+  // sur --wide, où le contenu se retrouve à gauche, icône légèrement décalée.
+  &:has(.material-symbols-rounded) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+  }
+
   &--primary {
     border-color: var(--accent);
     background: var(--accent-gradient);

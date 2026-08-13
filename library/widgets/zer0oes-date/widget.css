@@ -1,0 +1,54 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Ligne date */
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Texte date */
+#date {
+  width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Icône (24x24 bien centrée) */
+.icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* IMPORTANT : hérite de la couleur */
+  color: inherit;
+}
+
+/* Material Symbols */
+.material-symbols-sharp {
+  font-family: "Material Symbols Sharp";
+  font-variation-settings:
+    "FILL" 1,
+    "wght" 200,
+    "GRAD" 0,
+    "opsz" 24;
+
+  font-size: 24px;
+  line-height: 1;
+  display: block;
+
+  /* ✅ crucial : l’icône suit la couleur */
+  color: currentColor;
+}

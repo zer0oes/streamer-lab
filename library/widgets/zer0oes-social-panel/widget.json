@@ -1,0 +1,11 @@
+{
+  "id": "zer0oes-social-panel",
+  "name": "zer0oes - Social Panel",
+  "description": "",
+  "icon": "favorite",
+  "width": 320,
+  "height": 180,
+  "order": 70,
+  "createdAt": 1786642926853,
+  "updatedAt": 1786642951470
+}

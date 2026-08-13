@@ -1,0 +1,126 @@
+{
+  "id": "2026-overlay-gaming",
+  "name": "2026 - OVERLAY GAMING",
+  "description": "",
+  "icon": "desktop_landscape",
+  "order": 40,
+  "archived": false,
+  "canvas": {
+    "width": 1920,
+    "height": 1080
+  },
+  "items": [
+    {
+      "id": "item-msrs1vdd-nrot1",
+      "type": "widget",
+      "widgetId": "zer0oes-in-game-labels",
+      "x": 380,
+      "y": 0,
+      "w": 1160,
+      "h": 40,
+      "z": 3,
+      "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
+      "props": {
+        "fieldData": {}
+      }
+    },
+    {
+      "id": "item-msrsz06c-0l5vg",
+      "type": "widget",
+      "widgetId": "zer0oes-date",
+      "x": 17,
+      "y": 11,
+      "w": 220,
+      "h": 24,
+      "z": 4,
+      "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
+      "props": {
+        "fieldData": {}
+      }
+    },
+    {
+      "id": "item-msrt2ham-bznme",
+      "type": "widget",
+      "widgetId": "zer0oes-social-panel",
+      "x": 1808,
+      "y": 2,
+      "w": 110,
+      "h": 48,
+      "z": 2,
+      "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
+      "props": {
+        "fieldData": {
+          "youtubeName": "zer0oes",
+          "twitchEnabled": false,
+          "instagramName": "zer0oes",
+          "tiktokName": "zer0oes",
+          "xEnabled": false,
+          "facebookEnabled": false,
+          "animTotalMs": "30000",
+          "animItemMs": "6000"
+        }
+      }
+    },
+    {
+      "id": "item-msrta8xs-fgx76",
+      "type": "widget",
+      "widgetId": "zer0oes-bar-border-bottom-2",
+      "x": 0,
+      "y": 39,
+      "w": 1920,
+      "h": 10,
+      "z": 1,
+      "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
+      "props": {
+        "fieldData": {
+          "message": ""
+        }
+      }
+    },
+    {
+      "id": "item-msrte62f-d7zl4",
+      "type": "group",
+      "x": 17,
+      "y": 0,
+      "w": 1897,
+      "h": 50,
+      "z": 1,
+      "hidden": false,
+      "locked": false,
+      "name": "Groupe (3)",
+      "collapsed": false,
+      "props": {
+        "children": [
+          "item-msrt2ham-bznme",
+          "item-msrsz06c-0l5vg",
+          "item-msrs1vdd-nrot1"
+        ]
+      }
+    }
+  ],
+  "guides": {
+    "horizontal": [
+      42
+    ],
+    "vertical": [
+      21,
+      1900
+    ]
+  },
+  "sourcePlatform": null,
+  "sourceOverlayId": null,
+  "createdAt": 1786641205234,
+  "updatedAt": 1786643589980
+}

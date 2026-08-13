@@ -12,6 +12,12 @@
 // canevas. Les noms de calque trop longs tronquent avec une ellipse
 // (cf. &__label plus bas) plutôt que de forcer une largeur plus généreuse.
 $overlay-layers-width: min(300px, 92vw);
+// Repères (bouton "Repères" de la barre d'outils) : rubans + coin + calque de
+// lignes, masqués par défaut, affichés ensemble par la seule classe
+// .show-rulers (un bouton pilote les deux, pas de réglage séparé "afficher
+// les rubans" / "afficher les repères"). Déclarée tôt (avant .overlay-canvas-wrap
+// plus bas, qui la référence) plutôt qu'au plus près de .overlay-ruler.
+$ruler-size: 20px;
 
 .overlay-editor__toolbar {
   @include primitives.heading-row;
@@ -79,17 +85,40 @@ $overlay-layers-width: min(300px, 92vw);
   // par le défilement normal de la page, plus simple qu'une seconde zone de
   // scroll imbriquée).
   overflow-x: auto;
+
+  // Rubans affichés (cf. .overlay-canvas-rulers.show-rulers plus bas) :
+  // réserve $ruler-size sur les QUATRE côtés, pas seulement en haut/à gauche
+  // où vivent les rubans - sinon le ruban du haut se retrouve caché derrière
+  // le titre de l'overlay au-dessus (rien ne réservait sa place), et une
+  // réserve asymétrique (juste haut/gauche) décalerait le point central du
+  // cadre. Une réserve symétrique laisse le cadre exactement centré au même
+  // endroit qu'à réserve nulle (cf. .overlay-canvas-rulers, qui n'y ajoute
+  // lui-même aucune marge).
+  &:has(.overlay-canvas-rulers.show-rulers) {
+    padding: $ruler-size;
+  }
+}
+
+// width: fit-content (pas grid) : épouse exactement la taille de son seul
+// enfant EN FLUX, .overlay-canvas-stage (donc aucune gouttière comptée dans
+// sa propre boîte), tout en restant un bloc que margin: 0 auto sait centrer.
+// Les rubans sont des enfants en position: absolute ancrés avec
+// right/bottom: 100% (cf. plus bas) : sortis du flux, ils ne pèsent jamais
+// sur ce fit-content — le cadre de l'overlay reste donc centré sur la page à
+// l'identique, rubans affichés ou non, au lieu de se décaler de leur taille
+// à chaque bascule.
+.overlay-canvas-rulers {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
 }
 
 // Cadre visuel de l'overlay : dimensionné en JS à canvas.width/height * scale
-// (jamais en %, jamais étiré par le flex-row parent), puis centré par
-// margin: 0 auto — c'est ce qui garantit que le damier + la bordure
-// coïncident toujours exactement avec le ratio indiqué, y compris quand
-// c'est la hauteur du viewport (pas la largeur) qui borne l'échelle.
+// (jamais en %, jamais étiré par le flex-row parent) — c'est lui, pas la
+// gouttière des rubans, que .overlay-canvas-rulers (ci-dessus) centre.
 .overlay-canvas-stage {
   position: relative;
   overflow: hidden;
-  margin: 0 auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-12);
   background-color: #15171c;
@@ -116,30 +145,30 @@ $overlay-layers-width: min(300px, 92vw);
   &.is-placing { cursor: crosshair; }
 }
 
-// Repères (bouton "Repères" de la barre d'outils) : rubans + calque de
-// lignes, masqués par défaut, affichés ensemble par la seule classe
-// .show-rulers sur le stage (un bouton pilote les deux, pas de réglage
-// séparé "afficher les rubans" / "afficher les repères").
-$ruler-size: 20px;
-
+// right: 100% / bottom: 100% (pas des largeurs/hauteurs négatives) : ancre
+// chaque ruban exactement contre le bord correspondant de
+// .overlay-canvas-rulers (son offsetParent), en dehors de sa boîte, quelle
+// que soit la taille du cadre — pas de valeur à recalculer si le canevas
+// change de ratio.
 .overlay-ruler {
   position: absolute;
   z-index: 3;
   display: none;
+  overflow: hidden;
   background: color-mix(in srgb, var(--panel) 92%, transparent);
 
   &--top {
-    top: 0;
     left: 0;
     right: 0;
+    bottom: 100%;
     height: $ruler-size;
     border-bottom: 1px solid var(--line);
   }
 
   &--left {
     top: 0;
-    left: 0;
     bottom: 0;
+    right: 100%;
     width: $ruler-size;
     border-right: 1px solid var(--line);
   }
@@ -148,8 +177,8 @@ $ruler-size: 20px;
 .overlay-ruler__corner {
   position: absolute;
   z-index: 4;
-  top: 0;
-  left: 0;
+  right: 100%;
+  bottom: 100%;
   width: $ruler-size;
   height: $ruler-size;
   display: none;
@@ -158,7 +187,7 @@ $ruler-size: 20px;
   background: var(--panel);
 }
 
-.overlay-canvas-stage.show-rulers {
+.overlay-canvas-rulers.show-rulers {
   .overlay-ruler,
   .overlay-ruler__corner,
   .overlay-guides { display: block; }

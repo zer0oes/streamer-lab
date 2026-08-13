@@ -267,3 +267,67 @@ $editor-panel: #0f1116;
 }
 
 .text-button { padding: 3px; border: 0; cursor: pointer; color: var(--muted); background: none; font-size: var(--text-10); text-transform: none; letter-spacing: 0; }
+
+// Modale "voir le code" ouverte depuis un item widget/alerte du canevas
+// overlay (cf. openWidgetCodeEditorModal) : héberge le même .widget-editor
+// que la page d'édition complète (déplacé dedans, pas dupliqué - cf.
+// __editor-slot ci-dessous), avec un aperçu compact à la place de la barre
+// d'outils complète (zoom/plateforme/thème), non pertinente ici.
+.widget-code-editor-dialog {
+  width: min(90vw, 900px);
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 1px solid #343944;
+  border-radius: var(--radius-14);
+  color: var(--text);
+  background: var(--panel);
+  box-shadow: 0 28px 90px rgb(0 0 0 / 65%);
+
+  &::backdrop {
+    background: color-mix(in srgb, var(--shadow) 72%, transparent);
+    backdrop-filter: blur(5px);
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-13) var(--space-18);
+    border-bottom: 1px solid var(--line);
+  }
+
+  &__title {
+    font-size: var(--text-14);
+    font-weight: 750;
+  }
+
+  &__preview {
+    height: 200px;
+    overflow: hidden;
+    background-color: #15171c;
+    background-image:
+      linear-gradient(45deg, #1f2229 25%, transparent 25%),
+      linear-gradient(-45deg, #1f2229 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #1f2229 75%),
+      linear-gradient(-45deg, transparent 75%, #1f2229 75%);
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    background-size: 20px 20px;
+  }
+
+  &__frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  &__editor-slot {
+    max-height: calc(100vh - 48px - 54px - 200px);
+    overflow: auto;
+    padding: var(--space-14);
+
+    // .widget-editor porte déjà sa propre marge (margin-top, pensée pour
+    // s'accrocher sous la barre d'outils de la page complète) - superflue
+    // ici, où __editor-slot fournit déjà l'espacement.
+    .widget-editor { margin-top: 0; }
+  }
+}

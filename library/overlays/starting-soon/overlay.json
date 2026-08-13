@@ -1,6 +1,6 @@
 {
   "id": "starting-soon",
-  "name": "STARTING SOON",
+  "name": "2026 - STREAM STARTING",
   "description": "Ecran d'intro de stream",
   "icon": "desktop_landscape",
   "order": 10,
@@ -98,11 +98,13 @@
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1786630415007,
+  "updatedAt": 1786640660113,
   "guides": {
     "horizontal": [
       966
     ],
     "vertical": []
-  }
+  },
+  "sourcePlatform": "streamelements",
+  "sourceOverlayId": "694be54917a922067a98d0fe"
 }

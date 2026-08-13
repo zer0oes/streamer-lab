@@ -1,0 +1,64 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.line-widget {
+  width: 1880px;
+  height: 3px;
+
+  display: flex;
+  align-items: center;              /* centre verticalement sur 3px */
+  justify-content: space-between;   /* dots aux extrémités */
+  box-sizing: border-box;
+
+  filter:
+    drop-shadow(0 1px 0 rgba(122, 0, 255, 1))
+    drop-shadow(0 2px 0 rgba(120, 190, 255, 0.5));
+
+  opacity: 1;
+  transform: scaleX(1);
+  transform-origin: center;
+  transition: opacity 800ms ease, transform 800ms ease;
+}
+
+.line {
+  flex: 1;                 /* prend toute la place entre les dots */
+  height: 1px;
+  background: #FFFFFF;
+}
+
+.dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  flex: 0 0 3px;           /* ne rétrécit pas */
+}
+
+/* État caché (très court) */
+.line-widget.is-hidden {
+  opacity: 0;
+  transform: scaleX(0.85);
+}
+
+/* Glow vivant */
+.line-widget:not(.is-hidden) {
+  animation: lineGlow 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes lineGlow {
+  from {
+    filter:
+      drop-shadow(0 1px 0 rgba(122, 0, 255, 0.8))
+      drop-shadow(0 2px 0 rgba(120, 190, 255, 0.4));
+  }
+  to {
+    filter:
+      drop-shadow(0 1px 0 rgba(122, 0, 255, 1))
+      drop-shadow(0 3px 0 rgba(120, 190, 255, 0.7));
+  }
+}

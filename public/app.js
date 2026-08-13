@@ -51,7 +51,10 @@ const elements = {
   overlayEditorView: document.querySelector("#overlay-editor-view"),
   overlayEditorTitle: document.querySelector("#overlay-editor-title"),
   overlayAddItemButton: document.querySelector("#overlay-add-item"),
+  overlayCreateWidgetButton: document.querySelector("#overlay-create-widget"),
+  overlayCreateAlertButton: document.querySelector("#overlay-create-alert"),
   overlayCanvasWrap: document.querySelector("#overlay-canvas-wrap"),
+  overlayCanvasRulers: document.querySelector("#overlay-canvas-rulers"),
   overlayCanvasStage: document.querySelector("#overlay-canvas-stage"),
   overlayCanvas: document.querySelector("#overlay-canvas"),
   overlayGuidesLayer: document.querySelector("#overlay-guides"),
@@ -66,6 +69,12 @@ const elements = {
   mediaPreviewDialog: document.querySelector("#media-preview-dialog"),
   mediaPreviewBody: document.querySelector("#media-preview-body"),
   mediaPreviewCaption: document.querySelector("#media-preview-caption"),
+  widgetEditorSection: document.querySelector(".widget-editor"),
+  widgetEditorHome: document.querySelector("#widget-editor-home"),
+  widgetCodeEditorDialog: document.querySelector("#widget-code-editor-dialog"),
+  widgetCodeEditorDialogTitle: document.querySelector("#widget-code-editor-dialog-title"),
+  widgetCodeEditorDialogSlot: document.querySelector("#widget-code-editor-dialog-slot"),
+  widgetCodeEditorDialogFrameEl: document.querySelector("#widget-code-editor-dialog-frame"),
   overlayToolbar: document.querySelector("#overlay-toolbar"),
   overlayToolbarHandle: document.querySelector(".overlay-toolbar__handle"),
   overlayToolButtons: document.querySelectorAll("[data-overlay-tool]"),
@@ -182,6 +191,12 @@ let overlayZoomMode = "fit";
 let overlayEyedropperStyle = null;
 let selectedOverlayItemIds = new Set();
 let overlaySettingsItemId = null;
+// true entre l'ouverture de la création (boutons "Nouveau widget"/"Nouvelle
+// alerte" de la barre d'outils overlay) et la fin de saveWidgetMetadata() :
+// indique à cette dernière de poser le widget créé sur le canevas et
+// d'ouvrir directement son code, plutôt que de basculer vers l'éditeur
+// pleine page (comportement par défaut, déclenché depuis le dashboard).
+let creatingWidgetForOverlay = false;
 // Dernier calque cliqué dans le panneau des calques + horodatage, pour
 // détecter un double-clic manuellement (cf. buildOverlayLayerRow) puisque
 // le "dblclick" natif ne survit pas au ré-rendu déclenché par le premier clic.
@@ -217,6 +232,11 @@ const editorSaveTimers = new Map();
 const editorSaveRevisions = new Map();
 const editorFileStates = new Map();
 let editorCopyResetTimer;
+// Référence à l'iframe de la modale "voir le code" quand elle est ouverte
+// (cf. openWidgetCodeEditorModal), null sinon — renderWidget() l'ajoute à la
+// liste des frames à mettre à jour uniquement quand elle est active, sans
+// changer son comportement le reste du temps (une seule frame : elements.frame).
+let widgetCodeEditorDialogFrame = null;
 const editorFiles = {
   html: { filename: "widget.html", property: "html", label: "Code HTML du widget" },
   css: { filename: "widget.css", property: "css", label: "Code CSS du widget" },
@@ -410,6 +430,10 @@ const FIELD_INLINE_TYPES = new Set(["number", "colorpicker", "dropdown"]);
 // viewport (cf. updateOverlayCanvasScale). Même remarque qu'au-dessus : doit
 // être déclarée avant `await initialize()`.
 const OVERLAY_CANVAS_BOTTOM_MARGIN = 24;
+// Doit rester synchro avec $ruler-size (styles/layouts/_overlay-canvas.scss).
+// Lue par computeOverlayFitScale (même remarque qu'au-dessus : avant
+// `await initialize()`), pas seulement par drawOverlayRulers plus bas.
+const OVERLAY_RULER_SIZE = 20;
 // Doit aussi rester déclaré avant `await initialize()` plus bas :
 // showDashboard() (appelée depuis initialize() elle-même) rend la
 // bibliothèque de médias, qui construit son bouton d'upload avec ceci.
@@ -1046,6 +1070,13 @@ function initializeWidgetSettings() {
   elements.widgetSettingsDialog.addEventListener("click", event => {
     if (event.target === elements.widgetSettingsDialog) close();
   });
+  // Couvre aussi Échap (que "close"/"cancel-widget-settings" ci-dessus ne
+  // couvrent pas) : si la création est annulée, creatingWidgetForOverlay ne
+  // doit pas rester à true et fausser une prochaine création lancée depuis
+  // le dashboard (elle basculerait alors, à tort, vers la modale de code).
+  elements.widgetSettingsDialog.addEventListener("close", () => {
+    creatingWidgetForOverlay = false;
+  });
   elements.widgetSettingsForm.addEventListener("submit", event => {
     event.preventDefault();
     void saveWidgetMetadata();
@@ -1255,7 +1286,13 @@ async function saveWidgetMetadata() {
       renderWidgetLibrary();
       elements.widgetSettingsDialog.close();
       showToast(`${updatedWidget.name} créé`);
-      await switchWidget(updatedWidget.id);
+      if (creatingWidgetForOverlay) {
+        creatingWidgetForOverlay = false;
+        addOverlayItem(updatedWidget);
+        await openWidgetCodeEditorModal(updatedWidget.id);
+      } else {
+        await switchWidget(updatedWidget.id);
+      }
       return;
     }
 
@@ -1672,6 +1709,17 @@ function initializeOverlayCanvas() {
     openOverlayItemPicker();
   });
 
+  elements.overlayCreateWidgetButton.addEventListener("click", () => {
+    closeAllDropdowns();
+    creatingWidgetForOverlay = true;
+    openWidgetCreation("widget");
+  });
+  elements.overlayCreateAlertButton.addEventListener("click", () => {
+    closeAllDropdowns();
+    creatingWidgetForOverlay = true;
+    openWidgetCreation("alert");
+  });
+
   const closePicker = () => elements.overlayItemPickerDialog.close();
   document.querySelector("#close-overlay-item-picker").addEventListener("click", closePicker);
   elements.overlayItemPickerDialog.addEventListener("click", event => {
@@ -1694,6 +1742,22 @@ function initializeOverlayCanvas() {
   // seulement si la vidéo était mute, ce qui masquerait un bug de fuite.
   elements.mediaPreviewDialog.addEventListener("close", () => {
     elements.mediaPreviewBody.replaceChildren();
+  });
+
+  const closeWidgetCodeEditorDialog = () => elements.widgetCodeEditorDialog.close();
+  document.querySelector("#close-widget-code-editor-dialog").addEventListener("click", closeWidgetCodeEditorDialog);
+  elements.widgetCodeEditorDialog.addEventListener("click", event => {
+    if (event.target === elements.widgetCodeEditorDialog) closeWidgetCodeEditorDialog();
+  });
+  // Croix, clic hors-cadre ET Échap déclenchent tous l'event "close" natif du
+  // <dialog> (contrairement à un simple listener sur le bouton croix, qui
+  // raterait les deux autres) : un seul point de sortie pour ramener
+  // .widget-editor à sa place et couper l'aperçu de la modale.
+  elements.widgetCodeEditorDialog.addEventListener("close", () => {
+    void flushWidgetEditor();
+    widgetCodeEditorDialogFrame = null;
+    elements.widgetCodeEditorDialogFrameEl.srcdoc = "";
+    elements.widgetEditorHome.after(elements.widgetEditorSection);
   });
 
   for (const button of elements.overlayToolButtons) {
@@ -2348,12 +2412,19 @@ function computeOverlayFitScale(canvas) {
   // dimensionné ci-dessous, lire sa propre largeur serait auto-référentiel
   // (chaque recalcul repartirait de la taille posée par le calcul précédent
   // au lieu de l'espace réellement disponible).
-  const availableWidth = elements.overlayCanvasWrap.clientWidth || canvas.width;
+  // Rubans affichés : .overlay-canvas-wrap réserve OVERLAY_RULER_SIZE sur
+  // ses 4 côtés (cf. :has(.show-rulers) dans _overlay-canvas.scss) - sans en
+  // tenir compte ici, le stage resterait dimensionné pour la largeur totale
+  // du wrap, déborderait cette réserve et .overlay-canvas-rulers (centré via
+  // margin: auto) ne pourrait plus se centrer (un élément plus large que son
+  // conteneur ne peut pas avoir de marges automatiques symétriques).
+  const rulerReserve = showOverlayGuides ? OVERLAY_RULER_SIZE * 2 : 0;
+  const availableWidth = (elements.overlayCanvasWrap.clientWidth || canvas.width) - rulerReserve;
   // Sans cette borne verticale, un overlay au format portrait (9:16) ou une
   // fenêtre basse laissait le canevas dépasser le bas du viewport : la mise à
   // l'échelle ne tenait compte que de la largeur disponible.
   const top = elements.overlayCanvasWrap.getBoundingClientRect().top;
-  const availableHeight = Math.max(120, window.innerHeight - top - OVERLAY_CANVAS_BOTTOM_MARGIN);
+  const availableHeight = Math.max(120, window.innerHeight - top - OVERLAY_CANVAS_BOTTOM_MARGIN - rulerReserve);
   return Math.min(1, availableWidth / canvas.width, availableHeight / canvas.height);
 }
 
@@ -2412,14 +2483,12 @@ function updateOverlayZoomDisplay(scale) {
 
 // --- Overlays : règles et repères (bouton "Repères" de la barre d'outils) --
 
-const OVERLAY_RULER_SIZE = 20; // doit rester synchro avec $ruler-size (styles/layouts/_overlay-canvas.scss)
-
 function setOverlayGuidesVisible(visible) {
   showOverlayGuides = visible;
   localStorage.setItem(overlayGuidesVisibleStorageKey, String(visible));
   elements.overlayRulerToggle?.classList.toggle("is-active", visible);
   elements.overlayRulerToggle?.setAttribute("aria-pressed", String(visible));
-  elements.overlayCanvasStage.classList.toggle("show-rulers", visible);
+  elements.overlayCanvasRulers.classList.toggle("show-rulers", visible);
   if (!visible || !activeOverlay) return;
   drawOverlayRulers(activeOverlay.canvas || DEFAULT_OVERLAY_CANVAS, overlayCanvasScale());
   renderOverlayGuides();
@@ -2594,6 +2663,17 @@ function startOverlayGuideCreate(event, axis) {
   };
   document.addEventListener("pointermove", onMove);
   document.addEventListener("pointerup", onUp);
+}
+
+// Ajoute le centre du canevas comme repère d'accroche supplémentaire, sans
+// qu'il existe "en dur" dans activeOverlay.guides (donc jamais affiché comme
+// une ligne déplaçable/supprimable) — juste une cible d'aimantation en plus
+// des repères posés à la main, recalculée à la volée à chaque appel pour
+// suivre la taille réelle du canevas.
+function overlayGuidesWithCenter(axis, userGuides) {
+  const canvas = activeOverlay?.canvas || DEFAULT_OVERLAY_CANVAS;
+  const center = axis === "vertical" ? canvas.width / 2 : canvas.height / 2;
+  return [...(userGuides || []), center];
 }
 
 // Accroche un bord/centre à ~GUIDE_SNAP_SCREEN_PX pixels écran d'un repère —
@@ -2880,7 +2960,11 @@ function buildOverlayItemPositionFields(item) {
     return label;
   };
 
-  body.append(buildInput("X", "x"), buildInput("Y", "y"), buildInput("Largeur", "w"), buildInput("Hauteur", "h"));
+  // "Gauche"/"Haut" plutôt que "X"/"Y" : StreamElements (et la plupart des
+  // plateformes équivalentes) affichent la position en Top/Left, jamais en
+  // X/Y - un X/Y générique oblige à deviner quel axe correspond à quel champ
+  // au moment de recopier une position à la main d'un outil à l'autre.
+  body.append(buildInput("Gauche", "x"), buildInput("Haut", "y"), buildInput("Largeur", "w"), buildInput("Hauteur", "h"));
   details.append(summary, body);
   return details;
 }
@@ -3186,6 +3270,19 @@ async function renderOverlayItemSettings() {
     elements.overlayItemSettingsFields.append(buildLibraryEmptyState("Widget introuvable."));
     return;
   }
+
+  // Ce panneau n'affiche que les valeurs de champs configurables (fields.json) —
+  // le code HTML/CSS/JS lui-même vit dans l'éditeur de widget dédié. Ce
+  // bouton l'ouvre dans une modale (openWidgetCodeEditorModal) plutôt que de
+  // quitter le canevas overlay pour la page d'édition complète.
+  const editCodeButton = document.createElement("button");
+  editCodeButton.type = "button";
+  editCodeButton.className = "button button--wide";
+  editCodeButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">code</span><span>Voir le code</span>';
+  editCodeButton.addEventListener("click", () => {
+    void openWidgetCodeEditorModal(item.widgetId);
+  });
+  elements.overlayItemSettingsFields.append(editCodeButton);
 
   const fieldData = resolveOverlayItemFieldData(bundle, item);
   const groups = new Map();
@@ -3703,22 +3800,6 @@ function buildOverlayLayerRow(item, dragUnit, expandable = false) {
     toggleOverlayItemLocked(item.id);
   });
 
-  let settingsButton = null;
-  if (["widget", "alert", "text", "image", "video", "embed"].includes(item.type)) {
-    settingsButton = document.createElement("button");
-    settingsButton.type = "button";
-    settingsButton.className = "icon-button";
-    settingsButton.setAttribute("aria-label", "Réglages");
-    settingsButton.title = "Réglages";
-    settingsButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">tune</span>';
-    settingsButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      selectedOverlayItemIds = new Set([item.id]);
-      overlaySettingsItemId = item.id;
-      updateOverlaySelectionUI();
-    });
-  }
-
   const deleteButton = document.createElement("button");
   deleteButton.type = "button";
   deleteButton.className = "icon-button";
@@ -3735,7 +3816,6 @@ function buildOverlayLayerRow(item, dragUnit, expandable = false) {
     icon,
     label,
     lockButton,
-    ...(settingsButton ? [settingsButton] : []),
     deleteButton
   );
   row.addEventListener("click", (event) => {
@@ -3758,6 +3838,11 @@ function buildOverlayLayerRow(item, dragUnit, expandable = false) {
       return;
     }
     selectedOverlayItemIds = new Set([item.id]);
+    // Sélection simple (pas de SHIFT, pas de double-clic) = un seul calque
+    // ciblé sans ambiguïté : ouvre directement ses réglages, plus besoin du
+    // bouton dédié qui vivait ici (renderOverlayItemSettings ignore déjà
+    // silencieusement les types sans panneau - icône/forme/groupe).
+    overlaySettingsItemId = item.id;
     updateOverlaySelectionUI();
   });
   // Plus de poignée dédiée : toute la ligne sert de prise pour réordonner
@@ -4083,8 +4168,8 @@ function startOverlayItemDrag(event, itemEl) {
       // déplacement de groupe, chaque enfant devrait s'accrocher
       // indépendamment, ce qui casserait le delta commun voulu ici.
       if (movingIds.length === 1) {
-        nextX = snapMovePosition(nextX, target.w, activeOverlay.guides?.vertical, scale);
-        nextY = snapMovePosition(nextY, target.h, activeOverlay.guides?.horizontal, scale);
+        nextX = snapMovePosition(nextX, target.w, overlayGuidesWithCenter("vertical", activeOverlay.guides?.vertical), scale);
+        nextY = snapMovePosition(nextY, target.h, overlayGuidesWithCenter("horizontal", activeOverlay.guides?.horizontal), scale);
       }
       target.x = nextX;
       target.y = nextY;
@@ -4118,8 +4203,8 @@ function startOverlayItemResize(event, itemEl, handlePosition) {
   const onMove = (moveEvent) => {
     const dx = (moveEvent.clientX - startX) / scale;
     const dy = (moveEvent.clientY - startY) / scale;
-    const vGuides = activeOverlay.guides?.vertical;
-    const hGuides = activeOverlay.guides?.horizontal;
+    const vGuides = overlayGuidesWithCenter("vertical", activeOverlay.guides?.vertical);
+    const hGuides = overlayGuidesWithCenter("horizontal", activeOverlay.guides?.horizontal);
 
     if (handlePosition.includes("e")) {
       const rightEdge = snapEdge(origin.x + origin.w + dx, vGuides, scale);
@@ -5272,7 +5357,7 @@ function renderWidget() {
   const checkerClass = elements.previewShell.classList.contains("is-checker") ? " se-lab-checker" : "";
   const themeClass = previewTheme === "light" ? " se-lab-light" : "";
 
-  elements.frame.onload = () => {
+  const onWidgetFrameLoad = () => {
     if (previewPlatform === PLATFORM_STREAMLABS) {
       dispatchToWidget(
         "onLoad",
@@ -5300,7 +5385,15 @@ function renderWidget() {
     }
   };
 
-  elements.frame.srcdoc = buildWidgetSrcdoc(widget, fieldData, { checkerClass, themeClass, platform: previewPlatform });
+  const srcdoc = buildWidgetSrcdoc(widget, fieldData, { checkerClass, themeClass, platform: previewPlatform });
+  // La modale "voir le code" (cf. openWidgetCodeEditorModal) a sa propre
+  // iframe, en plus de celle de la page d'édition complète - toutes deux
+  // reçoivent le même srcdoc/onload tant que la modale est ouverte, pour
+  // rester synchronisées sans dupliquer renderWidget().
+  for (const frame of [elements.frame, ...(widgetCodeEditorDialogFrame ? [widgetCodeEditorDialogFrame] : [])]) {
+    frame.onload = onWidgetFrameLoad;
+    frame.srcdoc = srcdoc;
+  }
 }
 
 // Extrait de renderWidget() : fonction pure (aucun effet de bord sur
@@ -5417,6 +5510,15 @@ function substituteFields(source, values) {
 
 function dispatchToWidget(eventType, detail, eventTarget = "window") {
   const message = { source: "se-lab", kind: "dispatch", eventType, eventTarget, detail };
+  // La modale "voir le code" édite un widget précis en isolation (même
+  // logique que la page d'édition complète) : tant qu'elle est ouverte, elle
+  // prime sur la diffusion large au canevas overlay ci-dessous, sinon son
+  // widget ne recevrait jamais onWidgetLoad/onLoad (son iframe n'est pas un
+  // .overlay-item__frame posé sur le canevas).
+  if (widgetCodeEditorDialogFrame) {
+    widgetCodeEditorDialogFrame.contentWindow?.postMessage(message, "*");
+    return;
+  }
   // Sur la vue overlay, il n'y a pas un widget "actif" unique : le bouton de
   // déclenchement d'événements diffuse à tous les iframes widget/alerte
   // posés sur le canevas simultanément (le sélecteur .overlay-item__frame
@@ -6260,6 +6362,25 @@ function showDashboard() {
 
 function hideDashboard() {
   setActiveView("editor");
+}
+
+// Alternative à hideDashboard()+switchWidget() pour éditer le code d'un
+// widget SANS quitter la vue courante (typiquement le canevas overlay) :
+// déplace le nœud .widget-editor (un seul par page, cf. la déclaration de
+// widgetEditorSection) dans la modale plutôt que de changer de vue, puis
+// réutilise switchWidget() tel quel - aucune de ses dépendances (widget,
+// activeWidgetId, editorSources...) n'a besoin d'être dupliquée.
+async function openWidgetCodeEditorModal(widgetId) {
+  elements.widgetCodeEditorDialogSlot.append(elements.widgetEditorSection);
+  widgetCodeEditorDialogFrame = elements.widgetCodeEditorDialogFrameEl;
+  elements.widgetCodeEditorDialog.showModal();
+  await switchWidget(widgetId);
+  // switchWidget() ne fait rien si widgetId est déjà activeWidgetId (ex. le
+  // widget chargé par défaut au premier affichage de la page) - dans ce cas
+  // renderWidget() n'a jamais tourné depuis que widgetCodeEditorDialogFrame
+  // est renseigné, donc la frame de la modale resterait vide sans cet appel.
+  renderWidget();
+  elements.widgetCodeEditorDialogTitle.textContent = widget?.widgetMeta?.name || widgetId;
 }
 
 function showOverlayEditor() {

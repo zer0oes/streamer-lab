@@ -1,0 +1,141 @@
+[
+  {
+    "type": "checkbox",
+    "label": "Afficher YouTube",
+    "value": true,
+    "name": "youtubeEnabled",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "textfield",
+    "label": "YouTube — Nom / @ / Chaîne",
+    "value": "",
+    "name": "youtubeName",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "checkbox",
+    "label": "Afficher Twitch",
+    "value": true,
+    "name": "twitchEnabled",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "textfield",
+    "label": "Twitch — Nom / @ / Chaîne",
+    "value": "",
+    "name": "twitchName",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "checkbox",
+    "label": "Afficher Instagram",
+    "value": true,
+    "name": "instagramEnabled",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "textfield",
+    "label": "Instagram — Nom / @",
+    "value": "",
+    "name": "instagramName",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "checkbox",
+    "label": "Afficher TikTok",
+    "value": true,
+    "name": "tiktokEnabled",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "textfield",
+    "label": "TikTok — Nom / @",
+    "value": "",
+    "name": "tiktokName",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "checkbox",
+    "label": "Afficher X (Twitter)",
+    "value": true,
+    "name": "xEnabled",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "textfield",
+    "label": "X (Twitter) — Nom / @",
+    "value": "",
+    "name": "xName",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "checkbox",
+    "label": "Afficher Facebook",
+    "value": true,
+    "name": "facebookEnabled",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "textfield",
+    "label": "Facebook — Nom / Page",
+    "value": "",
+    "name": "facebookName",
+    "group": "Réseaux sociaux"
+  },
+  {
+    "type": "textfield",
+    "label": "Durée totale de l'animation (ms, 0 = infini)",
+    "value": "6000",
+    "name": "animTotalMs",
+    "group": "Animation"
+  },
+  {
+    "type": "textfield",
+    "label": "Durée d'affichage d'un réseau (ms)",
+    "value": "2000",
+    "name": "animItemMs",
+    "group": "Animation"
+  },
+  {
+    "type": "dropdown",
+    "label": "Typo (Google Fonts)",
+    "value": "Poppins",
+    "options": {
+      "Poppins": "Poppins",
+      "Inter": "Inter",
+      "Montserrat": "Montserrat",
+      "Roboto": "Roboto"
+    },
+    "name": "fontFamily",
+    "group": "Styles"
+  },
+  {
+    "type": "textfield",
+    "label": "Taille du texte (px)",
+    "value": "13",
+    "name": "fontSize",
+    "group": "Styles"
+  },
+  {
+    "type": "dropdown",
+    "label": "Font Weight",
+    "value": "500",
+    "options": {
+      "300": "300",
+      "400": "400",
+      "500": "500",
+      "600": "600",
+      "700": "700"
+    },
+    "name": "fontWeight",
+    "group": "Styles"
+  },
+  {
+    "type": "colorpicker",
+    "label": "Couleur du texte",
+    "value": "#FFFFFF",
+    "name": "textColor",
+    "group": "Styles"
+  }
+]

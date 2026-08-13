@@ -396,6 +396,7 @@
           </div>
         </div>
 
+        <div id="widget-editor-home" hidden></div>
         <section class="widget-editor" aria-labelledby="widget-editor-title">
           <header class="widget-editor__header">
             <div>
@@ -464,6 +465,10 @@
               <span class="material-symbols-rounded" aria-hidden="true">right_panel_close</span>
             </button>
             <div class="overlay-canvas-wrap" id="overlay-canvas-wrap">
+              <div class="overlay-canvas-rulers" id="overlay-canvas-rulers">
+              <div class="overlay-ruler__corner" id="overlay-ruler-corner"></div>
+              <canvas class="overlay-ruler overlay-ruler--top" id="overlay-ruler-top"></canvas>
+              <canvas class="overlay-ruler overlay-ruler--left" id="overlay-ruler-left"></canvas>
               <div class="overlay-canvas-stage" id="overlay-canvas-stage">
               <div class="overlay-toolbar" id="overlay-toolbar">
                 <button class="overlay-toolbar__handle" type="button" aria-label="Déplacer la barre d'outils" title="Déplacer">
@@ -495,6 +500,12 @@
                     <div class="overlay-toolbar__add-panel" role="menu" hidden>
                       <button class="overlay-toolbar__add-item" type="button" role="menuitem" id="overlay-add-item">
                         <span class="material-symbols-rounded" aria-hidden="true">widgets</span><span>Widget / Alerte</span>
+                      </button>
+                      <button class="overlay-toolbar__add-item" type="button" role="menuitem" id="overlay-create-widget">
+                        <span class="material-symbols-rounded" aria-hidden="true">add_circle</span><span>Nouveau widget</span>
+                      </button>
+                      <button class="overlay-toolbar__add-item" type="button" role="menuitem" id="overlay-create-alert">
+                        <span class="material-symbols-rounded" aria-hidden="true">add_circle</span><span>Nouvelle alerte</span>
                       </button>
                       <div class="overlay-toolbar__add-divider" role="separator"></div>
                       <button class="overlay-toolbar__add-item" type="button" role="menuitem" data-overlay-tool="image">
@@ -582,9 +593,7 @@
               </div>
               <div class="overlay-canvas" id="overlay-canvas"></div>
               <div class="overlay-guides" id="overlay-guides"></div>
-              <canvas class="overlay-ruler overlay-ruler--top" id="overlay-ruler-top"></canvas>
-              <canvas class="overlay-ruler overlay-ruler--left" id="overlay-ruler-left"></canvas>
-              <div class="overlay-ruler__corner" id="overlay-ruler-corner"></div>
+              </div>
               </div>
             </div>
             <aside class="overlay-layers" id="overlay-layers" aria-label="Calques">
@@ -1057,6 +1066,19 @@
       </button>
       <div class="media-preview-dialog__body" id="media-preview-body"></div>
       <p class="media-preview-dialog__caption" id="media-preview-caption"></p>
+    </dialog>
+
+    <dialog class="widget-code-editor-dialog" id="widget-code-editor-dialog" aria-labelledby="widget-code-editor-dialog-title">
+      <header class="widget-code-editor-dialog__header">
+        <span class="widget-code-editor-dialog__title" id="widget-code-editor-dialog-title"></span>
+        <button type="button" class="icon-button" id="close-widget-code-editor-dialog" aria-label="Fermer">
+          <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+        </button>
+      </header>
+      <div class="widget-code-editor-dialog__preview">
+        <iframe id="widget-code-editor-dialog-frame" class="widget-code-editor-dialog__frame" sandbox="allow-scripts" scrolling="no" title="Aperçu"></iframe>
+      </div>
+      <div class="widget-code-editor-dialog__editor-slot" id="widget-code-editor-dialog-slot"></div>
     </dialog>
 
     <dialog class="widget-settings" id="streamelements-overlay-picker" aria-labelledby="streamelements-overlay-picker-title">

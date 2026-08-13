@@ -1,0 +1,11 @@
+{
+  "id": "zer0oes-bar-border-bottom",
+  "name": "zer0oes - Bar border bottom",
+  "description": "",
+  "icon": "widgets",
+  "width": 320,
+  "height": 180,
+  "order": 80,
+  "createdAt": 1786643199885,
+  "updatedAt": 1786643236330
+}

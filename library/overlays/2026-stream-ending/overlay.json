@@ -1,0 +1,86 @@
+{
+  "id": "2026-stream-ending",
+  "name": "2026 - STREAM ENDING",
+  "description": "",
+  "icon": "desktop_landscape",
+  "order": 30,
+  "archived": false,
+  "canvas": {
+    "width": 1920,
+    "height": 1080
+  },
+  "items": [
+    {
+      "id": "se-placeholder-1-458f15cd",
+      "type": "placeholder",
+      "x": 0,
+      "y": -0.01,
+      "w": 1920,
+      "h": 1080,
+      "z": 2,
+      "hidden": false,
+      "locked": false,
+      "name": "ENDING",
+      "collapsed": false,
+      "props": {
+        "sourceType": "video"
+      }
+    },
+    {
+      "id": "se-placeholder-2-274709f6",
+      "type": "placeholder",
+      "x": 51,
+      "y": 906,
+      "w": 709,
+      "h": 121,
+      "z": 3,
+      "hidden": false,
+      "locked": false,
+      "name": "Animated LABELS",
+      "collapsed": false,
+      "props": {
+        "sourceType": "native"
+      }
+    },
+    {
+      "id": "se-placeholder-3-210197c1",
+      "type": "placeholder",
+      "x": 710,
+      "y": 936,
+      "w": 500,
+      "h": 100,
+      "z": 4,
+      "hidden": false,
+      "locked": false,
+      "name": "zer0oes Goal bar",
+      "collapsed": false,
+      "props": {
+        "sourceType": "native"
+      }
+    },
+    {
+      "id": "se-placeholder-4-2dcb8bf7",
+      "type": "placeholder",
+      "x": 170,
+      "y": 86,
+      "w": 420,
+      "h": 750,
+      "z": 5,
+      "hidden": false,
+      "locked": false,
+      "name": "zer0oes Neon Chat",
+      "collapsed": false,
+      "props": {
+        "sourceType": "native"
+      }
+    }
+  ],
+  "guides": {
+    "horizontal": [],
+    "vertical": []
+  },
+  "sourcePlatform": "streamelements",
+  "sourceOverlayId": "694bf005810ac3635499c107",
+  "createdAt": 1786640635425,
+  "updatedAt": 1786640635429
+}

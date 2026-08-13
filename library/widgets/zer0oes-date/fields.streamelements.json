@@ -1,0 +1,99 @@
+[
+  {
+    "type": "dropdown",
+    "label": "Typo",
+    "value": "Poppins",
+    "options": {
+      "Poppins": "Poppins",
+      "Inter": "Inter",
+      "Montserrat": "Montserrat",
+      "Roboto": "Roboto"
+    },
+    "name": "fontFamily"
+  },
+  {
+    "type": "textfield",
+    "label": "Taille du texte (px)",
+    "value": "13",
+    "name": "fontSize"
+  },
+  {
+    "type": "dropdown",
+    "label": "Weight",
+    "value": "500",
+    "options": {
+      "300": "300",
+      "400": "400",
+      "500": "500",
+      "600": "600",
+      "700": "700"
+    },
+    "name": "fontWeight"
+  },
+  {
+    "type": "colorpicker",
+    "label": "Couleur du texte",
+    "value": "#FFFFFF",
+    "name": "textColor"
+  },
+  {
+    "type": "colorpicker",
+    "label": "Ombre 1 - Couleur",
+    "value": "#7A00FF",
+    "name": "shadow1Color"
+  },
+  {
+    "type": "textfield",
+    "label": "Ombre 1 - Opacité (0 → 1)",
+    "value": "1",
+    "name": "shadow1Opacity"
+  },
+  {
+    "type": "textfield",
+    "label": "Ombre 1 - Décalage X (px)",
+    "value": "0",
+    "name": "shadow1X"
+  },
+  {
+    "type": "textfield",
+    "label": "Ombre 1 - Décalage Y (px)",
+    "value": "1",
+    "name": "shadow1Y"
+  },
+  {
+    "type": "textfield",
+    "label": "Ombre 1 - Flou (px)",
+    "value": "0",
+    "name": "shadow1Blur"
+  },
+  {
+    "type": "colorpicker",
+    "label": "Ombre 2 - Couleur",
+    "value": "#78BEFF",
+    "name": "shadow2Color"
+  },
+  {
+    "type": "textfield",
+    "label": "Ombre 2 - Opacité (0 → 1)",
+    "value": "0.5",
+    "name": "shadow2Opacity"
+  },
+  {
+    "type": "textfield",
+    "label": "Ombre 2 - Décalage X (px)",
+    "value": "0",
+    "name": "shadow2X"
+  },
+  {
+    "type": "textfield",
+    "label": "Ombre 2 - Décalage Y (px)",
+    "value": "2",
+    "name": "shadow2Y"
+  },
+  {
+    "type": "textfield",
+    "label": "Ombre 2 - Flou (px)",
+    "value": "0",
+    "name": "shadow2Blur"
+  }
+]
