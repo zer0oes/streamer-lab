@@ -1,0 +1,400 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+/* =========================
+   Structure générale
+   .topbar empile la ligne de texte et la barre, dans l'ordre
+   choisi via --order-row / --order-bar (voir applyBorderPosition)
+========================= */
+.topbar {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  /* Chiffres de largeur fixe (hérité par tous les textes, y compris ceux
+     recréés par le carrousel social) : sans ça, la date qui égrène les
+     secondes change très légèrement de largeur à chaque tick (polices
+     proportionnelles), ce qui recalcule la zone labels (flex:1, centrée)
+     et fait "trembler" les labels d'une fraction de pixel à chaque seconde. */
+  font-variant-numeric: tabular-nums;
+}
+
+.text-row {
+  order: 1;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  flex: 1 1 auto;
+  overflow: visible;
+}
+
+.zone {
+  display: flex;
+  align-items: center;
+  overflow: visible;
+}
+.zone.is-hidden {
+  display: none;
+}
+
+.zone-date {
+  order: 0;
+  flex: 0 0 auto;
+  padding-left: 17px;
+}
+.zone-labels {
+  order: 1;
+  flex: 1 1 auto;
+  justify-content: center;
+}
+.zone-social {
+  order: 2;
+  flex: 0 0 auto;
+  padding-right: 20px;
+}
+
+/* =========================
+   Date (zer0oes-date)
+========================= */
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#date {
+  width: auto;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* =========================
+   Labels (zer0oes-in-game-labels)
+========================= */
+.labels-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  white-space: nowrap;
+  overflow: visible;
+}
+.label {
+  width: 260px;
+  gap: 10px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+  padding: 10px 0;
+}
+.txt {
+  width: 225px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Icônes Material Symbols (date + labels) */
+.zone-date .icon,
+.zone-labels .icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+.material-symbols-sharp {
+  font-family: "Material Symbols Sharp";
+  font-variation-settings:
+    "FILL" 1,
+    "wght" 200,
+    "GRAD" 0,
+    "opsz" 24;
+  font-size: 24px;
+  line-height: 1;
+  display: block;
+  color: currentColor;
+}
+.material-symbols-sharp.icon {
+  transform-origin: 50% 50%;
+  transition: filter 120ms ease, transform 120ms ease, text-shadow 120ms ease;
+}
+.material-symbols-sharp.icon.is-hit {
+  animation: iconHit 650ms ease-in-out both;
+  will-change: transform, text-shadow;
+}
+@keyframes iconHit {
+  0% {
+    transform: rotate(0deg) scale(1);
+    text-shadow: 0 0 0px rgba(var(--hit-rgb, 255, 255, 255), 0);
+  }
+  18% {
+    transform: rotate(-10deg) scale(1.08);
+    text-shadow:
+      0 0 2px rgba(var(--hit-rgb, 255, 255, 255), 1),
+      0 0 6px rgba(var(--hit-rgb, 255, 255, 255), 1),
+      0 0 12px rgba(var(--hit-rgb, 255, 255, 255), .9);
+  }
+  36% {
+    transform: rotate(10deg) scale(1.08);
+    text-shadow:
+      0 0 3px rgba(var(--hit-rgb, 255, 255, 255), 1),
+      0 0 8px rgba(var(--hit-rgb, 255, 255, 255), 1),
+      0 0 16px rgba(var(--hit-rgb, 255, 255, 255), .9);
+  }
+  54% {
+    transform: rotate(-7deg) scale(1.05);
+    text-shadow:
+      0 0 2px rgba(var(--hit-rgb, 255, 255, 255), 1),
+      0 0 6px rgba(var(--hit-rgb, 255, 255, 255), .95),
+      0 0 12px rgba(var(--hit-rgb, 255, 255, 255), .75);
+  }
+  72% {
+    transform: rotate(7deg) scale(1.02);
+    text-shadow:
+      0 0 1px rgba(var(--hit-rgb, 255, 255, 255), .9),
+      0 0 4px rgba(var(--hit-rgb, 255, 255, 255), .7),
+      0 0 8px rgba(var(--hit-rgb, 255, 255, 255), .5);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+    text-shadow: 0 0 0px rgba(var(--hit-rgb, 255, 255, 255), 0);
+  }
+}
+
+/* =========================
+   Social panel (zer0oes-social-panel)
+========================= */
+#socials .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: visible;
+}
+#socials .icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  /* Couleur + ombre viennent de #socials (filter, cf. applyTextTheme) :
+     même thème de texte que la date et les labels. */
+}
+#socials .name {
+  line-height: 1;
+}
+:root {
+  --slide: 100px;
+}
+#socials .icon,
+#socials .name {
+  will-change: transform, opacity;
+}
+#socials .icon.anim {
+  animation-name: kIconMove, kIconFade;
+  animation-timing-function: linear, linear;
+  animation-iteration-count: infinite, infinite;
+  animation-fill-mode: both, both;
+}
+#socials .name.anim {
+  animation-name: kTextMove, kTextFade;
+  animation-timing-function: linear, linear;
+  animation-iteration-count: infinite, infinite;
+  animation-fill-mode: both, both;
+}
+@keyframes kIconMove {
+  0%, 20% { transform: translateX(var(--slide)); }
+  24%     { transform: translateX(0); }
+  78%     { transform: translateX(0); }
+  82%     { transform: translateX(var(--slide)); }
+  100%    { transform: translateX(var(--slide)); }
+}
+@keyframes kIconFade {
+  0%, 18% { opacity: 0; }
+  20%     { opacity: 1; }
+  80%     { opacity: 1; }
+  82%     { opacity: 0; }
+  100%    { opacity: 0; }
+}
+@keyframes kTextMove {
+  0%, 22% { transform: translateX(var(--slide)); }
+  26%     { transform: translateX(0); }
+  72%     { transform: translateX(0); }
+  76%     { transform: translateX(var(--slide)); }
+  100%    { transform: translateX(var(--slide)); }
+}
+@keyframes kTextFade {
+  0%, 20% { opacity: 0; }
+  22%     { opacity: 1; }
+  74%     { opacity: 1; }
+  76%     { opacity: 0; }
+  100%    { opacity: 0; }
+}
+
+/* =========================
+   Border (zer0oes-bar-border-bottom-2)
+========================= */
+.line-widget {
+  order: 2;
+  flex: 0 0 auto;
+  width: 100%;
+  height: 3px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  filter:
+    drop-shadow(0 1px 0 rgba(122, 0, 255, 1))
+    drop-shadow(0 2px 0 rgba(120, 190, 255, 0.5));
+  opacity: 1;
+  transform: scaleX(1);
+  transform-origin: center;
+  transition: opacity 800ms ease, transform 800ms ease;
+}
+.line {
+  flex: 1;
+  height: 1px;
+  background: #FFFFFF;
+}
+.dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  flex: 0 0 3px;
+}
+.line-widget:not(.is-hidden) {
+  animation: lineGlow 2.5s ease-in-out infinite alternate;
+}
+
+/* Animations d'apparition/disparition (data-anim, voir applyAll) */
+.line-widget[data-anim="fade"].is-hidden,
+.line-widget[data-anim="sweep"].is-hidden,
+.line-widget:not([data-anim]).is-hidden {
+  opacity: 0;
+  transform: scaleX(0.85);
+}
+.line-widget[data-anim="sweep"] {
+  transition: opacity 800ms ease, transform 800ms ease;
+}
+
+.line-widget[data-anim="wipe"] {
+  transition: transform 700ms ease;
+}
+.line-widget[data-anim="wipe"].is-hidden {
+  opacity: 1;
+  transform: scaleX(0);
+}
+
+.line-widget[data-anim="slide"] {
+  transition: opacity 500ms ease, transform 500ms ease;
+}
+.line-widget[data-anim="slide"].is-hidden {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.line-widget[data-anim="pulse"] {
+  transition: opacity 220ms ease-out, transform 220ms ease-out;
+}
+.line-widget[data-anim="pulse"].is-hidden {
+  opacity: 0;
+  transform: scaleX(0.92);
+}
+
+/* Flicker néon : pas de transition CSS, l'opacité est pilotée par les
+   keyframes flickerIn/flickerOut (classes temporaires posées par le JS) ;
+   l'état final (caché/visible) est figé ici en secours. */
+.line-widget[data-anim="flicker"] {
+  transition: none;
+}
+.line-widget[data-anim="flicker"].is-hidden {
+  opacity: 0;
+}
+.line-widget[data-anim="flicker"].is-flicker-out {
+  animation: flickerOut var(--border-anim-ms, 400ms) ease-out both;
+}
+.line-widget[data-anim="flicker"].is-flicker-in {
+  animation: flickerIn var(--border-anim-ms, 400ms) ease-out both;
+}
+@keyframes flickerIn {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  14%  { opacity: 0.15; }
+  22%  { opacity: 1; }
+  28%  { opacity: 0.25; }
+  38%  { opacity: 1; }
+  45%  { opacity: 0.4; }
+  55%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+@keyframes flickerOut {
+  0%   { opacity: 1; }
+  10%  { opacity: 0.3; }
+  20%  { opacity: 1; }
+  30%  { opacity: 0.2; }
+  45%  { opacity: 1; }
+  55%  { opacity: 0.15; }
+  70%  { opacity: 1; }
+  85%  { opacity: 0.1; }
+  100% { opacity: 0; }
+}
+
+/* Balayage lumineux : même base que le fondu (opacité/scaleX), plus un
+   éclat qui traverse la barre pendant l'entrée/la sortie (pseudo-élément
+   ::after superposé, classe temporaire .is-sweeping posée par le JS). */
+.line-widget[data-anim="sweep"] {
+  position: relative;
+  overflow: hidden;
+}
+.line-widget[data-anim="sweep"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 42%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(255, 255, 255, 0) 58%,
+    transparent 100%
+  );
+  background-size: 260% 100%;
+  background-position: -130% 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.line-widget[data-anim="sweep"].is-sweeping::after {
+  animation: sweepMove var(--border-anim-ms, 400ms) ease-out both;
+}
+@keyframes sweepMove {
+  0%   { background-position: -130% 0; opacity: 1; }
+  100% { background-position: 130% 0; opacity: 1; }
+}
+
+@keyframes lineGlow {
+  from {
+    filter:
+      drop-shadow(0 1px 0 rgba(122, 0, 255, 0.8))
+      drop-shadow(0 2px 0 rgba(120, 190, 255, 0.4));
+  }
+  to {
+    filter:
+      drop-shadow(0 1px 0 rgba(122, 0, 255, 1))
+      drop-shadow(0 3px 0 rgba(120, 190, 255, 0.7));
+  }
+}

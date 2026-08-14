@@ -1,0 +1,115 @@
+{
+  "zonesOrder": {
+    "type": "textfield",
+    "label": "Ordre des zones (date,labels,social)",
+    "value": "date,labels,social",
+    "group": "Mise en page"
+  },
+  "borderPosition": {
+    "type": "dropdown",
+    "label": "Position de la barre",
+    "value": "bottom",
+    "options": {
+      "bottom": "Bas du texte",
+      "top": "Haut du texte"
+    },
+    "group": "Mise en page"
+  },
+  "borderAnimation": {
+    "type": "dropdown",
+    "label": "Animation d'apparition/disparition de la barre",
+    "value": "fade",
+    "options": {
+      "fade": "Fondu (par défaut)",
+      "wipe": "Rétraction horizontale",
+      "slide": "Glissement (descend + fondu)",
+      "pulse": "Flash rapide",
+      "flicker": "Flicker néon (clignote avant de se stabiliser)",
+      "sweep": "Éclat lumineux (traverse la barre)",
+      "none": "Aucune (toujours visible)"
+    },
+    "group": "Mise en page"
+  },
+  "borderAnimDurationMs": {
+    "type": "textfield",
+    "label": "Barre — Durée de l'animation d'entrée/sortie (ms)",
+    "value": "400",
+    "group": "Mise en page"
+  },
+  "borderVisibleDurationSec": {
+    "type": "textfield",
+    "label": "Barre — Durée d'affichage (secondes)",
+    "value": "900",
+    "group": "Mise en page"
+  },
+  "borderHiddenDurationSec": {
+    "type": "textfield",
+    "label": "Barre — Durée cachée (secondes)",
+    "value": "60",
+    "group": "Mise en page"
+  },
+
+  "fontFamily": {
+    "type": "dropdown",
+    "label": "Typo (commune à tous les textes)",
+    "value": "Poppins",
+    "options": {
+      "Poppins": "Poppins",
+      "Inter": "Inter",
+      "Montserrat": "Montserrat",
+      "Roboto": "Roboto"
+    },
+    "group": "Typographie"
+  },
+  "fontSize": { "type": "textfield", "label": "Taille du texte (px)", "value": "13", "group": "Typographie" },
+  "fontWeight": {
+    "type": "dropdown",
+    "label": "Weight",
+    "value": "500",
+    "options": { "300": "300", "400": "400", "500": "500", "600": "600", "700": "700" },
+    "group": "Typographie"
+  },
+  "textColor": { "type": "colorpicker", "label": "Couleur du texte", "value": "#FFFFFF", "group": "Typographie" },
+  "shadow1Color": { "type": "colorpicker", "label": "Ombre 1 — Couleur", "value": "#7A00FF", "group": "Typographie" },
+  "shadow1Opacity": { "type": "textfield", "label": "Ombre 1 — Opacité (0→1)", "value": "1", "group": "Typographie" },
+  "shadow1X": { "type": "textfield", "label": "Ombre 1 — Décalage X (px)", "value": "0", "group": "Typographie" },
+  "shadow1Y": { "type": "textfield", "label": "Ombre 1 — Décalage Y (px)", "value": "1", "group": "Typographie" },
+  "shadow1Blur": { "type": "textfield", "label": "Ombre 1 — Flou (px)", "value": "0", "group": "Typographie" },
+  "shadow2Color": { "type": "colorpicker", "label": "Ombre 2 — Couleur", "value": "#78BEFF", "group": "Typographie" },
+  "shadow2Opacity": { "type": "textfield", "label": "Ombre 2 — Opacité (0→1)", "value": "0.5", "group": "Typographie" },
+  "shadow2X": { "type": "textfield", "label": "Ombre 2 — Décalage X (px)", "value": "0", "group": "Typographie" },
+  "shadow2Y": { "type": "textfield", "label": "Ombre 2 — Décalage Y (px)", "value": "2", "group": "Typographie" },
+  "shadow2Blur": { "type": "textfield", "label": "Ombre 2 — Flou (px)", "value": "0", "group": "Typographie" },
+
+  "dateFormat": {
+    "type": "textfield",
+    "label": "Date — Format (JJ=jour, MM=mois, AAAA=année, HH=heure, mm=minutes, ss=secondes)",
+    "value": "JJ/MM/AAAA HH:mm",
+    "group": "Date"
+  },
+
+  "labelsOrderCustom": {
+    "type": "textfield",
+    "label": "Labels — Ordre interne (follow,sub,cheer,tip)",
+    "value": "follow,sub,cheer,tip",
+    "group": "Labels"
+  },
+  "hitFollowColor": { "type": "colorpicker", "label": "Labels — Hit Follow (lueur icône)", "value": "#FF1BDF", "group": "Labels" },
+  "hitSubColor": { "type": "colorpicker", "label": "Labels — Hit Sub (lueur icône)", "value": "#2ABDFF", "group": "Labels" },
+  "hitCheerColor": { "type": "colorpicker", "label": "Labels — Hit Cheer (lueur icône)", "value": "#FF4D9D", "group": "Labels" },
+  "hitTipColor": { "type": "colorpicker", "label": "Labels — Hit Tip (lueur icône)", "value": "#5900FF", "group": "Labels" },
+
+  "animItemMs": { "type": "textfield", "label": "Social — Durée d'affichage d'un réseau (ms)", "value": "2000", "group": "Réseaux sociaux" },
+  "youtubeEnabled": { "type": "checkbox", "label": "Afficher YouTube", "value": true, "group": "Réseaux sociaux" },
+  "youtubeName": { "type": "textfield", "label": "YouTube — Nom / @ / Chaîne", "value": "", "group": "Réseaux sociaux" },
+  "twitchEnabled": { "type": "checkbox", "label": "Afficher Twitch", "value": true, "group": "Réseaux sociaux" },
+  "twitchName": { "type": "textfield", "label": "Twitch — Nom / @ / Chaîne", "value": "", "group": "Réseaux sociaux" },
+  "instagramEnabled": { "type": "checkbox", "label": "Afficher Instagram", "value": true, "group": "Réseaux sociaux" },
+  "instagramName": { "type": "textfield", "label": "Instagram — Nom / @", "value": "", "group": "Réseaux sociaux" },
+  "tiktokEnabled": { "type": "checkbox", "label": "Afficher TikTok", "value": true, "group": "Réseaux sociaux" },
+  "tiktokName": { "type": "textfield", "label": "TikTok — Nom / @", "value": "", "group": "Réseaux sociaux" },
+  "xEnabled": { "type": "checkbox", "label": "Afficher X (Twitter)", "value": true, "group": "Réseaux sociaux" },
+  "xName": { "type": "textfield", "label": "X (Twitter) — Nom / @", "value": "", "group": "Réseaux sociaux" },
+  "facebookEnabled": { "type": "checkbox", "label": "Afficher Facebook", "value": true, "group": "Réseaux sociaux" },
+  "facebookName": { "type": "textfield", "label": "Facebook — Nom / Page", "value": "", "group": "Réseaux sociaux" }
+}

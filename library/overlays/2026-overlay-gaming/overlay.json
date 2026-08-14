@@ -11,48 +11,14 @@
   },
   "items": [
     {
-      "id": "item-msrs1vdd-nrot1",
+      "id": "item-msrtopbar-merge1",
       "type": "widget",
-      "widgetId": "zer0oes-in-game-labels",
-      "x": 380,
+      "widgetId": "zer0oes-topbar",
+      "x": 0,
       "y": 0,
-      "w": 1160,
-      "h": 40,
-      "z": 3,
-      "hidden": false,
-      "locked": false,
-      "name": "",
-      "collapsed": false,
-      "props": {
-        "fieldData": {}
-      }
-    },
-    {
-      "id": "item-msrsz06c-0l5vg",
-      "type": "widget",
-      "widgetId": "zer0oes-date",
-      "x": 17,
-      "y": 11,
-      "w": 220,
-      "h": 24,
-      "z": 4,
-      "hidden": false,
-      "locked": false,
-      "name": "",
-      "collapsed": false,
-      "props": {
-        "fieldData": {}
-      }
-    },
-    {
-      "id": "item-msrt2ham-bznme",
-      "type": "widget",
-      "widgetId": "zer0oes-social-panel",
-      "x": 1808,
-      "y": 2,
-      "w": 110,
-      "h": 48,
-      "z": 2,
+      "w": 1920,
+      "h": 50,
+      "z": 1,
       "hidden": false,
       "locked": false,
       "name": "",
@@ -65,48 +31,14 @@
           "tiktokName": "zer0oes",
           "xEnabled": false,
           "facebookEnabled": false,
-          "animTotalMs": "30000",
-          "animItemMs": "6000"
+          "animItemMs": "6000",
+          "borderPosition": "bottom",
+          "borderAnimation": "wipe",
+          "borderAnimDurationMs": "400",
+          "borderVisibleDurationSec": "30",
+          "borderHiddenDurationSec": "10",
+          "dateFormat": "JJ/MM/AAAA - HH:mm:ss"
         }
-      }
-    },
-    {
-      "id": "item-msrta8xs-fgx76",
-      "type": "widget",
-      "widgetId": "zer0oes-bar-border-bottom-2",
-      "x": 0,
-      "y": 39,
-      "w": 1920,
-      "h": 10,
-      "z": 1,
-      "hidden": false,
-      "locked": false,
-      "name": "",
-      "collapsed": false,
-      "props": {
-        "fieldData": {
-          "message": ""
-        }
-      }
-    },
-    {
-      "id": "item-msrte62f-d7zl4",
-      "type": "group",
-      "x": 17,
-      "y": 0,
-      "w": 1897,
-      "h": 50,
-      "z": 1,
-      "hidden": false,
-      "locked": false,
-      "name": "Groupe (3)",
-      "collapsed": false,
-      "props": {
-        "children": [
-          "item-msrt2ham-bznme",
-          "item-msrsz06c-0l5vg",
-          "item-msrs1vdd-nrot1"
-        ]
       }
     }
   ],
@@ -122,5 +54,5 @@
   "sourcePlatform": null,
   "sourceOverlayId": null,
   "createdAt": 1786641205234,
-  "updatedAt": 1786643589980
+  "updatedAt": 1786704751542
 }
