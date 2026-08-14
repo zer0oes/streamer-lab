@@ -23,6 +23,12 @@ body {
      proportionnelles), ce qui recalcule la zone labels (flex:1, centrée)
      et fait "trembler" les labels d'une fraction de pixel à chaque seconde. */
   font-variant-numeric: tabular-nums;
+  /* Base du cycle apparition/disparition (voir initAppearance côté JS) :
+     transition par défaut pour "fade" (et tout data-anim inconnu) — les
+     autres styles déclarent la leur, ce qui l'écrase. */
+  opacity: 1;
+  transform: none;
+  transition: opacity 800ms ease, transform 800ms ease;
 }
 
 .text-row {
@@ -260,10 +266,9 @@ body {
   filter:
     drop-shadow(0 1px 0 rgba(122, 0, 255, 1))
     drop-shadow(0 2px 0 rgba(120, 190, 255, 0.5));
-  opacity: 1;
-  transform: scaleX(1);
-  transform-origin: center;
-  transition: opacity 800ms ease, transform 800ms ease;
+  /* L'opacité/transform du cycle apparition-disparition vivent sur #topbar
+     (voir plus bas) : toute la barre — texte + trait — bouge comme un seul
+     bloc, plutôt que le trait seul. */
 }
 .line {
   flex: 1;
@@ -277,41 +282,46 @@ body {
   background: #FFFFFF;
   flex: 0 0 3px;
 }
-.line-widget:not(.is-hidden) {
+.topbar:not(.is-hidden) .line-widget {
   animation: lineGlow 2.5s ease-in-out infinite alternate;
 }
 
-/* Animations d'apparition/disparition (data-anim, voir applyAll) */
-.line-widget[data-anim="fade"].is-hidden,
-.line-widget[data-anim="sweep"].is-hidden,
-.line-widget:not([data-anim]).is-hidden {
+/* =========================
+   Apparition/disparition de TOUTE la barre (date + labels + social + trait)
+   — le cycle (voir initAppearance côté JS) pose is-hidden / is-flicker-* /
+   is-sweeping sur #topbar, pas seulement sur la barre : les styles
+   ci-dessous s'appliquent donc à l'ensemble, qui bouge comme un seul bloc.
+========================= */
+.topbar[data-anim="fade"].is-hidden,
+.topbar[data-anim="sweep"].is-hidden,
+.topbar:not([data-anim]).is-hidden {
   opacity: 0;
   transform: scaleX(0.85);
 }
-.line-widget[data-anim="sweep"] {
+.topbar[data-anim="sweep"] {
   transition: opacity 800ms ease, transform 800ms ease;
 }
 
-.line-widget[data-anim="wipe"] {
+.topbar[data-anim="wipe"] {
   transition: transform 700ms ease;
 }
-.line-widget[data-anim="wipe"].is-hidden {
+.topbar[data-anim="wipe"].is-hidden {
   opacity: 1;
   transform: scaleX(0);
 }
 
-.line-widget[data-anim="slide"] {
+.topbar[data-anim="slide"] {
   transition: opacity 500ms ease, transform 500ms ease;
 }
-.line-widget[data-anim="slide"].is-hidden {
+.topbar[data-anim="slide"].is-hidden {
   opacity: 0;
   transform: translateY(6px);
 }
 
-.line-widget[data-anim="pulse"] {
+.topbar[data-anim="pulse"] {
   transition: opacity 220ms ease-out, transform 220ms ease-out;
 }
-.line-widget[data-anim="pulse"].is-hidden {
+.topbar[data-anim="pulse"].is-hidden {
   opacity: 0;
   transform: scaleX(0.92);
 }
@@ -319,16 +329,16 @@ body {
 /* Flicker néon : pas de transition CSS, l'opacité est pilotée par les
    keyframes flickerIn/flickerOut (classes temporaires posées par le JS) ;
    l'état final (caché/visible) est figé ici en secours. */
-.line-widget[data-anim="flicker"] {
+.topbar[data-anim="flicker"] {
   transition: none;
 }
-.line-widget[data-anim="flicker"].is-hidden {
+.topbar[data-anim="flicker"].is-hidden {
   opacity: 0;
 }
-.line-widget[data-anim="flicker"].is-flicker-out {
+.topbar[data-anim="flicker"].is-flicker-out {
   animation: flickerOut var(--border-anim-ms, 400ms) ease-out both;
 }
-.line-widget[data-anim="flicker"].is-flicker-in {
+.topbar[data-anim="flicker"].is-flicker-in {
   animation: flickerIn var(--border-anim-ms, 400ms) ease-out both;
 }
 @keyframes flickerIn {
@@ -354,36 +364,49 @@ body {
   100% { opacity: 0; }
 }
 
-/* Balayage lumineux : même base que le fondu (opacité/scaleX), plus un
-   éclat qui traverse la barre pendant l'entrée/la sortie (pseudo-élément
-   ::after superposé, classe temporaire .is-sweeping posée par le JS). */
-.line-widget[data-anim="sweep"] {
+/* Balayage lumineux : le fondu ci-dessus (data-anim="sweep") fait
+   apparaître/disparaître toute la barre, et en plus un éclat traverse le
+   trait pendant l'entrée/la sortie (pseudo-élément ::after sur .line-widget,
+   déclenché par .is-sweeping posée sur #topbar). Un halo blanc sur un trait
+   déjà blanc serait invisible (pas de contraste) : l'éclat est donc une
+   traînée lumineuse colorée qui déborde largement du trait (glow via
+   box-shadow multicouche), en resterait sinon un petit point trop discret
+   sur 1920px de large. */
+.line-widget {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
-.line-widget[data-anim="sweep"]::after {
+.topbar[data-anim="sweep"] .line-widget::after {
   content: "";
   position: absolute;
-  inset: 0;
+  top: 50%;
+  left: -8%;
+  width: 220px;
+  height: 26px;
+  margin-left: -110px;
+  transform: translateY(-50%);
+  border-radius: 999px;
   background: linear-gradient(
     90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0) 42%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(255, 255, 255, 0) 58%,
-    transparent 100%
+    rgba(120, 60, 255, 0) 0%,
+    rgba(150, 90, 255, 0.55) 30%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(150, 90, 255, 0.55) 70%,
+    rgba(120, 60, 255, 0) 100%
   );
-  background-size: 260% 100%;
-  background-position: -130% 0;
+  box-shadow:
+    0 0 16px 6px rgba(255, 255, 255, 0.9),
+    0 0 40px 16px rgba(160, 100, 255, 0.85),
+    0 0 70px 26px rgba(120, 60, 255, 0.55);
   opacity: 0;
   pointer-events: none;
 }
-.line-widget[data-anim="sweep"].is-sweeping::after {
+.topbar[data-anim="sweep"].is-sweeping .line-widget::after {
   animation: sweepMove var(--border-anim-ms, 400ms) ease-out both;
 }
 @keyframes sweepMove {
-  0%   { background-position: -130% 0; opacity: 1; }
-  100% { background-position: 130% 0; opacity: 1; }
+  0%   { left: -8%; opacity: 1; }
+  100% { left: 108%; opacity: 1; }
 }
 
 @keyframes lineGlow {

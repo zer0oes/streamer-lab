@@ -21,7 +21,7 @@
       "z": 1,
       "hidden": false,
       "locked": false,
-      "name": "",
+      "name": "zer0oes - Info bar",
       "collapsed": false,
       "props": {
         "fieldData": {
@@ -33,11 +33,11 @@
           "facebookEnabled": false,
           "animItemMs": "6000",
           "borderPosition": "bottom",
-          "borderAnimation": "wipe",
-          "borderAnimDurationMs": "400",
-          "borderVisibleDurationSec": "30",
-          "borderHiddenDurationSec": "10",
-          "dateFormat": "JJ/MM/AAAA - HH:mm:ss"
+          "borderAnimation": "flicker",
+          "borderAnimDurationMs": "600",
+          "borderVisibleDurationSec": "10",
+          "borderHiddenDurationSec": "5",
+          "dateFormat": "JJ/MM/AAAA • HH:mm:ss"
         }
       }
     }
@@ -54,5 +54,5 @@
   "sourcePlatform": null,
   "sourceOverlayId": null,
   "createdAt": 1786641205234,
-  "updatedAt": 1786704751542
+  "updatedAt": 1786712665638
 }

@@ -3595,6 +3595,27 @@ async function loadOverlayItemBundle(widgetId) {
   }
 }
 
+// overlayItemBundleCache n'est sinon jamais invalidé : sans ça, un widget
+// déjà posé sur le canvas continue d'afficher son ancien code après une
+// modification de ses fichiers (widget.*.js/css/html/fields), tant que la
+// page n'est pas rechargée — appelé depuis le flux de rechargement à chaud
+// (connectEventStream) pour chaque widgetId dont un fichier vient de changer.
+async function invalidateAndRefreshOverlayCanvasWidget(widgetId) {
+  overlayItemBundleCache.delete(widgetId);
+  if (!activeOverlay) return;
+
+  const items = activeOverlay.items.filter((item) => item.type === "widget" && item.widgetId === widgetId);
+  if (!items.length) return;
+
+  const bundle = await loadOverlayItemBundle(widgetId);
+  if (!bundle) return;
+
+  for (const item of items) {
+    const frame = elements.overlayCanvas?.querySelector(`[data-item-id="${item.id}"] .overlay-item__frame`);
+    if (frame) renderOverlayItemFrame(frame, bundle, resolveOverlayItemFieldData(bundle, item));
+  }
+}
+
 function applyOverlayItemStyle(el, item) {
   el.style.left = `${item.x}px`;
   el.style.top = `${item.y}px`;
@@ -5643,9 +5664,15 @@ function connectEventStream() {
     try {
       const payload = JSON.parse(data);
       if (Array.isArray(payload.changes)) {
-        const relevantChanges = payload.changes
-          .map(change => String(change).replaceAll("\\", "/"))
-          .filter(change => change.split("/").at(-2) === activeWidgetId);
+        const changedPaths = payload.changes.map(change => String(change).replaceAll("\\", "/"));
+
+        // Widgets déjà posés sur le canvas d'un overlay ouvert : on les
+        // redessine avec le code frais, sinon ils restent bloqués sur le
+        // code chargé au premier affichage (cf. overlayItemBundleCache).
+        const changedWidgetIds = [...new Set(changedPaths.map(change => change.split("/").at(-2)))];
+        changedWidgetIds.forEach((widgetId) => void invalidateAndRefreshOverlayCanvasWidget(widgetId));
+
+        const relevantChanges = changedPaths.filter(change => change.split("/").at(-2) === activeWidgetId);
         if (!relevantChanges.length) return;
         pendingWidgetChange = {
           widgetId: activeWidgetId,

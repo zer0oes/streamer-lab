@@ -453,47 +453,49 @@ function initSocial(f) {
 }
 
 /* =========================
-   Barre : cycle visible → sortie → cachée → entrée → (répète)
+   Apparition/disparition de TOUTE la barre (date + labels + social + trait) :
+   cycle visible → sortie → cachée → entrée → (répète). Le cycle agit sur
+   #topbar (pas seulement sur la barre) pour que tout bouge ensemble.
 ========================= */
 const BORDER_ANIMATIONS = ["fade", "wipe", "slide", "pulse", "flicker", "sweep", "none"];
-let borderCycleTimer = null;
+let appearanceCycleTimer = null;
 
 // "flicker" et "sweep" jouent un effet supplémentaire (keyframes sur une
 // classe temporaire) en plus du cycle visible/caché piloté par is-hidden.
-function playBorderExtraEffect(line, anim, durationMs) {
+function playAppearanceExtraEffect(topbar, anim, durationMs) {
   if (anim === "flicker") {
-    const cls = line.classList.contains("is-hidden") ? "is-flicker-out" : "is-flicker-in";
-    line.classList.remove("is-flicker-in", "is-flicker-out");
-    void line.offsetWidth;
-    line.style.setProperty("--border-anim-ms", `${durationMs}ms`);
-    line.classList.add(cls);
-    setTimeout(() => line.classList.remove(cls), durationMs);
+    const cls = topbar.classList.contains("is-hidden") ? "is-flicker-out" : "is-flicker-in";
+    topbar.classList.remove("is-flicker-in", "is-flicker-out");
+    void topbar.offsetWidth;
+    topbar.style.setProperty("--border-anim-ms", `${durationMs}ms`);
+    topbar.classList.add(cls);
+    setTimeout(() => topbar.classList.remove(cls), durationMs);
     return;
   }
   if (anim === "sweep") {
-    line.classList.remove("is-sweeping");
-    void line.offsetWidth;
-    line.style.setProperty("--border-anim-ms", `${durationMs}ms`);
-    line.classList.add("is-sweeping");
-    setTimeout(() => line.classList.remove("is-sweeping"), durationMs);
+    topbar.classList.remove("is-sweeping");
+    void topbar.offsetWidth;
+    topbar.style.setProperty("--border-anim-ms", `${durationMs}ms`);
+    topbar.classList.add("is-sweeping");
+    setTimeout(() => topbar.classList.remove("is-sweeping"), durationMs);
   }
 }
 
-function initBorder(f) {
-  const line = $("borderBar");
-  if (!line) return;
+function initAppearance(f) {
+  const topbar = $("topbar");
+  if (!topbar) return;
 
   const requested = String(f.borderAnimation || "").toLowerCase().trim();
   const anim = BORDER_ANIMATIONS.includes(requested) ? requested : "fade";
-  line.dataset.anim = anim;
+  topbar.dataset.anim = anim;
 
   // Durée de l'animation d'entrée/sortie (ms) : remplace la durée fixe
   // déclarée dans le CSS pour chaque style.
   const inOutMs = clamp(num(f.borderAnimDurationMs, 400), 50, 5000);
-  line.style.transitionDuration = `${inOutMs}ms`;
+  topbar.style.transitionDuration = `${inOutMs}ms`;
 
-  clearTimeout(borderCycleTimer);
-  line.classList.remove("is-hidden", "is-flicker-in", "is-flicker-out", "is-sweeping");
+  clearTimeout(appearanceCycleTimer);
+  topbar.classList.remove("is-hidden", "is-flicker-in", "is-flicker-out", "is-sweeping");
   if (anim === "none") return;
 
   const visibleMs = clamp(num(f.borderVisibleDurationSec, 900), 1, 86400) * 1000;
@@ -503,17 +505,17 @@ function initBorder(f) {
   // (entrée, affichée, sortie, cachée) ont des durées indépendantes : chaque
   // phase programme elle-même la suivante.
   const goHidden = () => {
-    line.classList.add("is-hidden"); // démarre la transition de sortie (inOutMs)
-    playBorderExtraEffect(line, anim, inOutMs);
-    borderCycleTimer = setTimeout(goVisible, inOutMs + hiddenMs);
+    topbar.classList.add("is-hidden"); // démarre la transition de sortie (inOutMs)
+    playAppearanceExtraEffect(topbar, anim, inOutMs);
+    appearanceCycleTimer = setTimeout(goVisible, inOutMs + hiddenMs);
   };
   const goVisible = () => {
-    line.classList.remove("is-hidden"); // démarre la transition d'entrée (inOutMs)
-    playBorderExtraEffect(line, anim, inOutMs);
-    borderCycleTimer = setTimeout(goHidden, visibleMs);
+    topbar.classList.remove("is-hidden"); // démarre la transition d'entrée (inOutMs)
+    playAppearanceExtraEffect(topbar, anim, inOutMs);
+    appearanceCycleTimer = setTimeout(goHidden, visibleMs);
   };
 
-  borderCycleTimer = setTimeout(goHidden, visibleMs);
+  appearanceCycleTimer = setTimeout(goHidden, visibleMs);
 }
 
 /* =========================
@@ -530,7 +532,7 @@ async function applyAll(rawFieldData) {
   initSocial(f);
   applyZonesOrder(f.zonesOrder);
   applyBorderPosition(f.borderPosition);
-  initBorder(f);
+  initAppearance(f);
 }
 
 window.addEventListener("onWidgetLoad", async (obj) => {
