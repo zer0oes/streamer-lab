@@ -11,7 +11,10 @@
     "start": "npm run build:css && node server.mjs",
     "clean": "node scripts/clean.mjs",
     "reinstall": "npm run clean && npm install",
-    "test": "node --test"
+    "test": "node --test",
+    "dev:vue": "npm --prefix frontend run dev",
+    "build:vue": "npm --prefix frontend run build",
+    "test:frontend": "npm --prefix frontend run test"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",
