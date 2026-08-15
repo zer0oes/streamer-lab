@@ -17,6 +17,16 @@
     p { margin: 0; color: var(--muted); font-size: var(--text-13); line-height: 1.5; }
   }
 
+  &__projects-section {
+    margin-bottom: 28px;
+  }
+
+  &__projects-hint {
+    margin: 0 0 var(--space-12);
+    color: var(--muted);
+    font-size: var(--text-11);
+  }
+
   &__columns {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
@@ -35,12 +45,18 @@
     letter-spacing: 0.02em;
   }
 
+  &__search-row {
+    display: flex;
+    gap: var(--space-8);
+    margin-bottom: var(--space-14);
+  }
+
   &__search {
     display: flex;
     width: 100%;
+    flex: 1;
     align-items: center;
     gap: var(--space-8);
-    margin-bottom: var(--space-14);
     padding: 0 var(--space-11);
     border: 1px solid var(--line);
     border-radius: var(--radius-8);
@@ -56,6 +72,49 @@
 
       &:focus { box-shadow: none; }
     }
+  }
+
+  // Menu custom (cf. &__filter-trigger / &__filter-panel plus bas) plutôt
+  // qu'un <select> natif : la liste déroulante d'un <select> est dessinée
+  // par le navigateur/OS et ignore le thème du site.
+  &__project-filter {
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  &__project-filter-trigger {
+    display: flex;
+    height: 100%;
+    min-height: 38px;
+    align-items: center;
+    gap: var(--space-6);
+    padding: 0 var(--space-10);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-8);
+    color: var(--text);
+    background: var(--panel-soft);
+    cursor: pointer;
+    font-size: var(--text-12);
+    transition: border-color var(--duration-fast), background var(--duration-fast);
+
+    .material-symbols-rounded:first-child { font-size: 17px; color: var(--muted); }
+    &:hover { border-color: #3b404b; background: #1d2027; }
+
+    &[aria-expanded="true"] {
+      border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
+    }
+  }
+
+  &__project-filter-label {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__project-filter-chevron {
+    color: #747b88;
+    font-size: 18px;
   }
 
   &__overlays {

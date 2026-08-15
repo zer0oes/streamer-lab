@@ -1,14 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { findWidgetDirectory } from "./helpers/library-paths.mjs";
 
 test("conserve des variantes JS et Fields distinctes pour les deux plateformes", async () => {
+  const directory = await findWidgetDirectory("zer0oes-goal-bar");
   const [streamElementsJs, streamlabsJs, streamElementsFieldsSource, streamlabsFieldsSource] =
     await Promise.all([
-      readFile(new URL("../library/widgets/zer0oes-goal-bar/widget.streamelements.js", import.meta.url), "utf8"),
-      readFile(new URL("../library/widgets/zer0oes-goal-bar/widget.streamlabs.js", import.meta.url), "utf8"),
-      readFile(new URL("../library/widgets/zer0oes-goal-bar/fields.streamelements.json", import.meta.url), "utf8"),
-      readFile(new URL("../library/widgets/zer0oes-goal-bar/fields.streamlabs.json", import.meta.url), "utf8")
+      readFile(join(directory, "widget.streamelements.js"), "utf8"),
+      readFile(join(directory, "widget.streamlabs.js"), "utf8"),
+      readFile(join(directory, "fields.streamelements.json"), "utf8"),
+      readFile(join(directory, "fields.streamlabs.json"), "utf8")
     ]);
 
   const streamElementsFields = JSON.parse(streamElementsFieldsSource);

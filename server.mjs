@@ -33,7 +33,7 @@ import { saveContactMessage } from "./lib/contact.mjs";
 import { deleteLocalMedia, listLocalMedia, resolveLocalMediaPath, saveLocalMedia, MAX_MEDIA_BYTES, MEDIA_URL_PREFIX } from "./lib/media.mjs";
 import {
   LIBRARY_ROOT,
-  LIBRARY_CATEGORY_DIRS,
+  categoryDirsForProject,
   categoryDirectory,
   widgetFromManifest,
   listWidgets,
@@ -51,6 +51,15 @@ import {
   deleteOverlay,
   duplicateOverlay
 } from "./lib/overlays.mjs";
+import {
+  RESERVED_PROJECT_IDS,
+  listProjects,
+  getProjectInfo,
+  createProject,
+  updateProjectMetadata,
+  deleteProject,
+  migrateLegacyLibrary
+} from "./lib/projects.mjs";
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 const PUBLIC_ROOT = join(ROOT, "public");
@@ -114,6 +123,7 @@ const streamElementsMediaCache = new Map(); // userId -> { expiresAt, media }
 const SE_MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
 
 store.deleteExpiredSessions();
+await migrateLegacyLibrary();
 
 let session = await readJson(MOCK_SESSION_PATH);
 let liveStatus = config.channelId && config.token ? "connecting" : "disabled";
@@ -145,22 +155,119 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, "http://localhost");
 
+    if (request.method === "GET" && url.pathname === "/api/projects") {
+      return sendJson(response, 200, { projects: await listProjects() });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/projects") {
+      const body = await readRequestJson(request);
+      let metadata;
+      try {
+        metadata = parseProjectMetadataInput(body);
+      } catch (error) {
+        return sendJson(response, 400, { error: error.message });
+      }
+      const existingIds = new Set([...(await listProjects()).map((entry) => entry.id), ...RESERVED_PROJECT_IDS]);
+      const projectId = uniqueWidgetId(slugify(metadata.name), existingIds);
+      const project = await createProject({ id: projectId, ...metadata });
+      return sendJson(response, 201, { project });
+    }
+
+    if (request.method === "PUT" && url.pathname === "/api/project/metadata") {
+      const body = await readRequestJson(request);
+      let metadata;
+      try {
+        metadata = parseProjectMetadataInput(body);
+      } catch (error) {
+        return sendJson(response, 400, { error: error.message });
+      }
+      const project = await updateProjectMetadata(body.projectId, metadata);
+      if (!project) return sendJson(response, 404, { error: "Projet introuvable" });
+      return sendJson(response, 200, { project });
+    }
+
+    if (request.method === "DELETE" && url.pathname === "/api/project") {
+      const projectId = url.searchParams.get("id");
+      const projectInfo = await getProjectInfo(projectId);
+      if (!projectInfo) return sendJson(response, 404, { error: "Projet introuvable" });
+      if ((await listProjects()).length <= 1) {
+        return sendJson(response, 400, { error: "Impossible de supprimer le dernier projet" });
+      }
+      await deleteProject(projectId);
+      return sendJson(response, 200, { deleted: true, projectId });
+    }
+
+    // Deplace un widget/alerte vers un autre projet (glisser-deposer ou
+    // dialogue de modification cote client) : les ids restent uniques sur
+    // toute la bibliotheque (cf. allWidgetIds), donc un simple renommage de
+    // dossier suffit, jamais besoin de recalculer l'id.
+    if (request.method === "PUT" && url.pathname === "/api/widget/project") {
+      const body = await readRequestJson(request);
+      const found = await findWidgetInfo(body.widgetId);
+      if (!found) return sendJson(response, 404, { error: "Widget introuvable" });
+      const targetProject = await getProjectInfo(body.projectId);
+      if (!targetProject) return sendJson(response, 404, { error: "Projet introuvable" });
+
+      await moveWidgetDirectory(found, targetProject.id);
+
+      const { directory, ...widget } = await getWidgetInfo(body.widgetId, categoryDirsForProject(targetProject.id));
+      return sendJson(response, 200, { widget: { ...widget, projectId: targetProject.id } });
+    }
+
+    if (request.method === "PUT" && url.pathname === "/api/overlay/project") {
+      const body = await readRequestJson(request);
+      const found = await findOverlayInfo(body.overlayId);
+      if (!found) return sendJson(response, 404, { error: "Overlay introuvable" });
+      const targetProject = await getProjectInfo(body.projectId);
+      if (!targetProject) return sendJson(response, 404, { error: "Projet introuvable" });
+
+      let movedWidgetIds = [];
+      if (found.projectId !== targetProject.id) {
+        const targetDirectory = join(LIBRARY_ROOT, targetProject.id, "overlays", body.overlayId);
+        await mkdir(dirname(targetDirectory), { recursive: true });
+        await rename(found.overlayInfo.directory, targetDirectory);
+
+        // Un overlay ne propose que les widgets/alertes de son PROPRE projet
+        // (cf. openOverlayItemPicker cote client) : on emmene avec lui tout
+        // widget/alerte qu'il reference et qui vivrait encore dans l'ancien
+        // projet, sinon ces references pointeraient dans le vide une fois
+        // l'overlay deplace.
+        const referencedWidgetIds = [...new Set(
+          (found.overlayInfo.items || [])
+            .filter((item) => (item.type === "widget" || item.type === "alert") && item.widgetId)
+            .map((item) => item.widgetId)
+        )];
+        for (const widgetId of referencedWidgetIds) {
+          const referencedWidget = await findWidgetInfo(widgetId);
+          if (referencedWidget && referencedWidget.projectId !== targetProject.id) {
+            await moveWidgetDirectory(referencedWidget, targetProject.id);
+            movedWidgetIds.push(widgetId);
+          }
+        }
+      }
+
+      const { directory, ...overlay } = await getOverlayInfo(targetProject.id, body.overlayId);
+      return sendJson(response, 200, { overlay: { ...overlay, projectId: targetProject.id }, movedWidgetIds });
+    }
+
     if (request.method === "GET" && url.pathname === "/api/widgets") {
-      return sendJson(response, 200, { widgets: await listWidgets(), defaultWidgetId: DEFAULT_WIDGET_ID });
+      return sendJson(response, 200, { widgets: await listAllWidgets(), defaultWidgetId: DEFAULT_WIDGET_ID });
     }
 
     if (request.method === "GET" && url.pathname === "/api/widget") {
       const platform = url.searchParams.get("platform") === "streamlabs" ? "streamlabs" : "streamelements";
       const widgetId = url.searchParams.get("id") || DEFAULT_WIDGET_ID;
-      const widgetInfo = await getWidgetInfo(widgetId);
-      if (!widgetInfo) return sendJson(response, 404, { error: "Widget introuvable" });
-      return sendJson(response, 200, await loadWidget(widgetInfo, platform));
+      const found = await findWidgetInfo(widgetId);
+      if (!found) return sendJson(response, 404, { error: "Widget introuvable" });
+      const loaded = await loadWidget(found.widgetInfo, platform);
+      loaded.widgetMeta.projectId = found.projectId;
+      return sendJson(response, 200, loaded);
     }
 
     if (request.method === "PUT" && url.pathname === "/api/widget/file") {
       const body = await readRequestJson(request);
-      const widgetInfo = await getWidgetInfo(body.widgetId);
-      if (!widgetInfo) return sendJson(response, 404, { error: "Widget introuvable" });
+      const found = await findWidgetInfo(body.widgetId);
+      if (!found) return sendJson(response, 404, { error: "Widget introuvable" });
       if (!editableWidgetFiles.has(body.file)) {
         return sendJson(response, 400, { error: "Fichier de widget non autorise" });
       }
@@ -169,10 +276,10 @@ const server = createServer(async (request, response) => {
       } catch (error) {
         return sendJson(response, error.status || 400, { error: error.message });
       }
-      const path = join(widgetInfo.directory, body.file);
+      const path = join(found.widgetInfo.directory, body.file);
       await writeFile(path, body.content, "utf8");
-      await bumpUpdatedAt(widgetInfo.directory);
-      return sendJson(response, 200, { saved: true, widgetId: widgetInfo.id, file: body.file, at: Date.now() });
+      await bumpUpdatedAt(found.widgetInfo.directory);
+      return sendJson(response, 200, { saved: true, widgetId: found.widgetInfo.id, file: body.file, at: Date.now() });
     }
 
     if (request.method === "POST" && url.pathname === "/api/widgets") {
@@ -184,24 +291,27 @@ const server = createServer(async (request, response) => {
         return sendJson(response, 400, { error: error.message });
       }
       const type = body.type === "alert" ? "alert" : "widget";
+      const projectInfo = await getProjectInfo(body.projectId);
+      if (!projectInfo) return sendJson(response, 404, { error: "Projet introuvable" });
 
-      const widgets = await listWidgets();
-      const widgetId = uniqueWidgetId(slugify(metadata.name), new Set(widgets.map((entry) => entry.id)));
+      const widgets = await listWidgets(categoryDirsForProject(projectInfo.id));
+      const widgetId = uniqueWidgetId(slugify(metadata.name), await allWidgetIds());
       const order = widgets.reduce((max, entry) => Math.max(max, entry.order), 0) + 10;
       const now = Date.now();
       const manifest = { id: widgetId, ...metadata, order, createdAt: now, updatedAt: now };
-      const directory = join(categoryDirectory(type), widgetId);
+      const directory = join(categoryDirectory(projectInfo.id, type), widgetId);
 
       await createWidgetFiles(directory);
       await writeFile(join(directory, "widget.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
-      return sendJson(response, 201, { widget: widgetFromManifest(widgetId, manifest, type) });
+      return sendJson(response, 201, { widget: { ...widgetFromManifest(widgetId, manifest, type), projectId: projectInfo.id } });
     }
 
     if (request.method === "PUT" && url.pathname === "/api/widget/metadata") {
       const body = await readRequestJson(request);
-      const widgetInfo = await getWidgetInfo(body.widgetId);
-      if (!widgetInfo) return sendJson(response, 404, { error: "Widget introuvable" });
+      const found = await findWidgetInfo(body.widgetId);
+      if (!found) return sendJson(response, 404, { error: "Widget introuvable" });
+      const { projectId, widgetInfo } = found;
 
       let metadata;
       try {
@@ -217,33 +327,30 @@ const server = createServer(async (request, response) => {
 
       let targetDirectory = widgetInfo.directory;
       if (type !== widgetInfo.type) {
-        targetDirectory = join(categoryDirectory(type), widgetInfo.id);
+        targetDirectory = join(categoryDirectory(projectId, type), widgetInfo.id);
         await mkdir(dirname(targetDirectory), { recursive: true });
         await rename(widgetInfo.directory, targetDirectory);
       }
 
       await writeFile(join(targetDirectory, "widget.json"), `${JSON.stringify(updatedManifest, null, 2)}\n`, "utf8");
-      return sendJson(response, 200, { widget: widgetFromManifest(widgetInfo.id, updatedManifest, type) });
+      return sendJson(response, 200, { widget: { ...widgetFromManifest(widgetInfo.id, updatedManifest, type), projectId } });
     }
 
     if (request.method === "DELETE" && url.pathname === "/api/widget") {
-      const widgetInfo = await getWidgetInfo(url.searchParams.get("id"));
-      if (!widgetInfo) return sendJson(response, 404, { error: "Widget introuvable" });
-      if ((await listWidgets()).length <= 1) {
-        return sendJson(response, 400, { error: "Impossible de supprimer le dernier widget" });
-      }
-      await rm(widgetInfo.directory, { recursive: true, force: true });
-      return sendJson(response, 200, { deleted: true, widgetId: widgetInfo.id });
+      const found = await findWidgetInfo(url.searchParams.get("id"));
+      if (!found) return sendJson(response, 404, { error: "Widget introuvable" });
+      await rm(found.widgetInfo.directory, { recursive: true, force: true });
+      return sendJson(response, 200, { deleted: true, widgetId: found.widgetInfo.id });
     }
 
     if (request.method === "GET" && url.pathname === "/api/overlays") {
-      return sendJson(response, 200, { overlays: await listOverlays() });
+      return sendJson(response, 200, { overlays: await listAllOverlays() });
     }
 
     if (request.method === "GET" && url.pathname === "/api/overlay") {
-      const overlayInfo = await getOverlayInfo(url.searchParams.get("id"));
-      if (!overlayInfo) return sendJson(response, 404, { error: "Overlay introuvable" });
-      return sendJson(response, 200, { overlay: overlayInfo });
+      const found = await findOverlayInfo(url.searchParams.get("id"));
+      if (!found) return sendJson(response, 404, { error: "Overlay introuvable" });
+      return sendJson(response, 200, { overlay: { ...found.overlayInfo, projectId: found.projectId } });
     }
 
     if (request.method === "POST" && url.pathname === "/api/overlays") {
@@ -254,11 +361,12 @@ const server = createServer(async (request, response) => {
       } catch (error) {
         return sendJson(response, 400, { error: error.message });
       }
+      const projectInfo = await getProjectInfo(body.projectId);
+      if (!projectInfo) return sendJson(response, 404, { error: "Projet introuvable" });
 
-      const overlays = await listOverlays();
-      const overlayId = uniqueWidgetId(slugify(metadata.name), new Set(overlays.map((entry) => entry.id)));
-      const overlay = await createOverlay({ id: overlayId, ...metadata, canvas: { width: body.width, height: body.height } });
-      return sendJson(response, 201, { overlay });
+      const overlayId = uniqueWidgetId(slugify(metadata.name), await allOverlayIds());
+      const overlay = await createOverlay(projectInfo.id, { id: overlayId, ...metadata, canvas: { width: body.width, height: body.height } });
+      return sendJson(response, 201, { overlay: { ...overlay, projectId: projectInfo.id } });
     }
 
     if (request.method === "PUT" && url.pathname === "/api/overlay/metadata") {
@@ -269,9 +377,10 @@ const server = createServer(async (request, response) => {
       } catch (error) {
         return sendJson(response, 400, { error: error.message });
       }
-      const overlay = await updateOverlayMetadata(body.overlayId, { ...metadata, canvas: { width: body.width, height: body.height } });
-      if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
-      return sendJson(response, 200, { overlay });
+      const found = await findOverlayInfo(body.overlayId);
+      if (!found) return sendJson(response, 404, { error: "Overlay introuvable" });
+      const overlay = await updateOverlayMetadata(found.projectId, body.overlayId, { ...metadata, canvas: { width: body.width, height: body.height } });
+      return sendJson(response, 200, { overlay: { ...overlay, projectId: found.projectId } });
     }
 
     if (request.method === "PUT" && url.pathname === "/api/overlay/source") {
@@ -287,7 +396,7 @@ const server = createServer(async (request, response) => {
       }
 
       if (sourcePlatform) {
-        const overlays = await listOverlays();
+        const overlays = await listAllOverlays();
         const conflict = overlays.find(
           (entry) => entry.id !== body.overlayId && entry.sourcePlatform === sourcePlatform && entry.sourceOverlayId === sourceOverlayId
         );
@@ -296,43 +405,47 @@ const server = createServer(async (request, response) => {
         }
       }
 
-      const overlay = await updateOverlaySource(body.overlayId, { sourcePlatform, sourceOverlayId });
-      if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
-      return sendJson(response, 200, { overlay });
+      const found = await findOverlayInfo(body.overlayId);
+      if (!found) return sendJson(response, 404, { error: "Overlay introuvable" });
+      const overlay = await updateOverlaySource(found.projectId, body.overlayId, { sourcePlatform, sourceOverlayId });
+      return sendJson(response, 200, { overlay: { ...overlay, projectId: found.projectId } });
     }
 
     if (request.method === "PUT" && url.pathname === "/api/overlay/items") {
       const body = await readRequestJson(request);
       if (!Array.isArray(body.items)) return sendJson(response, 400, { error: "Items invalides" });
-      const overlay = await replaceOverlayItems(body.overlayId, body.items);
-      if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
+      const found = await findOverlayInfo(body.overlayId);
+      if (!found) return sendJson(response, 404, { error: "Overlay introuvable" });
+      const overlay = await replaceOverlayItems(found.projectId, body.overlayId, body.items);
       return sendJson(response, 200, { saved: true, overlayId: overlay.id, at: Date.now() });
     }
 
     if (request.method === "PUT" && url.pathname === "/api/overlay/guides") {
       const body = await readRequestJson(request);
       if (!body.guides || typeof body.guides !== "object") return sendJson(response, 400, { error: "Repères invalides" });
-      const overlay = await replaceOverlayGuides(body.overlayId, body.guides);
-      if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
+      const found = await findOverlayInfo(body.overlayId);
+      if (!found) return sendJson(response, 404, { error: "Overlay introuvable" });
+      const overlay = await replaceOverlayGuides(found.projectId, body.overlayId, body.guides);
       return sendJson(response, 200, { saved: true, overlayId: overlay.id, at: Date.now() });
     }
 
     if (request.method === "DELETE" && url.pathname === "/api/overlay") {
-      const deleted = await deleteOverlay(url.searchParams.get("id"));
-      if (!deleted) return sendJson(response, 404, { error: "Overlay introuvable" });
-      return sendJson(response, 200, { deleted: true, overlayId: url.searchParams.get("id") });
+      const overlayId = url.searchParams.get("id");
+      const found = await findOverlayInfo(overlayId);
+      if (!found) return sendJson(response, 404, { error: "Overlay introuvable" });
+      await deleteOverlay(found.projectId, overlayId);
+      return sendJson(response, 200, { deleted: true, overlayId });
     }
 
     if (request.method === "POST" && url.pathname === "/api/overlay/duplicate") {
       const body = await readRequestJson(request);
-      const overlayInfo = await getOverlayInfo(body.overlayId);
-      if (!overlayInfo) return sendJson(response, 404, { error: "Overlay introuvable" });
-      const overlays = await listOverlays();
-      const newName = `${overlayInfo.name} (copie)`;
-      const newId = uniqueWidgetId(slugify(newName), new Set(overlays.map((entry) => entry.id)));
-      const overlay = await duplicateOverlay(body.overlayId, newId, newName);
+      const found = await findOverlayInfo(body.overlayId);
+      if (!found) return sendJson(response, 404, { error: "Overlay introuvable" });
+      const newName = `${found.overlayInfo.name} (copie)`;
+      const newId = uniqueWidgetId(slugify(newName), await allOverlayIds());
+      const overlay = await duplicateOverlay(found.projectId, body.overlayId, newId, newName);
       if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
-      return sendJson(response, 201, { overlay });
+      return sendJson(response, 201, { overlay: { ...overlay, projectId: found.projectId } });
     }
 
     if (request.method === "GET" && url.pathname === "/api/state") {
@@ -552,24 +665,30 @@ const server = createServer(async (request, response) => {
         const canvas = { width: detail.settings?.width, height: detail.settings?.height };
 
         // Un meme overlay StreamElements deja importe est retrouve via
-        // sourcePlatform+sourceOverlayId et mis a jour sur place plutot que
-        // recree, pour ne jamais accumuler de doublons a chaque reimport.
-        const existingOverlays = await listOverlays();
+        // sourcePlatform+sourceOverlayId et mis a jour sur place (dans son
+        // projet d'origine) plutot que recree, pour ne jamais accumuler de
+        // doublons a chaque reimport.
+        const existingOverlays = await listAllOverlays();
         const alreadyImported = existingOverlays.find(
           (entry) => entry.sourcePlatform === "streamelements" && entry.sourceOverlayId === body.overlayId
         );
 
         let overlay;
+        let projectId;
         if (alreadyImported) {
-          overlay = await updateOverlayMetadata(alreadyImported.id, {
+          projectId = alreadyImported.projectId;
+          overlay = await updateOverlayMetadata(projectId, alreadyImported.id, {
             name: overlayName,
             description: alreadyImported.description,
             icon: alreadyImported.icon,
             canvas
           });
         } else {
-          const overlayId = uniqueWidgetId(slugify(overlayName), new Set(existingOverlays.map((entry) => entry.id)));
-          overlay = await createOverlay({
+          const projectInfo = await getProjectInfo(body.projectId);
+          if (!projectInfo) return sendJson(response, 404, { error: "Projet introuvable" });
+          projectId = projectInfo.id;
+          const overlayId = uniqueWidgetId(slugify(overlayName), await allOverlayIds());
+          overlay = await createOverlay(projectId, {
             id: overlayId,
             name: overlayName,
             description: "",
@@ -597,8 +716,8 @@ const server = createServer(async (request, response) => {
           };
         }) || [];
 
-        const savedOverlay = await replaceOverlayItems(overlay.id, items);
-        return sendJson(response, 201, { overlay: savedOverlay, placeholders: items.length, updated: Boolean(alreadyImported) });
+        const savedOverlay = await replaceOverlayItems(projectId, overlay.id, items);
+        return sendJson(response, 201, { overlay: { ...savedOverlay, projectId }, placeholders: items.length, updated: Boolean(alreadyImported) });
       } catch (error) {
         return sendJson(response, 502, { error: `Import de l'overlay StreamElements impossible : ${error.message}` });
       }
@@ -889,6 +1008,77 @@ const WIDGET_TEMPLATE_FILES = {
   "data.streamelements.json": "{}\n",
   "data.streamlabs.json": "{}\n"
 };
+
+function parseProjectMetadataInput(body) {
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const description = typeof body.description === "string" ? body.description.trim() : "";
+  const icon = typeof body.icon === "string" ? body.icon.trim() : "";
+  if (!name || name.length > 60) throw new Error("Le nom doit contenir entre 1 et 60 caracteres");
+  if (description.length > 140) throw new Error("La description est limitee a 140 caracteres");
+  if (!/^[a-z0-9_]{1,40}$/.test(icon)) throw new Error("Icone Material invalide");
+  return { name, description, icon };
+}
+
+// Les ids de widget/overlay restent uniques sur TOUTE la bibliotheque (pas
+// seulement au sein d'un projet) : ca permet de retrouver un widget/overlay
+// par son id sans connaitre son projet a l'avance (cf. findWidgetInfo /
+// findOverlayInfo ci-dessous), donc aucune route existante n'a besoin de
+// recevoir un projectId pour editer/supprimer/dupliquer un item deja cree -
+// seule sa creation (qui n'a pas encore d'emplacement) en a besoin.
+async function listAllWidgets() {
+  const widgets = [];
+  for (const project of await listProjects()) {
+    for (const entry of await listWidgets(categoryDirsForProject(project.id))) {
+      widgets.push({ ...entry, projectId: project.id });
+    }
+  }
+  return widgets;
+}
+
+async function listAllOverlays() {
+  const overlays = [];
+  for (const project of await listProjects()) {
+    for (const entry of await listOverlays(project.id)) {
+      overlays.push({ ...entry, projectId: project.id });
+    }
+  }
+  return overlays;
+}
+
+async function allWidgetIds() {
+  return new Set((await listAllWidgets()).map((entry) => entry.id));
+}
+
+async function allOverlayIds() {
+  return new Set((await listAllOverlays()).map((entry) => entry.id));
+}
+
+async function findWidgetInfo(widgetId) {
+  if (typeof widgetId !== "string" || !widgetId) return null;
+  for (const project of await listProjects()) {
+    const widgetInfo = await getWidgetInfo(widgetId, categoryDirsForProject(project.id));
+    if (widgetInfo) return { projectId: project.id, widgetInfo };
+  }
+  return null;
+}
+
+async function findOverlayInfo(overlayId) {
+  if (typeof overlayId !== "string" || !overlayId) return null;
+  for (const project of await listProjects()) {
+    const overlayInfo = await getOverlayInfo(project.id, overlayId);
+    if (overlayInfo) return { projectId: project.id, overlayInfo };
+  }
+  return null;
+}
+
+// Renomme le dossier d'un widget/alerte deja localise (via findWidgetInfo)
+// vers un autre projet ; no-op si deja dans ce projet.
+async function moveWidgetDirectory(found, targetProjectId) {
+  if (found.projectId === targetProjectId) return;
+  const targetDirectory = join(categoryDirectory(targetProjectId, found.widgetInfo.type), found.widgetInfo.id);
+  await mkdir(dirname(targetDirectory), { recursive: true });
+  await rename(found.widgetInfo.directory, targetDirectory);
+}
 
 function parseWidgetMetadataInput(body) {
   const name = typeof body.name === "string" ? body.name.trim() : "";

@@ -125,6 +125,12 @@
             </div>
           </summary>
           <div class="sidebar-section__body">
+            <div class="library-projects-bar">
+              <button class="button button--quiet library-projects-bar__add" id="add-project" type="button">
+                <span class="material-symbols-rounded" aria-hidden="true">create_new_folder</span>
+                <span>Nouveau projet</span>
+              </button>
+            </div>
             <details class="library-group" data-library-group="overlay" open>
               <summary class="library-group__summary">
                 <span class="material-symbols-rounded" aria-hidden="true">desktop_landscape</span>
@@ -217,14 +223,37 @@
             <h2>Bienvenue sur Streamer <span class="text-accent">Lab</span></h2>
             <p>Ton bac à sable local pour créer, tester et peaufiner tes widgets, alertes et overlays StreamElements ou Streamlabs en aperçu temps réel — sans jamais toucher à ce qui est déjà en ligne.</p>
           </div>
+          <section class="dashboard-view__projects-section">
+            <div class="dashboard-view__column-header">
+              <h4 class="dashboard-view__column-title">Projets</h4>
+              <button class="icon-button" type="button" id="dashboard-add-project"
+                      aria-label="Nouveau projet" title="Nouveau projet">
+                <span class="material-symbols-rounded" aria-hidden="true">create_new_folder</span>
+              </button>
+            </div>
+            <p class="dashboard-view__projects-hint">Glisse un overlay, un widget ou une alerte sur un projet pour l’y déplacer.</p>
+            <div class="project-cards" id="dashboard-project-list"></div>
+          </section>
           <div class="dashboard-view__columns">
             <section class="dashboard-view__group">
               <h3 class="dashboard-view__group-title">Ma bibliothèque</h3>
-              <label class="dashboard-view__search" for="dashboard-library-search">
-                <span class="material-symbols-rounded" aria-hidden="true">search</span>
-                <input id="dashboard-library-search" type="search" list="dashboard-library-suggestions"
-                       placeholder="Rechercher un widget, une alerte ou un overlay…" autocomplete="off">
-              </label>
+              <div class="dashboard-view__search-row">
+                <label class="dashboard-view__search" for="dashboard-library-search">
+                  <span class="material-symbols-rounded" aria-hidden="true">search</span>
+                  <input id="dashboard-library-search" type="search" list="dashboard-library-suggestions"
+                         placeholder="Rechercher un widget, une alerte ou un overlay…" autocomplete="off">
+                </label>
+                <div class="dashboard-view__project-filter">
+                  <button class="dashboard-view__project-filter-trigger" type="button" id="dashboard-project-filter-trigger"
+                          data-dropdown-trigger aria-haspopup="menu" aria-expanded="false" aria-label="Filtrer par projet">
+                    <span class="material-symbols-rounded" aria-hidden="true">folder</span>
+                    <span class="dashboard-view__project-filter-label" id="dashboard-project-filter-label">Tous les projets</span>
+                    <span class="material-symbols-rounded dashboard-view__project-filter-chevron" aria-hidden="true">expand_more</span>
+                  </button>
+                  <div class="dashboard-view__filter-panel dashboard-view__project-filter-panel" role="menu"
+                       id="dashboard-project-filter-panel" hidden></div>
+                </div>
+              </div>
               <datalist id="dashboard-library-suggestions"></datalist>
               <div class="dashboard-view__overlays">
                 <div class="dashboard-view__column-header">
@@ -940,6 +969,10 @@
             <span class="field__label">Nom</span>
             <input id="widget-settings-name" maxlength="60" required autocomplete="off">
           </label>
+          <label class="field">
+            <span class="field__label">Projet</span>
+            <select id="widget-settings-project" required></select>
+          </label>
           <fieldset class="widget-type-field">
             <legend>Type</legend>
             <div class="widget-type-switch" id="widget-type-choice" role="group" aria-label="Type de widget">
@@ -1006,6 +1039,10 @@
             <input id="overlay-settings-name" maxlength="60" required autocomplete="off">
           </label>
           <label class="field">
+            <span class="field__label">Projet</span>
+            <select id="overlay-settings-project" required></select>
+          </label>
+          <label class="field">
             <span class="field__label">Description</span>
             <textarea id="overlay-settings-description" rows="3" maxlength="140"></textarea>
           </label>
@@ -1039,6 +1076,41 @@
         <footer class="widget-settings__footer">
           <button class="button button--quiet" id="cancel-overlay-settings" type="button">Annuler</button>
           <button class="button button--primary" id="save-overlay-settings" type="submit">Enregistrer</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="widget-settings" id="project-settings-dialog" aria-labelledby="project-settings-title">
+      <form class="widget-settings__form" id="project-settings-form">
+        <header class="widget-settings__header">
+          <div>
+            <span class="eyebrow">BIBLIOTHÈQUE</span>
+            <h2 id="project-settings-title">Nouveau projet</h2>
+          </div>
+          <button class="icon-button" id="close-project-settings" type="button" aria-label="Fermer">
+            <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+          </button>
+        </header>
+        <div class="widget-settings__body">
+          <input id="project-settings-id" type="hidden">
+          <label class="field">
+            <span class="field__label">Nom</span>
+            <input id="project-settings-name" maxlength="60" required autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="field__label">Description</span>
+            <textarea id="project-settings-description" rows="3" maxlength="140"></textarea>
+          </label>
+          <fieldset class="widget-icon-field">
+            <legend>Icône</legend>
+            <div class="widget-icon-choices" id="project-icon-choices"></div>
+          </fieldset>
+          <p class="widget-settings__message" id="project-settings-message" role="status" aria-live="polite"></p>
+        </div>
+        <footer class="widget-settings__footer">
+          <button class="button button--quiet is-danger" id="delete-project-settings" type="button" hidden>Supprimer le projet</button>
+          <button class="button button--quiet" id="cancel-project-settings" type="button">Annuler</button>
+          <button class="button button--primary" id="save-project-settings" type="submit">Créer</button>
         </footer>
       </form>
     </dialog>

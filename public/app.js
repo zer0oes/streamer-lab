@@ -17,6 +17,24 @@ const elements = {
   alertList: document.querySelector("#alert-list"),
   alertCount: document.querySelector("#alert-count"),
   addAlertButton: document.querySelector("#add-alert"),
+  addProjectButton: document.querySelector("#add-project"),
+  widgetSettingsProject: document.querySelector("#widget-settings-project"),
+  overlaySettingsProject: document.querySelector("#overlay-settings-project"),
+  projectSettingsDialog: document.querySelector("#project-settings-dialog"),
+  projectSettingsForm: document.querySelector("#project-settings-form"),
+  projectSettingsTitle: document.querySelector("#project-settings-title"),
+  projectSettingsId: document.querySelector("#project-settings-id"),
+  projectSettingsName: document.querySelector("#project-settings-name"),
+  projectSettingsDescription: document.querySelector("#project-settings-description"),
+  projectIconChoices: document.querySelector("#project-icon-choices"),
+  projectSettingsMessage: document.querySelector("#project-settings-message"),
+  saveProjectSettings: document.querySelector("#save-project-settings"),
+  deleteProjectSettings: document.querySelector("#delete-project-settings"),
+  dashboardProjectFilterTrigger: document.querySelector("#dashboard-project-filter-trigger"),
+  dashboardProjectFilterLabel: document.querySelector("#dashboard-project-filter-label"),
+  dashboardProjectFilterPanel: document.querySelector("#dashboard-project-filter-panel"),
+  dashboardProjectList: document.querySelector("#dashboard-project-list"),
+  dashboardAddProjectButton: document.querySelector("#dashboard-add-project"),
   sidebarSections: document.querySelectorAll("[data-sidebar-section]"),
   mediaSection: document.querySelector('[data-sidebar-section="media"]'),
   mediaLibraryList: document.querySelector("#media-library"),
@@ -165,6 +183,11 @@ const elements = {
 
 let widget;
 let eventSimulatorCloseTimer;
+let projects = [];
+let selectedProjectIcon = "folder";
+let projectSettingsMode = "create";
+// "" = tous les projets confondus (aucun filtre) dans le dashboard.
+let dashboardProjectFilterId = "";
 let widgetCatalog = [];
 let activeWidgetId = "";
 let librarySearchTerm = "";
@@ -383,6 +406,16 @@ const overlayIconChoices = [
   ["sports_esports", "Jeu"],
   ["forum", "Chat"],
   ["celebration", "Célébration"]
+];
+const projectIconChoices = [
+  ["folder", "Dossier"],
+  ["sports_esports", "Jeu"],
+  ["music_note", "Musique"],
+  ["forum", "Chat"],
+  ["celebration", "Événement"],
+  ["star", "Étoile"],
+  ["rocket_launch", "Lancement"],
+  ["favorite", "Cœur"]
 ];
 const DEFAULT_OVERLAY_CANVAS = { width: 1920, height: 1080 };
 // Doit rester identique au plancher MIN_ITEM_SIZE de lib/overlays.mjs : une
@@ -680,6 +713,7 @@ initializeMediaLibrary();
 initializeLibraryGroups();
 initializeWidgetSettings();
 initializeOverlaySettings();
+initializeProjectSettings();
 initializeOverlayCanvas();
 initializeDropdowns();
 initializeDashboardLibraryControls();
@@ -1047,6 +1081,25 @@ function revealLibraryGroupForWidget(widgetId) {
   shownList.classList.add("is-entering");
 }
 
+// Ferme un <dialog> au clic sur son propre "backdrop" (l'espace du dialog
+// lui-même, hors de son contenu — event.target === dialog dans ce cas).
+// Un simple "click" ne suffit pas : sélectionner du texte à la souris dans
+// un champ proche du bord du dialog peut terminer le drag (mouseup) sur ce
+// backdrop, ce qui déclenche un click dont la cible est le dialog — sans
+// suivi du mousedown, ça fermait le dialog en pleine sélection de texte. On
+// n'autorise donc la fermeture que si le mousedown ET le click visent tous
+// les deux le backdrop (un vrai clic dessus, pas la fin d'un drag qui y passe).
+function closeDialogOnBackdropClick(dialog, close) {
+  let pressedOnBackdrop = false;
+  dialog.addEventListener("mousedown", (event) => {
+    pressedOnBackdrop = event.target === dialog;
+  });
+  dialog.addEventListener("click", (event) => {
+    if (pressedOnBackdrop && event.target === dialog) close();
+    pressedOnBackdrop = false;
+  });
+}
+
 function initializeWidgetSettings() {
   for (const [iconName, label] of widgetIconChoices) {
     const button = document.createElement("button");
@@ -1067,9 +1120,7 @@ function initializeWidgetSettings() {
   const close = () => elements.widgetSettingsDialog.close();
   document.querySelector("#close-widget-settings").addEventListener("click", close);
   document.querySelector("#cancel-widget-settings").addEventListener("click", close);
-  elements.widgetSettingsDialog.addEventListener("click", event => {
-    if (event.target === elements.widgetSettingsDialog) close();
-  });
+  closeDialogOnBackdropClick(elements.widgetSettingsDialog, close);
   // Couvre aussi Échap (que "close"/"cancel-widget-settings" ci-dessus ne
   // couvrent pas) : si la création est annulée, creatingWidgetForOverlay ne
   // doit pas rester à true et fausser une prochaine création lancée depuis
@@ -1149,9 +1200,7 @@ function initializeContactForm() {
   });
   document.querySelector("#close-contact-dialog").addEventListener("click", close);
   document.querySelector("#cancel-contact").addEventListener("click", close);
-  elements.contactDialog.addEventListener("click", event => {
-    if (event.target === elements.contactDialog) close();
-  });
+  closeDialogOnBackdropClick(elements.contactDialog, close);
   elements.contactForm.addEventListener("submit", event => {
     event.preventDefault();
     void submitContactForm();
@@ -1195,6 +1244,11 @@ function openWidgetSettings(entry) {
   elements.widgetSettingsDescription.value = entry.description || "";
   elements.widgetSettingsWidth.value = entry.width || DEFAULT_WIDGET_SIZE.width;
   elements.widgetSettingsHeight.value = entry.height || DEFAULT_WIDGET_SIZE.height;
+  // Changer le projet ici appelle moveLibraryItemToProject après
+  // l'enregistrement des métadonnées (cf. saveWidgetMetadata) - alternative
+  // au glisser-déposer d'une ligne sur un groupe-projet.
+  populateProjectSelect(elements.widgetSettingsProject, entry.projectId);
+  elements.widgetSettingsProject.disabled = false;
   setWidgetSettingsMessage("");
   selectWidgetIcon(entry.icon || "widgets");
   selectWidgetType(entry.type || "widget");
@@ -1205,13 +1259,15 @@ function openWidgetSettings(entry) {
   elements.widgetSettingsName.select();
 }
 
-function openWidgetCreation(defaultType = "widget") {
+function openWidgetCreation(defaultType = "widget", defaultProjectId) {
   widgetSettingsMode = "create";
   elements.widgetSettingsId.value = "";
   elements.widgetSettingsName.value = "";
   elements.widgetSettingsDescription.value = "";
   elements.widgetSettingsWidth.value = DEFAULT_WIDGET_SIZE.width;
   elements.widgetSettingsHeight.value = DEFAULT_WIDGET_SIZE.height;
+  populateProjectSelect(elements.widgetSettingsProject, defaultProjectId || dashboardProjectFilterId || projects[0]?.id);
+  elements.widgetSettingsProject.disabled = false;
   setWidgetSettingsMessage("");
   selectWidgetIcon(defaultType === "alert" ? "celebration" : "widgets");
   selectWidgetType(defaultType);
@@ -1264,7 +1320,7 @@ async function saveWidgetMetadata() {
       ? await fetch("/api/widgets", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, description, icon: selectedWidgetIcon, type: selectedWidgetType, width, height })
+          body: JSON.stringify({ name, description, icon: selectedWidgetIcon, type: selectedWidgetType, width, height, projectId: elements.widgetSettingsProject.value })
         })
       : await fetch("/api/widget/metadata", {
           method: "PUT",
@@ -1304,6 +1360,10 @@ async function saveWidgetMetadata() {
       applyWidgetMeta();
       applyWidgetDefaultPreviewSize(widget);
     }
+    const targetProjectId = elements.widgetSettingsProject.value;
+    if (targetProjectId && targetProjectId !== updatedWidget.projectId) {
+      await moveLibraryItemToProject("widget", updatedWidget.id, targetProjectId);
+    }
     revealLibraryGroupForWidget(updatedWidget.id);
     renderWidgetLibrary();
     setWidgetSettingsMessage("Informations enregistrées.", "success");
@@ -1315,6 +1375,469 @@ async function saveWidgetMetadata() {
     elements.saveWidgetSettings.disabled = false;
     elements.saveWidgetSettings.textContent = isCreating ? "Créer" : "Enregistrer";
   }
+}
+
+// --- Projets : regroupement de la bibliothèque, dialogue de création/édition ---
+
+function projectNameFor(projectId) {
+  return projects.find((entry) => entry.id === projectId)?.name || "";
+}
+
+async function fetchProjects() {
+  const response = await fetch("/api/projects");
+  if (!response.ok) throw new Error((await response.json()).error);
+  const body = await response.json();
+  projects = body.projects || [];
+  refreshProjectSelects();
+}
+
+function populateProjectSelect(selectEl, selectedId) {
+  if (!selectEl) return;
+  selectEl.innerHTML = projects.map((project) =>
+    `<option value="${escapeHtml(project.id)}">${escapeHtml(project.name)}</option>`
+  ).join("");
+  if (selectedId && projects.some((project) => project.id === selectedId)) selectEl.value = selectedId;
+}
+
+// Menu custom (même mécanique que les tris "Trier les overlays/widgets/
+// alertes" du dashboard, cf. data-dropdown-trigger/toggleDropdown) plutôt
+// qu'un <select> natif : la liste déroulante d'un <select> est dessinée par
+// le navigateur/OS et ignore le thème du site (fond blanc, item survolé en
+// bleu système) - ce menu-ci reste dans le même design que le reste de l'appli.
+function populateDashboardProjectFilter() {
+  if (!elements.dashboardProjectFilterPanel) return;
+  const items = [{ id: "", name: "Tous les projets" }, ...projects];
+  elements.dashboardProjectFilterPanel.replaceChildren(...items.map((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "dashboard-view__filter-item";
+    button.setAttribute("role", "menuitemradio");
+    button.dataset.projectFilter = item.id;
+    button.innerHTML = `<span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span><span>${escapeHtml(item.name)}</span>`;
+    button.addEventListener("click", () => {
+      closeAllDropdowns();
+      dashboardProjectFilterId = item.id;
+      dashboardPage.overlay = 0;
+      dashboardPage.widget = 0;
+      dashboardPage.alert = 0;
+      updateDashboardProjectFilterUi();
+      renderOverlayLibrary();
+      renderWidgetLibrary();
+    });
+    return button;
+  }));
+  updateDashboardProjectFilterUi();
+}
+
+function updateDashboardProjectFilterUi() {
+  if (elements.dashboardProjectFilterLabel) {
+    elements.dashboardProjectFilterLabel.textContent = dashboardProjectFilterId
+      ? projectNameFor(dashboardProjectFilterId)
+      : "Tous les projets";
+  }
+  if (!elements.dashboardProjectFilterPanel) return;
+  for (const item of elements.dashboardProjectFilterPanel.querySelectorAll("[data-project-filter]")) {
+    item.setAttribute("aria-checked", String(item.dataset.projectFilter === dashboardProjectFilterId));
+  }
+}
+
+function refreshProjectSelects() {
+  populateProjectSelect(elements.widgetSettingsProject, elements.widgetSettingsProject.value);
+  populateProjectSelect(elements.overlaySettingsProject, elements.overlaySettingsProject.value);
+  populateDashboardProjectFilter();
+}
+
+// N'affiche que les entrées du projet sélectionné dans le filtre du
+// dashboard ("" = tous les projets, aucun filtre) — appliqué avant
+// filterAndSortLibraryEntries, qui lui gère la recherche texte + le tri.
+function filterEntriesByProject(entries) {
+  return dashboardProjectFilterId ? entries.filter((entry) => entry.projectId === dashboardProjectFilterId) : entries;
+}
+
+function buildProjectSubgroup(project, entries, buildRow, options) {
+  const details = document.createElement("details");
+  details.className = "library-subgroup";
+  details.dataset.projectId = project.id;
+  details.open = true;
+
+  const summary = document.createElement("summary");
+  summary.className = "library-subgroup__summary";
+
+  const icon = document.createElement("span");
+  icon.className = "material-symbols-rounded";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = project.icon || "folder";
+
+  const label = document.createElement("span");
+  label.className = "library-subgroup__label";
+  label.textContent = project.name;
+
+  const count = document.createElement("span");
+  count.className = "library-subgroup__count";
+  count.textContent = String(entries.length);
+
+  const editButton = document.createElement("button");
+  editButton.type = "button";
+  editButton.className = "library-subgroup__edit";
+  editButton.title = `Modifier le projet « ${project.name} »`;
+  editButton.setAttribute("aria-label", `Modifier le projet ${project.name}`);
+  editButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">edit</span>';
+  editButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openProjectSettings(project);
+  });
+
+  const chevron = document.createElement("span");
+  chevron.className = "material-symbols-rounded library-subgroup__chevron";
+  chevron.setAttribute("aria-hidden", "true");
+  chevron.textContent = "expand_more";
+
+  summary.append(icon, label, count, editButton, chevron);
+  // Glisser une ligne d'overlay/widget/alerte (cf. startLibraryItemDrag dans
+  // buildOverlayLibraryRow/buildWidgetLibraryRow) jusqu'ici la déplace vers ce
+  // projet - fonctionne même repliée, le survol de l'en-tête suffit.
+  summary.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    summary.classList.add("is-drop-target");
+  });
+  summary.addEventListener("dragleave", () => summary.classList.remove("is-drop-target"));
+  summary.addEventListener("drop", async (event) => {
+    summary.classList.remove("is-drop-target");
+    await handleLibraryItemDrop(event, project.id);
+  });
+  details.append(summary);
+
+  const body = document.createElement("div");
+  body.className = "library-subgroup__body";
+  if (entries.length) {
+    for (const entry of entries) body.append(buildRow(entry, options));
+  } else {
+    body.append(buildLibraryEmptyState("Rien ici pour l’instant."));
+  }
+  details.append(body);
+  return details;
+}
+
+// Regroupe `entries` par projet (dans l'ordre de `projects`) sous des
+// en-têtes repliables réutilisant .library-group — c'est la "vue groupée"
+// de la bibliothèque (sidebar), par opposition au dashboard qui lui reste à
+// plat avec un simple filtre projet (cf. filterEntriesByProject ci-dessus).
+function populateLibraryListGroupedByProject(container, entries, emptyMessage, buildRow, options) {
+  container.replaceChildren();
+  if (!projects.length) {
+    container.append(buildLibraryEmptyState(emptyMessage));
+    return;
+  }
+
+  // Avec un seul projet, l'en-tête de sous-groupe (icône/nom/compteur/crayon
+  // en plus de celui du groupe Overlays/Widgets/Alertes juste au-dessus) ne
+  // fait que dupliquer une information déjà évidente - ça n'apporte rien tant
+  // qu'il n'y a rien d'autre à distinguer, et ça donne un aspect "boîte dans
+  // la boîte" chargé. On repasse alors à une liste à plat, comme avant
+  // l'introduction des projets ; le regroupement ne réapparaît que dès qu'un
+  // 2e projet existe, où il redevient utile.
+  if (projects.length === 1) {
+    if (entries.length) {
+      for (const entry of entries) container.append(buildRow(entry, options));
+    } else {
+      container.append(buildLibraryEmptyState(emptyMessage));
+    }
+    return;
+  }
+
+  const byProject = new Map();
+  for (const entry of entries) {
+    if (!byProject.has(entry.projectId)) byProject.set(entry.projectId, []);
+    byProject.get(entry.projectId).push(entry);
+  }
+  for (const project of projects) {
+    container.append(buildProjectSubgroup(project, byProject.get(project.id) || [], buildRow, options));
+  }
+}
+
+function initializeProjectSettings() {
+  for (const [iconName, label] of projectIconChoices) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "widget-icon-choices__choice";
+    button.dataset.widgetIcon = iconName;
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${iconName}</span>`;
+    button.addEventListener("click", () => selectProjectIcon(iconName));
+    elements.projectIconChoices.append(button);
+  }
+
+  const close = () => elements.projectSettingsDialog.close();
+  document.querySelector("#close-project-settings").addEventListener("click", close);
+  document.querySelector("#cancel-project-settings").addEventListener("click", close);
+  closeDialogOnBackdropClick(elements.projectSettingsDialog, close);
+  elements.projectSettingsForm.addEventListener("submit", event => {
+    event.preventDefault();
+    void saveProjectMetadata();
+  });
+  elements.deleteProjectSettings.addEventListener("click", () => void deleteProjectEntry(elements.projectSettingsId.value));
+  elements.addProjectButton.addEventListener("click", () => openProjectCreation());
+  elements.dashboardAddProjectButton?.addEventListener("click", () => openProjectCreation());
+
+  elements.dashboardProjectFilterTrigger?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleDropdown(elements.dashboardProjectFilterTrigger);
+  });
+}
+
+function selectProjectIcon(iconName) {
+  selectedProjectIcon = projectIconChoices.some(([value]) => value === iconName) ? iconName : "folder";
+  for (const button of elements.projectIconChoices.querySelectorAll("[data-widget-icon]")) {
+    const selected = button.dataset.widgetIcon === selectedProjectIcon;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
+}
+
+function setProjectSettingsMessage(message, state = "") {
+  elements.projectSettingsMessage.textContent = message;
+  elements.projectSettingsMessage.className = `widget-settings__message${state ? ` is-${state}` : ""}`;
+}
+
+function openProjectCreation() {
+  projectSettingsMode = "create";
+  elements.projectSettingsId.value = "";
+  elements.projectSettingsName.value = "";
+  elements.projectSettingsDescription.value = "";
+  setProjectSettingsMessage("");
+  selectProjectIcon("folder");
+  elements.projectSettingsTitle.textContent = "Nouveau projet";
+  elements.saveProjectSettings.textContent = "Créer";
+  elements.deleteProjectSettings.hidden = true;
+  elements.projectSettingsDialog.showModal();
+  elements.projectSettingsName.focus();
+}
+
+function openProjectSettings(project) {
+  projectSettingsMode = "edit";
+  elements.projectSettingsId.value = project.id;
+  elements.projectSettingsName.value = project.name;
+  elements.projectSettingsDescription.value = project.description || "";
+  setProjectSettingsMessage("");
+  selectProjectIcon(project.icon || "folder");
+  elements.projectSettingsTitle.textContent = "Modifier le projet";
+  elements.saveProjectSettings.textContent = "Enregistrer";
+  // On garde toujours au moins un projet (même garde-fou côté serveur,
+  // DELETE /api/project) pour que la bibliothèque ait toujours un endroit où
+  // créer un nouvel item.
+  elements.deleteProjectSettings.hidden = projects.length <= 1;
+  elements.projectSettingsDialog.showModal();
+  elements.projectSettingsName.focus();
+  elements.projectSettingsName.select();
+}
+
+async function saveProjectMetadata() {
+  const isCreating = projectSettingsMode === "create";
+  const projectId = elements.projectSettingsId.value;
+  const name = elements.projectSettingsName.value.trim();
+  const description = elements.projectSettingsDescription.value.trim();
+  if (!name) {
+    elements.projectSettingsName.focus();
+    return;
+  }
+
+  elements.saveProjectSettings.disabled = true;
+  elements.saveProjectSettings.textContent = isCreating ? "Création…" : "Enregistrement…";
+  setProjectSettingsMessage(isCreating ? "Création en cours…" : "Enregistrement en cours…");
+  try {
+    const response = isCreating
+      ? await fetch("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, description, icon: selectedProjectIcon })
+        })
+      : await fetch("/api/project/metadata", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, name, description, icon: selectedProjectIcon })
+        });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `Erreur HTTP ${response.status}`);
+    }
+    const { project: updatedProject } = await response.json();
+
+    projects = isCreating
+      ? [...projects, updatedProject]
+      : projects.map((entry) => (entry.id === updatedProject.id ? updatedProject : entry));
+    refreshProjectSelects();
+    renderOverlayLibrary();
+    renderWidgetLibrary();
+    elements.projectSettingsDialog.close();
+    showToast(isCreating ? `${updatedProject.name} créé` : "Projet enregistré");
+  } catch (error) {
+    setProjectSettingsMessage(error.message, "error");
+  } finally {
+    elements.saveProjectSettings.disabled = false;
+    elements.saveProjectSettings.textContent = isCreating ? "Créer" : "Enregistrer";
+  }
+}
+
+async function deleteProjectEntry(projectId) {
+  const project = projects.find((entry) => entry.id === projectId);
+  if (!project) return;
+  const itemCount = widgetCatalog.filter((entry) => entry.projectId === projectId).length
+    + overlayCatalog.filter((entry) => entry.projectId === projectId).length;
+  const warning = itemCount
+    ? `Supprimer le projet « ${project.name} » supprimera aussi ${itemCount} overlay(s)/widget(s)/alerte(s) qu'il contient. Cette action est irréversible.`
+    : `Supprimer définitivement le projet « ${project.name} » ? Cette action est irréversible.`;
+  if (!window.confirm(warning)) return;
+
+  try {
+    const response = await fetch(`/api/project?id=${encodeURIComponent(projectId)}`, { method: "DELETE" });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `Erreur HTTP ${response.status}`);
+    }
+    projects = projects.filter((entry) => entry.id !== projectId);
+    widgetCatalog = widgetCatalog.filter((entry) => entry.projectId !== projectId);
+    overlayCatalog = overlayCatalog.filter((entry) => entry.projectId !== projectId);
+    refreshProjectSelects();
+    renderOverlayLibrary();
+    renderWidgetLibrary();
+    elements.projectSettingsDialog.close();
+    showToast(`Projet « ${project.name} » supprimé`);
+  } catch (error) {
+    setProjectSettingsMessage(error.message, "error");
+  }
+}
+
+// Format transporté par le glisser-déposer d'une ligne (overlay ou
+// widget/alerte) vers un groupe-projet ou une carte de projet du dashboard.
+const LIBRARY_ITEM_DRAG_TYPE = "application/x-streamerlab-item";
+
+function startLibraryItemDrag(event, kind, id) {
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData(LIBRARY_ITEM_DRAG_TYPE, JSON.stringify({ kind, id }));
+}
+
+// Point d'entrée commun de tous les drop targets (en-tête de sous-groupe
+// projet en sidebar, carte de projet du dashboard) : lit le payload posé par
+// startLibraryItemDrag et déplace l'item côté serveur (déplacement physique
+// du dossier, cf. PUT /api/widget|overlay/project) puis met à jour l'état local.
+async function handleLibraryItemDrop(event, projectId) {
+  event.preventDefault();
+  const raw = event.dataTransfer.getData(LIBRARY_ITEM_DRAG_TYPE);
+  if (!raw) return;
+  let payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  await moveLibraryItemToProject(payload.kind, payload.id, projectId);
+}
+
+async function moveLibraryItemToProject(kind, id, projectId) {
+  const isOverlay = kind === "overlay";
+  const catalog = isOverlay ? overlayCatalog : widgetCatalog;
+  const current = catalog.find((entry) => entry.id === id);
+  if (!current || current.projectId === projectId) return;
+
+  try {
+    const response = await fetch(isOverlay ? "/api/overlay/project" : "/api/widget/project", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(isOverlay ? { overlayId: id, projectId } : { widgetId: id, projectId })
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `Erreur HTTP ${response.status}`);
+    }
+    const body = await response.json();
+    if (isOverlay) {
+      overlayCatalog = overlayCatalog.map((entry) => (entry.id === id ? { ...entry, ...body.overlay } : entry));
+      // Un overlay déplacé emmène avec lui les widgets/alertes qu'il
+      // référence encore dans l'ancien projet (cf. server.mjs) : on
+      // resynchronise tout le catalogue plutôt que de deviner localement ce
+      // qui a bougé.
+      if (body.movedWidgetIds?.length) {
+        const widgetsResponse = await fetch("/api/widgets");
+        if (widgetsResponse.ok) widgetCatalog = (await widgetsResponse.json()).widgets || [];
+      }
+      renderOverlayLibrary();
+      renderWidgetLibrary();
+    } else {
+      widgetCatalog = widgetCatalog.map((entry) => (entry.id === id ? { ...entry, ...body.widget } : entry));
+      renderWidgetLibrary();
+    }
+    showToast(`« ${current.name} » déplacé vers « ${projectNameFor(projectId)} »`);
+  } catch (error) {
+    showToast(`Déplacement impossible : ${error.message}`);
+  }
+}
+
+function buildProjectCard(project) {
+  const overlayCount = overlayCatalog.filter((entry) => entry.projectId === project.id).length;
+  const widgetCount = widgetCatalog.filter((entry) => entry.projectId === project.id && entry.type !== "alert").length;
+  const alertCount = widgetCatalog.filter((entry) => entry.projectId === project.id && entry.type === "alert").length;
+
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "project-card";
+  card.classList.toggle("is-active", dashboardProjectFilterId === project.id);
+  card.dataset.projectId = project.id;
+  card.title = "Cliquer pour filtrer · glisser un overlay/widget/alerte ici pour le déplacer dans ce projet";
+
+  const icon = document.createElement("span");
+  icon.className = "project-card__icon material-symbols-rounded";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = project.icon || "folder";
+
+  const copy = document.createElement("span");
+  copy.className = "project-card__copy";
+  const name = document.createElement("strong");
+  name.textContent = project.name;
+  const meta = document.createElement("small");
+  meta.textContent = `${overlayCount} overlay(s) · ${widgetCount} widget(s) · ${alertCount} alerte(s)`;
+  copy.append(name, meta);
+
+  const editButton = document.createElement("button");
+  editButton.type = "button";
+  editButton.className = "project-card__edit";
+  editButton.title = `Modifier « ${project.name} »`;
+  editButton.setAttribute("aria-label", `Modifier le projet ${project.name}`);
+  editButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">edit</span>';
+  editButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openProjectSettings(project);
+  });
+
+  card.append(icon, copy, editButton);
+
+  card.addEventListener("click", () => {
+    dashboardProjectFilterId = dashboardProjectFilterId === project.id ? "" : project.id;
+    updateDashboardProjectFilterUi();
+    dashboardPage.overlay = 0;
+    dashboardPage.widget = 0;
+    dashboardPage.alert = 0;
+    renderOverlayLibrary();
+    renderWidgetLibrary();
+  });
+
+  card.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    card.classList.add("is-drop-target");
+  });
+  card.addEventListener("dragleave", () => card.classList.remove("is-drop-target"));
+  card.addEventListener("drop", async (event) => {
+    card.classList.remove("is-drop-target");
+    await handleLibraryItemDrop(event, project.id);
+  });
+
+  return card;
+}
+
+function renderDashboardProjectList() {
+  if (!elements.dashboardProjectList) return;
+  elements.dashboardProjectList.replaceChildren(...projects.map(buildProjectCard));
 }
 
 // --- Overlays : bibliothèque, dialogue de création/édition ---
@@ -1335,9 +1858,7 @@ function initializeOverlaySettings() {
   const close = () => elements.overlaySettingsDialog.close();
   document.querySelector("#close-overlay-settings").addEventListener("click", close);
   document.querySelector("#cancel-overlay-settings").addEventListener("click", close);
-  elements.overlaySettingsDialog.addEventListener("click", event => {
-    if (event.target === elements.overlaySettingsDialog) close();
-  });
+  closeDialogOnBackdropClick(elements.overlaySettingsDialog, close);
   elements.overlaySettingsForm.addEventListener("submit", event => {
     event.preventDefault();
     void saveOverlayMetadata();
@@ -1351,14 +1872,9 @@ function initializeOverlaySettings() {
 
 function renderOverlayLibrary() {
   elements.overlayCount.textContent = String(overlayCatalog.length);
-  elements.overlayList.replaceChildren();
-  if (overlayCatalog.length) {
-    for (const entry of overlayCatalog) elements.overlayList.append(buildOverlayLibraryRow(entry));
-  } else {
-    elements.overlayList.append(buildLibraryEmptyState("Aucun overlay pour l’instant."));
-  }
+  populateLibraryListGroupedByProject(elements.overlayList, overlayCatalog, "Aucun overlay pour l’instant.", buildOverlayLibraryRow);
 
-  const filteredOverlays = filterAndSortLibraryEntries(overlayCatalog, "overlay");
+  const filteredOverlays = filterAndSortLibraryEntries(filterEntriesByProject(overlayCatalog), "overlay");
   const { pageEntries: overlayPageEntries, pageCount: overlayPageCount } = paginateDashboardEntries("overlay", filteredOverlays);
   elements.dashboardOverlayList.replaceChildren();
   if (overlayPageEntries.length) {
@@ -1368,12 +1884,15 @@ function renderOverlayLibrary() {
   }
   renderDashboardPagination(elements.dashboardOverlayPagination, "overlay", overlayPageCount);
 
+  renderDashboardProjectList();
   updateDashboardLibrarySuggestions();
 }
 
 function buildOverlayLibraryRow(entry, { showMeta = false, showPreview = false } = {}) {
   const row = document.createElement("div");
   row.className = "widget-library__row";
+  row.draggable = true;
+  row.addEventListener("dragstart", (event) => startLibraryItemDrag(event, "overlay", entry.id));
 
   const isActive = entry.id === activeOverlayId && !elements.overlayEditorView.hidden;
 
@@ -1399,11 +1918,16 @@ function buildOverlayLibraryRow(entry, { showMeta = false, showPreview = false }
     copy.append(description);
   }
 
-  if (showMeta && entry.updatedAt) {
-    const meta = document.createElement("small");
-    meta.className = "widget-library__meta";
-    meta.textContent = `Modifié le ${formatAccountDate(entry.updatedAt)}`;
-    copy.append(meta);
+  if (showMeta) {
+    const projectName = projectNameFor(entry.projectId);
+    const updatedText = entry.updatedAt ? `Modifié le ${formatAccountDate(entry.updatedAt)}` : "";
+    const metaText = [projectName, updatedText].filter(Boolean).join(" · ");
+    if (metaText) {
+      const meta = document.createElement("small");
+      meta.className = "widget-library__meta";
+      meta.textContent = metaText;
+      copy.append(meta);
+    }
   }
 
   button.append(icon, copy);
@@ -1549,6 +2073,8 @@ function openOverlaySettings(entry) {
   const canvas = entry.canvas || DEFAULT_OVERLAY_CANVAS;
   elements.overlaySettingsWidth.value = canvas.width;
   elements.overlaySettingsHeight.value = canvas.height;
+  populateProjectSelect(elements.overlaySettingsProject, entry.projectId);
+  elements.overlaySettingsProject.disabled = false;
   setOverlaySettingsMessage("");
   selectOverlayIcon(entry.icon || "desktop_landscape");
   elements.overlaySettingsTitle.textContent = "Modifier l’overlay";
@@ -1558,13 +2084,15 @@ function openOverlaySettings(entry) {
   elements.overlaySettingsName.select();
 }
 
-function openOverlayCreation() {
+function openOverlayCreation(defaultProjectId) {
   overlaySettingsMode = "create";
   elements.overlaySettingsId.value = "";
   elements.overlaySettingsName.value = "";
   elements.overlaySettingsDescription.value = "";
   elements.overlaySettingsWidth.value = DEFAULT_OVERLAY_CANVAS.width;
   elements.overlaySettingsHeight.value = DEFAULT_OVERLAY_CANVAS.height;
+  populateProjectSelect(elements.overlaySettingsProject, defaultProjectId || dashboardProjectFilterId || projects[0]?.id);
+  elements.overlaySettingsProject.disabled = false;
   setOverlaySettingsMessage("");
   selectOverlayIcon("desktop_landscape");
   elements.overlaySettingsTitle.textContent = "Nouvel overlay";
@@ -1613,7 +2141,7 @@ async function saveOverlayMetadata() {
       ? await fetch("/api/overlays", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, description, icon: selectedOverlayIcon, width, height })
+          body: JSON.stringify({ name, description, icon: selectedOverlayIcon, width, height, projectId: elements.overlaySettingsProject.value })
         })
       : await fetch("/api/overlay/metadata", {
           method: "PUT",
@@ -1712,31 +2240,25 @@ function initializeOverlayCanvas() {
   elements.overlayCreateWidgetButton.addEventListener("click", () => {
     closeAllDropdowns();
     creatingWidgetForOverlay = true;
-    openWidgetCreation("widget");
+    openWidgetCreation("widget", activeOverlay?.projectId);
   });
   elements.overlayCreateAlertButton.addEventListener("click", () => {
     closeAllDropdowns();
     creatingWidgetForOverlay = true;
-    openWidgetCreation("alert");
+    openWidgetCreation("alert", activeOverlay?.projectId);
   });
 
   const closePicker = () => elements.overlayItemPickerDialog.close();
   document.querySelector("#close-overlay-item-picker").addEventListener("click", closePicker);
-  elements.overlayItemPickerDialog.addEventListener("click", event => {
-    if (event.target === elements.overlayItemPickerDialog) closePicker();
-  });
+  closeDialogOnBackdropClick(elements.overlayItemPickerDialog, closePicker);
 
   const closeSeOverlayPicker = () => elements.seOverlayPickerDialog.close();
   document.querySelector("#close-streamelements-overlay-picker").addEventListener("click", closeSeOverlayPicker);
-  elements.seOverlayPickerDialog.addEventListener("click", event => {
-    if (event.target === elements.seOverlayPickerDialog) closeSeOverlayPicker();
-  });
+  closeDialogOnBackdropClick(elements.seOverlayPickerDialog, closeSeOverlayPicker);
 
   const closeMediaPreview = () => elements.mediaPreviewDialog.close();
   document.querySelector("#close-media-preview").addEventListener("click", closeMediaPreview);
-  elements.mediaPreviewDialog.addEventListener("click", event => {
-    if (event.target === elements.mediaPreviewDialog) closeMediaPreview();
-  });
+  closeDialogOnBackdropClick(elements.mediaPreviewDialog, closeMediaPreview);
   // Coupe la lecture vidéo à la fermeture (croix, clic hors-cadre, Échap) :
   // sinon l'aperçu continue de jouer en arrière-plan, invisible et inaudible
   // seulement si la vidéo était mute, ce qui masquerait un bug de fuite.
@@ -1746,9 +2268,7 @@ function initializeOverlayCanvas() {
 
   const closeWidgetCodeEditorDialog = () => elements.widgetCodeEditorDialog.close();
   document.querySelector("#close-widget-code-editor-dialog").addEventListener("click", closeWidgetCodeEditorDialog);
-  elements.widgetCodeEditorDialog.addEventListener("click", event => {
-    if (event.target === elements.widgetCodeEditorDialog) closeWidgetCodeEditorDialog();
-  });
+  closeDialogOnBackdropClick(elements.widgetCodeEditorDialog, closeWidgetCodeEditorDialog);
   // Croix, clic hors-cadre ET Échap déclenchent tous l'event "close" natif du
   // <dialog> (contrairement à un simple listener sur le bouton croix, qui
   // raterait les deux autres) : un seul point de sortie pour ramener
@@ -4022,10 +4542,14 @@ function renameOverlayItem(itemId, name) {
 
 function openOverlayItemPicker() {
   elements.overlayItemPickerList.replaceChildren();
-  if (!widgetCatalog.length) {
-    elements.overlayItemPickerList.append(buildLibraryEmptyState("Aucun widget ni alerte disponible."));
+  // Un overlay ne propose que les widgets/alertes de son propre projet : les
+  // items d'un overlay vivent tous dans le même projet (cf. "un seul projet
+  // par item"), inutile de proposer ceux d'un autre projet ici.
+  const pickableEntries = widgetCatalog.filter((entry) => entry.projectId === activeOverlay?.projectId);
+  if (!pickableEntries.length) {
+    elements.overlayItemPickerList.append(buildLibraryEmptyState("Aucun widget ni alerte disponible dans ce projet."));
   } else {
-    for (const entry of widgetCatalog) {
+    for (const entry of pickableEntries) {
       const row = document.createElement("div");
       row.className = "widget-library__row";
 
@@ -4326,7 +4850,8 @@ async function initialize() {
     const [catalogResponse, stateResponse, overlaysResponse] = await Promise.all([
       fetch("/api/widgets"),
       fetch("/api/state"),
-      fetch("/api/overlays")
+      fetch("/api/overlays"),
+      fetchProjects()
     ]);
     if (!catalogResponse.ok) throw new Error((await catalogResponse.json()).error);
     const catalog = await catalogResponse.json();
@@ -4382,17 +4907,18 @@ function renderWidgetLibrary() {
   const alerts = widgetCatalog.filter((entry) => entry.type === "alert");
 
   elements.widgetCount.textContent = String(widgets.length);
-  populateWidgetLibraryList(elements.widgetList, widgets, "Aucun widget pour l’instant.");
-  const { pageEntries: widgetPageEntries, pageCount: widgetPageCount } = paginateDashboardEntries("widget", filterAndSortLibraryEntries(widgets, "widget"));
+  populateLibraryListGroupedByProject(elements.widgetList, widgets, "Aucun widget pour l’instant.", buildWidgetLibraryRow);
+  const { pageEntries: widgetPageEntries, pageCount: widgetPageCount } = paginateDashboardEntries("widget", filterAndSortLibraryEntries(filterEntriesByProject(widgets), "widget"));
   populateWidgetLibraryList(elements.dashboardWidgetList, widgetPageEntries, dashboardLibraryEmptyMessage("Aucun widget pour l’instant."), { showMeta: true });
   renderDashboardPagination(elements.dashboardWidgetPagination, "widget", widgetPageCount);
 
   elements.alertCount.textContent = String(alerts.length);
-  populateWidgetLibraryList(elements.alertList, alerts, "Aucune alerte pour l’instant.");
-  const { pageEntries: alertPageEntries, pageCount: alertPageCount } = paginateDashboardEntries("alert", filterAndSortLibraryEntries(alerts, "alert"));
+  populateLibraryListGroupedByProject(elements.alertList, alerts, "Aucune alerte pour l’instant.", buildWidgetLibraryRow);
+  const { pageEntries: alertPageEntries, pageCount: alertPageCount } = paginateDashboardEntries("alert", filterAndSortLibraryEntries(filterEntriesByProject(alerts), "alert"));
   populateWidgetLibraryList(elements.dashboardAlertList, alertPageEntries, dashboardLibraryEmptyMessage("Aucune alerte pour l’instant."), { showMeta: true });
   renderDashboardPagination(elements.dashboardAlertPagination, "alert", alertPageCount);
 
+  renderDashboardProjectList();
   updateDashboardLibrarySuggestions();
 }
 
@@ -4770,6 +5296,8 @@ function openMediaPreview(item) {
 function buildWidgetLibraryRow(entry, { showMeta = false } = {}) {
   const row = document.createElement("div");
   row.className = "widget-library__row";
+  row.draggable = true;
+  row.addEventListener("dragstart", (event) => startLibraryItemDrag(event, "widget", entry.id));
 
   // Sur le dashboard, aucun widget/alerte n'est "en cours d'édition" à l'écran :
   // ne jamais afficher de sélection tant que le dashboard est visible.
@@ -4798,11 +5326,16 @@ function buildWidgetLibraryRow(entry, { showMeta = false } = {}) {
     copy.append(description);
   }
 
-  if (showMeta && entry.updatedAt) {
-    const meta = document.createElement("small");
-    meta.className = "widget-library__meta";
-    meta.textContent = `Modifié le ${formatAccountDate(entry.updatedAt)}`;
-    copy.append(meta);
+  if (showMeta) {
+    const projectName = projectNameFor(entry.projectId);
+    const updatedText = entry.updatedAt ? `Modifié le ${formatAccountDate(entry.updatedAt)}` : "";
+    const metaText = [projectName, updatedText].filter(Boolean).join(" · ");
+    if (metaText) {
+      const meta = document.createElement("small");
+      meta.className = "widget-library__meta";
+      meta.textContent = metaText;
+      copy.append(meta);
+    }
   }
 
   const status = document.createElement("span");
@@ -6207,10 +6740,14 @@ async function openStreamElementsOverlayPicker({ linkToOverlayId = null } = {}) 
 async function importStreamElementsOverlay(overlayId, triggerButton) {
   if (triggerButton) triggerButton.disabled = true;
   try {
+    // projectId n'est utilisé par le serveur que pour un tout premier import
+    // (un réimport retrouve et met à jour l'overlay dans son projet
+    // d'origine, cf. server.mjs) : on prend le projet actuellement filtré
+    // dans le dashboard, ou le premier projet à défaut.
     const result = await fetchAccountJson("/api/integrations/streamelements/overlays/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ overlayId })
+      body: JSON.stringify({ overlayId, projectId: dashboardProjectFilterId || projects[0]?.id })
     });
     if (result.updated) applyUpdatedOverlayToCatalog(result.overlay);
     else overlayCatalog = [...overlayCatalog, result.overlay];

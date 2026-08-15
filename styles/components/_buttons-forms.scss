@@ -128,6 +128,12 @@ input {
 
   &--wide { width: 100%; }
 
+  &.is-danger {
+    color: var(--danger-bright);
+
+    &:hover { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+  }
+
   &--twitch {
     display: flex;
     align-items: center;

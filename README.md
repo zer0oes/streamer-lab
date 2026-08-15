@@ -28,7 +28,7 @@ npm run dev
 
 Les classes suivent la convention BEM (`bloc__élément--modificateur`), avec les sélecteurs imbriqués via `&` dans chaque partial (`&__élément`, `&--modificateur`, `&:état`) plutôt qu'une liste plate de sélecteurs répétés. Deux exceptions documentées dans le code : `.material-symbols-rounded` (classe vendor de la police d'icônes) et les classes `.tok-*` du surlignage syntaxique (namespace plat façon `hljs-*`) ne suivent pas BEM et ne sont pas imbriquées.
 
-Le mode simulation fonctionne immédiatement. La bibliothèque située dans `library/` rassemble tous les widgets dans des sous-dossiers, eux-mêmes répartis entre `library/widgets/` (widgets classiques) et `library/alerts/` (alertes). Les changements apportés au widget actif déclenchent automatiquement un rechargement de l’aperçu, sans dépendre du mode `node --watch` de Node.
+Le mode simulation fonctionne immédiatement. La bibliothèque située dans `library/` est organisée en **projets** : chaque projet a son propre dossier `library/<id-projet>/`, contenant lui-même `overlays/`, `widgets/` et `alerts/`. Un overlay/widget/alerte appartient à un seul projet à la fois ; le panneau **Ma bibliothèque** regroupe la liste sous un en-tête repliable par projet, et un bouton « Nouveau projet » permet d'en créer d'autres (icône, nom, description). `library/media/` reste partagé entre tous les projets. Une bibliothèque existante créée avant l'introduction des projets est migrée automatiquement, une seule fois, au démarrage du serveur, dans un projet nommé « Bibliothèque principale » (`library/principal/`). Les changements apportés au widget actif déclenchent automatiquement un rechargement de l’aperçu, sans dépendre du mode `node --watch` de Node.
 
 L’éditeur intégré, placé entre l’aperçu et la console, permet aussi de modifier directement les quatre fichiers utilisés par la plateforme active. L’aperçu est actualisé pendant la saisie et les changements sont enregistrés automatiquement dans `library/`. `Ctrl + S` force l’enregistrement immédiat. L’onglet **Fields** vérifie que le JSON est valide avant toute sauvegarde.
 
@@ -45,9 +45,9 @@ Le menu d’export génère une archive ZIP prête à copier dans l’éditeur d
 
 ## Développer un widget
 
-Chaque widget possède son propre dossier, accompagné d’un fichier `widget.json` qui définit son nom, sa description et son icône. La bibliothèque dans le panneau de gauche (« Ma bibliothèque ») propose deux onglets, **Widgets** et **Alertes**, pour passer de l’un à l’autre sans déplacer de fichiers ; l’onglet actif détermine dans quel sous-dossier (`library/widgets/` ou `library/alerts/`) un nouveau widget est créé. Le crayon placé sur chaque entrée permet de modifier ces informations, de choisir visuellement une icône Material, et de basculer un widget entre les deux catégories (ce qui déplace son dossier). Les sections **Ma bibliothèque** et **Champs** peuvent être repliées ; leur état est mémorisé dans le navigateur.
+Chaque widget possède son propre dossier, accompagné d’un fichier `widget.json` qui définit son nom, sa description et son icône. La bibliothèque dans le panneau de gauche (« Ma bibliothèque ») propose deux onglets, **Widgets** et **Alertes**, pour passer de l’un à l’autre sans déplacer de fichiers ; l’onglet actif détermine dans quel sous-dossier (`widgets/` ou `alerts/`) du projet choisi un nouveau widget est créé — la création demande explicitement le projet cible. Le crayon placé sur chaque entrée permet de modifier ces informations, de choisir visuellement une icône Material, et de basculer un widget entre les deux catégories (ce qui déplace son dossier) ; déplacer un widget vers un autre projet n’est pas pris en charge depuis l’interface. Les sections **Ma bibliothèque** et **Champs** peuvent être repliées ; leur état est mémorisé dans le navigateur.
 
-Par exemple, le dossier `library/widgets/zer0oes-goal-bar/` contient :
+Par exemple, le dossier `library/principal/widgets/zer0oes-goal-bar/` contient :
 
 | Fichier local | Plateforme | Onglet |
 |---|---|---|
@@ -80,7 +80,7 @@ Un overlay est composé d’éléments positionnés librement sur un canevas : w
 - **Règles et guides** : règles horizontale et verticale activables, guides déplaçables mémorisés par overlay.
 - **Annuler/rétablir** : `Ctrl/Cmd + Z`, `Ctrl/Cmd + Maj + Z` ou `Ctrl/Cmd + Y` ; `Ctrl/Cmd + D` duplique la sélection ; `Échap` repasse à l’outil sélection. Ces raccourcis ne sont actifs que lorsque la vue overlay a le focus et qu’aucun champ texte n’est en cours d’édition.
 
-Chaque overlay est enregistré dans `library/overlays/<id>/overlay.json` (taille de canevas, éléments, guides, dates), sur le même principe que les widgets dans `library/widgets/`.
+Chaque overlay est enregistré dans `library/<id-projet>/overlays/<id>/overlay.json` (taille de canevas, éléments, guides, dates), sur le même principe que les widgets. Un overlay ne peut référencer que des widgets/alertes de son propre projet.
 
 ## Comptes et médias
 

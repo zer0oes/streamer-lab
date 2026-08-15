@@ -1,11 +1,11 @@
 {
   "id": "zer0oes-topbar",
-  "name": "zer0oes - Top Bar (Date + Labels + Social + Border)",
+  "name": "zer0oes - Infos bar",
   "description": "Widget combine : date, labels en jeu, social panel et barre border bottom, avec ordre des zones et position de la barre configurables.",
-  "icon": "view_agenda",
+  "icon": "widgets",
   "order": 35,
   "width": 1920,
   "height": 50,
   "createdAt": 1786698885024,
-  "updatedAt": 1786699165293
+  "updatedAt": 1786790369446
 }

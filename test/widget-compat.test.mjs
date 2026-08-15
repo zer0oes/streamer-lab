@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import vm from "node:vm";
+import { findWidgetDirectory } from "./helpers/library-paths.mjs";
 
 const supportedFieldTypes = new Set([
   "button",
@@ -19,7 +21,8 @@ const supportedFieldTypes = new Set([
 ]);
 
 test("utilise le format Fields officiel de StreamElements", async () => {
-  const source = await readFile(new URL("../library/widgets/zer0oes-goal-bar/fields.streamelements.json", import.meta.url), "utf8");
+  const directory = await findWidgetDirectory("zer0oes-goal-bar");
+  const source = await readFile(join(directory, "fields.streamelements.json"), "utf8");
   const fields = JSON.parse(source);
 
   assert.equal(Array.isArray(fields), false);
@@ -33,7 +36,8 @@ test("utilise le format Fields officiel de StreamElements", async () => {
 });
 
 test("écoute les trois événements natifs utiles au goal StreamElements", async () => {
-  const source = await readFile(new URL("../library/widgets/zer0oes-goal-bar/widget.streamelements.js", import.meta.url), "utf8");
+  const directory = await findWidgetDirectory("zer0oes-goal-bar");
+  const source = await readFile(join(directory, "widget.streamelements.js"), "utf8");
 
   assert.match(source, /addEventListener\(["']onWidgetLoad["']/);
   assert.match(source, /addEventListener\(["']onEventReceived["']/);
@@ -43,7 +47,8 @@ test("écoute les trois événements natifs utiles au goal StreamElements", asyn
 });
 
 test("démarre avec un payload StreamElements et réconcilie un follow", async () => {
-  const source = await readFile(new URL("../library/widgets/zer0oes-goal-bar/widget.streamelements.js", import.meta.url), "utf8");
+  const directory = await findWidgetDirectory("zer0oes-goal-bar");
+  const source = await readFile(join(directory, "widget.streamelements.js"), "utf8");
   const listeners = {};
   const cssVariables = {};
   const makeElement = () => ({

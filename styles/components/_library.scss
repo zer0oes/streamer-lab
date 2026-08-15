@@ -1,7 +1,7 @@
 // Widget library: tabs, cards/rows, and the widget-settings dialog.
 
 .library-group {
-  margin-bottom: var(--space-10);
+  margin-bottom: var(--space-13);
   border: 1px solid var(--line);
   border-radius: var(--radius-9);
   background: var(--panel-alt);
@@ -57,6 +57,204 @@
 
   &__body {
     padding: 0 var(--space-8) var(--space-8);
+  }
+}
+
+.library-projects-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-8);
+
+  &__add {
+    min-height: 30px;
+    padding: 0 var(--space-10);
+    font-size: var(--text-11);
+  }
+}
+
+// Regroupement des overlays/widgets/alertes par projet à l'intérieur de
+// chacun des 3 groupes existants (cf. .library-group ci-dessus) : même
+// principe de <details> repliable, imbriqué un niveau plus loin. N'apparaît
+// que si la bibliothèque compte 2+ projets (cf. populateLibraryListGroupedByProject
+// côté JS) : avec un seul projet, cet en-tête ne ferait que répéter celui du
+// groupe Overlays/Widgets/Alertes juste au-dessus, pour un rendu "boîte dans
+// la boîte" chargé - volontairement discret (pas de carte bordée, libellé en
+// petites capitales, crayon révélé seulement au survol) pour rester léger
+// même une fois affiché.
+.library-subgroup {
+  margin-bottom: var(--space-9);
+
+  &:last-child { margin-bottom: 0; }
+
+  &[open] {
+    .library-subgroup__chevron { color: var(--accent-bright); transform: rotate(180deg); }
+  }
+
+  &__summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-7);
+    min-height: 24px;
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-5);
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+    cursor: pointer;
+    list-style: none;
+    color: var(--muted);
+    font-size: var(--text-10);
+    font-weight: 720;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    user-select: none;
+    transition: color var(--duration-fast);
+
+    &::-webkit-details-marker { display: none; }
+    &:hover, &:focus-within { color: var(--text); }
+    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+
+    // Survolé pendant le glisser-déposer d'une ligne (cf. handleLibraryItemDrop) :
+    // même déclencheur visuel que .project-card.is-drop-target ci-dessous.
+    &.is-drop-target {
+      color: var(--text);
+      background: color-mix(in srgb, var(--accent-bright) 18%, transparent);
+      outline: 2px dashed var(--accent-bright);
+      outline-offset: -2px;
+    }
+
+    .material-symbols-rounded:first-child { font-size: 13px; }
+  }
+
+  &__label { flex: 1; }
+
+  &__count {
+    padding: 1px var(--space-6);
+    border-radius: 999px;
+    color: var(--muted);
+    background: rgb(255 255 255 / 8%);
+    font-size: var(--text-10);
+    font-weight: 720;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  &__edit {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-6);
+    color: var(--muted);
+    background: transparent;
+    cursor: pointer;
+    // Masqué par défaut : un crayon d'édition par projet en permanence à
+    // côté de chaque section, en plus du reste, ajoutait du bruit visuel
+    // pour une action ponctuelle - il suffit de survoler ou de naviguer au
+    // clavier jusqu'à l'en-tête pour le faire apparaître.
+    opacity: 0;
+    transition: opacity var(--duration-fast), color var(--duration-fast), background var(--duration-fast);
+
+    &:hover { color: var(--text); background: rgb(255 255 255 / 8%); }
+    &:focus-visible { opacity: 1; outline: 2px solid var(--accent-bright); outline-offset: 1px; }
+    .material-symbols-rounded { font-size: 13px; }
+  }
+
+  &__summary:hover &__edit,
+  &__summary:focus-within &__edit {
+    opacity: 1;
+  }
+
+  &__chevron {
+    color: #747b88;
+    font-size: 15px;
+    transition: transform var(--duration-base), color var(--duration-base);
+  }
+
+  &__body {
+    display: grid;
+    gap: var(--space-7);
+  }
+}
+
+// Liste des projets du dashboard (cf. renderDashboardProjectList) : chaque
+// carte est cliquable (filtre la bibliothèque sur ce projet) et sert aussi
+// de cible de glisser-déposer pour y déplacer un overlay/widget/alerte.
+.project-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-10);
+}
+
+.project-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-9);
+  min-width: 220px;
+  padding: var(--space-9) var(--space-11);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-9);
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+  background: color-mix(in srgb, var(--panel-soft) 65%, transparent);
+  transition: border-color var(--duration-fast), background var(--duration-fast);
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
+    background: color-mix(in srgb, color-mix(in srgb, var(--panel-soft) 65%, transparent) 92%, var(--accent-bright) 8%);
+  }
+
+  &.is-active {
+    border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent-bright) 16%, transparent), color-mix(in srgb, var(--accent) 7%, transparent));
+    box-shadow: inset 3px 0 0 var(--accent-bright);
+  }
+
+  &.is-drop-target {
+    border-color: var(--accent-bright);
+    outline: 2px dashed var(--accent-bright);
+    outline-offset: -2px;
+  }
+
+  &__icon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    border-radius: var(--radius-8);
+    color: var(--accent-bright);
+    background: color-mix(in srgb, var(--accent-bright) 14%, transparent);
+    font-size: 18px;
+  }
+
+  &__copy {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+
+    strong { font-size: var(--text-12); }
+    small { overflow: hidden; color: var(--muted); font-size: var(--text-10); text-overflow: ellipsis; white-space: nowrap; }
+  }
+
+  &__edit {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-6);
+    color: var(--muted);
+    background: transparent;
+    cursor: pointer;
+
+    &:hover { color: var(--text); background: rgb(255 255 255 / 8%); }
+    .material-symbols-rounded { font-size: 16px; }
   }
 }
 
@@ -135,6 +333,12 @@
     border-radius: var(--radius-9);
     background: color-mix(in srgb, var(--panel-soft) 65%, transparent);
     transition: border-color var(--duration-fast), background var(--duration-fast);
+    // Chaque ligne est glissable vers un groupe-projet ou une carte de projet
+    // (cf. startLibraryItemDrag) : "grab" indique l'affordance au survol,
+    // "grabbing" pendant le glisser effectif.
+    cursor: grab;
+
+    &:active { cursor: grabbing; }
 
     &:hover {
       border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
