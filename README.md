@@ -20,9 +20,11 @@ npm install
 npm run dev
 ```
 
-`npm run dev` ouvre automatiquement [http://localhost:4173](http://localhost:4173) dans le navigateur par défaut. Toute modification de `public/` (HTML, JS, CSS compilé) ou de la bibliothèque `library/` recharge la page automatiquement (rechargement complet pour `public/`, rafraîchissement ciblé de l'aperçu pour un widget de `library/`). Les changements dans `server.mjs` ou `lib/` nécessitent en revanche de relancer `npm run dev` manuellement.
+`npm install` installe aussi les dépendances de `frontend/` (via `postinstall`). `npm run dev` ouvre automatiquement [http://localhost:4173](http://localhost:4173) dans le navigateur par défaut. Toute modification du frontend (`frontend/src/`, y compris `styles/*.scss` qu'il importe directement) ou de la bibliothèque `library/` recharge la page automatiquement (rechargement complet pour le frontend, rafraîchissement ciblé de l'aperçu pour un widget de `library/`). Les changements dans `server.mjs` ou `lib/` nécessitent en revanche de relancer `npm run dev` manuellement.
 
-`npm run dev` compile d'abord le CSS (`styles/*.scss` → `public/styles.css`, écrit par Sass et gitignoré) puis lance le serveur et un watcher Sass en parallèle — toute modification dans `styles/` recompile automatiquement. `npm start` fait un build unique sans watcher. Le CSS source vit dans `styles/` ; ne jamais éditer `public/styles.css` directement, il est régénéré à chaque build.
+`npm run dev` build d'abord le frontend Vue (`frontend/` vers `frontend/dist/`, gitignoré) puis lance le serveur et un watcher Vite en parallèle : toute modification dans `frontend/src/` recompile automatiquement. `npm start` fait un build unique sans watcher, pour une exécution proche de la production. Pendant un développement frontend actif (itération rapide sur l'UI), `npm run dev:vue` lance à la place le serveur de dev Vite seul (rechargement à chaud, proxy `/api` vers le serveur Node qui doit tourner en parallèle sur le port 4173) : c'est le mode le plus confortable pour modifier des composants Vue, mais il ne sert pas le build final. `npm run typecheck` vérifie les types TypeScript du frontend sans build.
+
+Le code source du frontend vit dans `frontend/` : Vue 3 (Composition API, `<script setup>`), TypeScript, Pinia pour l'état partagé, Vitest pour les tests unitaires de la logique pure (snapping du canevas d'overlay, tokenizer de surlignage syntaxique, construction du document `srcdoc` de l'aperçu, export ZIP, etc.). Il n'y a pas de routeur : la bascule entre le dashboard et les deux éditeurs (widget/alerte, overlay) est un simple état, pas une vraie navigation d'URL, mais les liens `?widget=<id>` et `?overlay=<id>` restent pris en charge pour ouvrir directement un élément.
 
 `styles/` est organisé en trois dossiers : `base/` (tokens, reset, atomes partagés comme `.eyebrow`/`.hint`), `layouts/` (les régions macro de la page : topbar, sidebar, preview, dashboard) et `components/` (pièces UI autonomes : bibliothèque, éditeur, simulateur d'événements, tiroir compte, boutons/formulaires, toast). `_responsive.scss` reste à la racine, hors de ces trois dossiers, car ses règles touchent plusieurs composants par palier de largeur.
 
@@ -74,13 +76,15 @@ En plus du mode simulation, un éditeur visuel permet de composer un overlay com
 
 Un overlay est composé d’éléments positionnés librement sur un canevas : widget ou alerte de la bibliothèque, texte, image, vidéo, embed (URL uniquement — les `data:` URI sont refusées), icône, forme ou groupe. Le canevas propose des formats prédéfinis 16:9 et 9:16, ou des dimensions personnalisées (100 à 7680 px).
 
-- **Calques** : réordonner, renommer, masquer, verrouiller et replier les groupes depuis le panneau dédié.
-- **Barre d’outils** déplaçable : outils sélection / texte / pipette de style, menu « Ajouter » (widget, alerte, image, icône, forme, vidéo, embed depuis un lien), groupement, duplication, suppression, alignement (6 directions) et répartition horizontale/verticale.
+- **Calques** : réordonner, renommer, masquer et verrouiller depuis le panneau dédié ; les enfants d'un groupe s'affichent indentés sous lui.
+- **Barre d’outils** : outil sélection, menu « Ajouter » (widget/alerte existant de la bibliothèque, ou nouveau texte/image/icône/forme/vidéo/embed depuis un lien), groupement, duplication, suppression, centrage, alignement (6 directions) et répartition horizontale/verticale.
 - **Zoom** avec boutons `+`/`−` et pourcentage cliquable pour ajuster à la fenêtre.
-- **Règles et guides** : règles horizontale et verticale activables, guides déplaçables mémorisés par overlay.
-- **Annuler/rétablir** : `Ctrl/Cmd + Z`, `Ctrl/Cmd + Maj + Z` ou `Ctrl/Cmd + Y` ; `Ctrl/Cmd + D` duplique la sélection ; `Échap` repasse à l’outil sélection. Ces raccourcis ne sont actifs que lorsque la vue overlay a le focus et qu’aucun champ texte n’est en cours d’édition.
+- Le déplacement et le redimensionnement (poignées aux 4 coins, y compris un redimensionnement proportionnel pour un groupe entier) s'accrochent au centre horizontal/vertical du canevas.
+- **Annuler/rétablir** : `Ctrl/Cmd + Z`, `Ctrl/Cmd + Maj + Z` ou `Ctrl/Cmd + Y` ; `Ctrl/Cmd + D` duplique la sélection ; `Suppr`/`Retour arrière` supprime la sélection ; `Échap` la vide. Ces raccourcis sont inactifs pendant l'édition d'un champ texte.
 
 Chaque overlay est enregistré dans `library/<id-projet>/overlays/<id>/overlay.json` (taille de canevas, éléments, guides, dates), sur le même principe que les widgets. Un overlay ne peut référencer que des widgets/alertes de son propre projet.
+
+Écarts encore ouverts par rapport à la bibliothèque d'origine : pas de règles/guides visuels ni de repères personnalisés déplaçables (seul l'accrochage au centre du canevas est actif), pas de pipette de style pour un texte, pas de réglages avancés de texte (dégradé, ombre, contour) ni de personnalisation des valeurs de champs par item widget/alerte depuis le canevas, et pas encore d'export ZIP dédié à un overlay complet (l'export ZIP d'un widget/alerte individuel, lui, est disponible depuis son éditeur).
 
 ## Comptes et médias
 
@@ -153,21 +157,21 @@ Le statut passe à `connected` dès que la plateforme simulée sélectionnée en
 npm test
 ```
 
-Les tests couvrent la conversion des activités, des mises à jour de session et des messages chat Astro.
+`npm test` enchaîne les tests backend (`node --test` : conversion des activités, mises à jour de session, messages chat Astro, bibliothèque de widgets/overlays/projets…) puis les tests frontend (`npm run test:frontend`, Vitest : logique pure du frontend Vue — snapping et géométrie du canevas d'overlay, tokenizer de surlignage syntaxique, construction du `srcdoc` de l'aperçu, export ZIP…). `npm run typecheck` vérifie séparément les types TypeScript du frontend.
 
 ## Réinstallation propre
 
-En cas de comportement étrange (dépendances corrompues, CSS obsolète, session Twitch bloquée), repartir d'un état propre :
+En cas de comportement étrange (dépendances corrompues, build frontend obsolète, session Twitch bloquée), repartir d'un état propre :
 
 ```powershell
 npm run reinstall
 npm run dev
 ```
 
-`npm run reinstall` exécute `scripts/clean.mjs` (suppression de `node_modules`, du CSS compilé et de `data/app.sqlite` via l'API `fs` de Node, donc indépendant du shell) puis `npm install`.
+`npm run reinstall` exécute `scripts/clean.mjs` (suppression de `node_modules` à la racine et dans `frontend/`, du build `frontend/dist/` et de `data/app.sqlite` via l'API `fs` de Node, donc indépendant du shell) puis `npm install` (qui réinstalle aussi `frontend/` via `postinstall`).
 
-- `node_modules/` : réinstallé par `npm install` à partir de `package-lock.json`.
-- `public/styles.css` et `.map` : régénérés automatiquement au prochain `npm run dev` ou `npm run build:css` (le CSS source vit dans `styles/`).
+- `node_modules/` (racine et `frontend/`) : réinstallés par `npm install` à partir des `package-lock.json` respectifs.
+- `frontend/dist/` : régénéré automatiquement au prochain `npm run dev`, `npm start` ou `npm run build`.
 - `data/app.sqlite` : base SQLite locale (comptes Twitch et StreamElements liés, jetons chiffrés, sessions). La supprimer réinitialise l'authentification et l'historique local ; elle est recréée automatiquement au démarrage du serveur.
 - `.env` n'est **pas** supprimé par cette procédure : il contient les jetons (`SE_TOKEN`, `SL_SOCKET_TOKEN`, secrets OAuth Twitch et StreamElements, `SESSION_SECRET`, `TOKEN_ENCRYPTION_KEY`) et n'est pas versionné. Le recréer avec `Copy-Item .env.example .env` uniquement si besoin de repartir aussi de zéro sur la config.
 

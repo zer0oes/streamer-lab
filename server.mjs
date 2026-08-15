@@ -62,7 +62,10 @@ import {
 } from "./lib/projects.mjs";
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
-const PUBLIC_ROOT = join(ROOT, "public");
+// Sert le build de production Vue (frontend/dist, genere par
+// `npm run build` dans frontend/) au lieu de l'ancien public/ vanille,
+// retire lors de la bascule vers le nouveau frontend (cf. README).
+const PUBLIC_ROOT = join(ROOT, "frontend", "dist");
 const DEFAULT_WIDGET_ID = "zer0oes-goal-bar";
 const MOCK_SESSION_PATH = join(ROOT, "mocks", "session.json");
 const ENV_PATH = join(ROOT, ".env");
@@ -926,8 +929,13 @@ watch(LIBRARY_ROOT, { persistent: true, recursive: true }, (_eventType, filename
   }, 120);
 });
 
-// Recharge la page entiere quand l'app elle-meme change (HTML/JS/CSS compile).
-watch(PUBLIC_ROOT, { persistent: true, recursive: true }, (_eventType, filename) => {
+// Recharge la page entiere quand le build frontend/dist change (regenere par
+// `npm run build --watch` en dev, cf. package.json) : sert le meme role que
+// l'ancien watcher sur public/ du temps de l'app vanille. Garde existsSync :
+// frontend/dist n'existe qu'apres un premier build (absent juste apres un
+// clone tant que `npm run build` n'a pas tourne), et fs.watch leve une
+// erreur synchrone sur un dossier inexistant.
+if (existsSync(PUBLIC_ROOT)) watch(PUBLIC_ROOT, { persistent: true, recursive: true }, (_eventType, filename) => {
   const file = filename ? String(filename) : "";
   if (!/[.](html|js|css)$/i.test(file)) return;
 

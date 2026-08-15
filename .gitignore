@@ -10,9 +10,4 @@ npm-debug.log*
 # HTML/CSS/JS) deja suivi par git.
 library/media/
 
-# Compiled CSS — source of truth is styles/*.scss, run `npm run build:css`
-# (or `npm run dev`, which does it automatically) to regenerate.
-/public/styles.css
-/public/styles.css.map
-
 .vscode/sidebar-notes.json

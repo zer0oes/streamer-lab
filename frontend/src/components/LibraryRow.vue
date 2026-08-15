@@ -9,6 +9,7 @@ import { useClickOutside } from "../composables/useClickOutside";
 import { widgetDialog, overlayDialog } from "../composables/useDialogs";
 import { formatDate } from "../lib/formatDate";
 import { useWidgetEditorStore } from "../stores/widgetEditor";
+import { useOverlayEditorStore } from "../stores/overlayEditor";
 import { setActiveView } from "../composables/useAppView";
 
 const props = withDefaults(
@@ -23,6 +24,7 @@ const props = withDefaults(
 const libraryStore = useLibraryStore();
 const projectsStore = useProjectsStore();
 const widgetEditorStore = useWidgetEditorStore();
+const overlayEditorStore = useOverlayEditorStore();
 const { showToast } = useToast();
 const { startDrag } = useLibraryDrag();
 
@@ -55,14 +57,14 @@ function edit(): void {
   else widgetDialog.value?.openEdit(props.entry as LibraryEntry);
 }
 
-// Clic principal sur un widget/alerte : l'ouvre dans l'éditeur (comme
-// switchWidget() côté vanilla) — modifier son nom/projet/icône passe par le
-// menu "⋮ > Modifier" ci-dessous, pas par ce clic-là. Les overlays gardent
-// pour l'instant le clic = édition des métadonnées, en attendant l'éditeur
-// d'overlay (Phase 3).
+// Clic principal sur un widget/alerte/overlay : l'ouvre dans son éditeur
+// (comme switchWidget()/openOverlayEditor() côté vanilla) — modifier son
+// nom/projet/icône passe par le menu "⋮ > Modifier" ci-dessous, pas par ce
+// clic-là.
 function openItem(): void {
   if (props.kind === "overlay") {
-    edit();
+    void overlayEditorStore.open(props.entry.id);
+    setActiveView("overlay");
     return;
   }
   void widgetEditorStore.open(props.entry.id);

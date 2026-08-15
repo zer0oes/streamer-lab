@@ -37,6 +37,11 @@ export interface OverlayEntry {
   archived: boolean;
   order: number;
   canvas: { width: number; height: number };
+  // Toujours renvoyés par le serveur (cf. overlayFromManifest dans
+  // lib/overlays.mjs), y compris depuis /api/overlays (liste) — pas
+  // seulement /api/overlay (détail).
+  items: import("../lib/overlayTypes").OverlayItem[];
+  guides: import("../lib/overlayTypes").OverlayGuides;
   sourcePlatform: "streamelements" | "streamlabs" | null;
   sourceOverlayId: string | null;
   createdAt: number | null;

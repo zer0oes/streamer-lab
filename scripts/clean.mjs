@@ -6,8 +6,8 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 const targets = [
   "node_modules",
-  join("public", "styles.css"),
-  join("public", "styles.css.map"),
+  join("frontend", "node_modules"),
+  join("frontend", "dist"),
   join("data", "app.sqlite"),
 ];
 

@@ -5,15 +5,15 @@
   "type": "module",
   "description": "Bac a sable local pour developper des Custom Widgets StreamElements et StreamLabs sans modifier les overlays publies.",
   "scripts": {
-    "build:css": "sass styles/main.scss public/styles.css --style=expanded",
-    "watch:css": "sass --watch styles/main.scss:public/styles.css --style=expanded",
-    "dev": "npm run build:css && concurrently -k \"npm:watch:css\" \"node server.mjs --open\"",
-    "start": "npm run build:css && node server.mjs",
+    "postinstall": "npm --prefix frontend install",
+    "build": "npm --prefix frontend run build",
+    "dev": "npm run build && concurrently -k \"npm --prefix frontend run build:watch\" \"node server.mjs --open\"",
+    "start": "npm run build && node server.mjs",
+    "dev:vue": "npm --prefix frontend run dev",
+    "typecheck": "npm --prefix frontend run typecheck",
     "clean": "node scripts/clean.mjs",
     "reinstall": "npm run clean && npm install",
-    "test": "node --test",
-    "dev:vue": "npm --prefix frontend run dev",
-    "build:vue": "npm --prefix frontend run build",
+    "test": "node --test && npm run test:frontend",
     "test:frontend": "npm --prefix frontend run test"
   },
   "dependencies": {

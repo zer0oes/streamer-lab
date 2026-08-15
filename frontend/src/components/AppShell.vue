@@ -2,6 +2,7 @@
 import LibrarySidebar from "./LibrarySidebar.vue";
 import AccountPanel from "./AccountPanel.vue";
 import PlatformSwitch from "./PlatformSwitch.vue";
+import ExportMenu from "./ExportMenu.vue";
 import { toggleAccountPanel } from "../composables/useAccountPanel";
 import { sidebarCollapsed } from "../composables/useSidebarCollapse";
 import { activeView } from "../composables/useAppView";
@@ -15,8 +16,9 @@ import { activeView } from "../composables/useAppView";
         <h1>Streamer <span class="text-accent">Lab</span></h1>
       </div>
     </a>
-    <div class="topbar__center" :hidden="activeView === 'dashboard'">
+    <div class="topbar__center" :hidden="activeView !== 'widget'">
       <PlatformSwitch />
+      <ExportMenu />
     </div>
     <div class="topbar__actions">
       <button type="button" class="icon-button" aria-label="Mon compte" title="Mon compte" @click="toggleAccountPanel()">
