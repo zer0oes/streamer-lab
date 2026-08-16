@@ -85,6 +85,46 @@ export function overlayItemLabel(item: OverlayItem): string {
   return item.name || overlayItemDefaultLabel(item);
 }
 
+const PLACEHOLDER_ICONS: Record<string, string> = { video: "videocam", group: "select_all", "alert-box": "campaign", native: "widgets" };
+
+// Icône Material par type d'item, utilisée pour le panneau Calques et la
+// miniature d'aperçu d'un overlay sur le dashboard. `widgetIcon` résout
+// l'icône propre à un widget/alerte référencé (repli sur "widgets" si
+// introuvable — ex. widget supprimé depuis).
+export function overlayLayerIcon(item: OverlayItem, widgetIcon: (widgetId: string) => string | undefined = () => undefined): string {
+  switch (item.type) {
+    case "alert":
+      return "campaign";
+    case "text":
+      return "title";
+    case "image":
+      return "image";
+    case "video":
+      return "videocam";
+    case "embed":
+      return "link";
+    case "icon":
+      return "star";
+    case "shape":
+      return "category";
+    case "group":
+      return "select_all";
+    case "placeholder":
+      return PLACEHOLDER_ICONS[(item.props?.sourceType as string | undefined) || "native"] || PLACEHOLDER_ICONS.native;
+    default:
+      return widgetIcon(item.widgetId || "") || "widgets";
+  }
+}
+
+// Comme overlayLayerIcon, mais préfère l'icône réellement choisie pour un
+// item "icon" (son vrai glyph, pas un simple repère générique) — utilisé par
+// la miniature d'aperçu d'un overlay sur le dashboard, où chaque icône
+// affichée doit refléter fidèlement la composition.
+export function overlayPreviewItemIcon(item: OverlayItem, widgetIcon: (widgetId: string) => string | undefined = () => undefined): string {
+  if (item.type === "icon" && item.props?.name) return item.props.name as string;
+  return overlayLayerIcon(item, widgetIcon);
+}
+
 export interface BoundingBox {
   x: number;
   y: number;

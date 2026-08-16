@@ -68,7 +68,7 @@
     margin: 0 0 var(--space-20);
     padding: var(--space-12) var(--space-14);
     border: 1px solid #7a2b34;
-    border-radius: var(--radius-9);
+    border-radius: var(--radius-4);
     color: var(--danger-bright);
     background: color-mix(in srgb, var(--danger) 8%, transparent);
     font-size: var(--text-12);
@@ -92,7 +92,7 @@
   display: flex;
   padding: var(--space-3);
   border: 1px solid var(--line);
-  border-radius: var(--radius-9);
+  border-radius: var(--radius-4);
   background: var(--panel-alt);
 
   &__button {
@@ -101,7 +101,7 @@
     gap: var(--space-6);
     padding: var(--space-5) var(--space-10);
     border: 0;
-    border-radius: var(--radius-6);
+    border-radius: var(--radius-4);
     color: var(--muted);
     background: transparent;
     cursor: pointer;

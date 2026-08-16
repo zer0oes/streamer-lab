@@ -92,12 +92,13 @@ $danger-bright: color.scale($danger, $lightness: 20%);
   --text-22: 22px;
 
   // --- Radius ------------------------------------------------------------
-  --radius-5: 5px;
-  --radius-6: 6px;
-  --radius-7: 7px;
-  --radius-8: 8px;
-  --radius-9: 9px;
-  --radius-10: 10px;
+  // Unifié sur la maquette Figma (frame Dashboard) : quasi tous les rayons y
+  // sont à 4px (cartouches, cartes, vignettes, dropdowns, boutons...), contre
+  // une échelle 5-14px hétérogène avant cette passe. --radius-12/--radius-14
+  // restent distincts pour les grandes surfaces (panneaux, dialogues) — la
+  // maquette ne les couvre pas, mais un rayon plus prononcé y reste cohérent
+  // à cette échelle.
+  --radius-4: 4px;
   --radius-12: 12px;
   --radius-14: 14px;
 

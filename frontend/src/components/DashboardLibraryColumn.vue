@@ -1,25 +1,32 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { LibraryEntry, OverlayEntry } from "../api/types";
+import type { LibraryEntry, OverlayEntry, Project } from "../api/types";
 import { useDashboardLibraryStore, DASHBOARD_PAGE_SIZE, type LibraryScope } from "../stores/dashboardLibrary";
 import { filterBySearch, paginate, sortEntries } from "../lib/libraryFilter";
 import LibraryRow from "./LibraryRow.vue";
+import ProjectLibraryRow from "./ProjectLibraryRow.vue";
 import SortFilterMenu from "./SortFilterMenu.vue";
+import OverlayPreviewThumb from "./OverlayPreviewThumb.vue";
 
 const props = defineProps<{
   scope: LibraryScope;
   title: string;
-  entries: (LibraryEntry | OverlayEntry)[];
+  entries: (LibraryEntry | OverlayEntry | Project)[];
   emptyMessage: string;
+  hint?: string;
 }>();
 
 const dashboardLibrary = useDashboardLibraryStore();
 const rowKind = computed<"widget" | "overlay">(() => (props.scope === "overlay" ? "overlay" : "widget"));
 
 const filtered = computed(() => {
-  const byProject = dashboardLibrary.projectFilterId
-    ? props.entries.filter((entry) => entry.projectId === dashboardLibrary.projectFilterId)
-    : props.entries;
+  // Le filtre "projet" (menu déroulant à côté de la recherche) sélectionne
+  // les overlays/widgets/alertes D'UN projet — n'a pas de sens appliqué à la
+  // liste des projets elle-même (aucun d'eux n'a de `projectId` propre).
+  const byProject =
+    props.scope === "project" || !dashboardLibrary.projectFilterId
+      ? props.entries
+      : props.entries.filter((entry) => (entry as LibraryEntry | OverlayEntry).projectId === dashboardLibrary.projectFilterId);
   const bySearch = filterBySearch(byProject, dashboardLibrary.searchTerm);
   return sortEntries(bySearch, dashboardLibrary.sortMode[props.scope]);
 });
@@ -31,9 +38,8 @@ const emptyMessageResolved = computed(() =>
 );
 
 // Les overlays s'affichent en grille 3 colonnes dans leur propre bloc
-// pleine largeur (.dashboard-view__overlays) ; widgets/alertes restent en
-// liste simple, côte à côte dans .dashboard-view__group-columns (posé par
-// le parent DashboardView).
+// pleine largeur (.dashboard-view__overlays) ; widgets/alertes/projets
+// restent en liste simple.
 const outerClass = computed(() => (props.scope === "overlay" ? "dashboard-view__overlays" : "dashboard-view__column"));
 const gridClass = computed(() => (props.scope === "overlay" ? "dashboard-view__overlays-grid" : ""));
 </script>
@@ -45,8 +51,20 @@ const gridClass = computed(() => (props.scope === "overlay" ? "dashboard-view__o
       <slot name="actions" />
       <SortFilterMenu :scope="scope" :label="`Trier : ${title}`" />
     </div>
+    <p v-if="hint" class="dashboard-view__projects-hint">{{ hint }}</p>
     <div class="widget-library" :class="gridClass">
-      <LibraryRow v-for="entry in pagination.pageEntries" :key="entry.id" :kind="rowKind" :entry="entry" show-meta />
+      <template v-if="scope === 'overlay'">
+        <div v-for="entry in pagination.pageEntries" :key="entry.id" class="overlay-preview-card">
+          <OverlayPreviewThumb :entry="(entry as OverlayEntry)" />
+          <LibraryRow kind="overlay" :entry="(entry as OverlayEntry)" show-meta />
+        </div>
+      </template>
+      <template v-else-if="scope === 'project'">
+        <ProjectLibraryRow v-for="entry in pagination.pageEntries" :key="entry.id" :entry="(entry as Project)" />
+      </template>
+      <template v-else>
+        <LibraryRow v-for="entry in pagination.pageEntries" :key="entry.id" :kind="rowKind" :entry="(entry as LibraryEntry)" show-meta />
+      </template>
       <p v-if="!pagination.pageEntries.length" class="widget-library__empty">{{ emptyMessageResolved }}</p>
     </div>
     <div class="library-pagination" :hidden="pagination.pageCount <= 1">

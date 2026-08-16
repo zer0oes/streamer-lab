@@ -5,6 +5,8 @@ import { overlayItemLabel } from "../lib/overlayItems";
 import type { OverlayItem } from "../lib/overlayTypes";
 import ItemInspector from "./ItemInspector.vue";
 
+defineProps<{ collapsed?: boolean }>();
+
 const store = useOverlayEditorStore();
 const renamingId = ref<string | null>(null);
 const renameValue = ref("");
@@ -37,18 +39,83 @@ function commitRename(id: string): void {
   if (renamingId.value === id) store.renameItem(id, renameValue.value.trim() || overlayItemLabel(store.getItem(id)!));
   renamingId.value = null;
 }
+
+function moveTopLevel(id: string, direction: 1 | -1): void {
+  const order = topLevelItems.value.map((item) => item.id);
+  const index = order.indexOf(id);
+  const swapWith = index - direction; // direction 1 = monter = plus tôt dans la liste (z plus haut)
+  if (index < 0 || swapWith < 0 || swapWith >= order.length) return;
+  [order[index], order[swapWith]] = [order[swapWith], order[index]];
+  store.reorderTopLevel(order);
+}
+
+function moveGroupChild(group: OverlayItem, id: string, direction: 1 | -1): void {
+  const ids = childrenOf(group).map((child) => child.id);
+  const index = ids.indexOf(id);
+  const swapWith = index - direction;
+  if (index < 0 || swapWith < 0 || swapWith >= ids.length) return;
+  [ids[index], ids[swapWith]] = [ids[swapWith], ids[index]];
+  store.reorderGroupChildren(group.id, ids);
+}
+
+// --- Glisser-déposer natif HTML5 (cf. useLibraryDrag.ts pour le même
+// principe ailleurs dans l'app) : réordonne la liste top-level, ou la liste
+// des enfants d'un groupe, jamais l'inverse — comme côté vanille, où le
+// glisser reste toujours cantonné au conteneur DOM d'origine de l'item.
+const draggingId = ref<string | null>(null);
+
+function onDragStart(id: string, event: DragEvent): void {
+  draggingId.value = id;
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+}
+
+function onDragEnd(): void {
+  draggingId.value = null;
+}
+
+function onDropOnTopLevel(targetId: string): void {
+  const dragged = draggingId.value;
+  draggingId.value = null;
+  if (!dragged || dragged === targetId) return;
+  const order = topLevelItems.value.map((item) => item.id);
+  if (!order.includes(dragged)) return;
+  const withoutDragged = order.filter((id) => id !== dragged);
+  const targetIndex = withoutDragged.indexOf(targetId);
+  if (targetIndex === -1) return;
+  withoutDragged.splice(targetIndex, 0, dragged);
+  store.reorderTopLevel(withoutDragged);
+}
+
+function onDropOnGroupChild(group: OverlayItem, targetId: string): void {
+  const dragged = draggingId.value;
+  draggingId.value = null;
+  if (!dragged || dragged === targetId) return;
+  const ids = childrenOf(group).map((child) => child.id);
+  if (!ids.includes(dragged)) return;
+  const withoutDragged = ids.filter((id) => id !== dragged);
+  const targetIndex = withoutDragged.indexOf(targetId);
+  if (targetIndex === -1) return;
+  withoutDragged.splice(targetIndex, 0, dragged);
+  store.reorderGroupChildren(group.id, withoutDragged);
+}
 </script>
 
 <template>
-  <div class="overlay-layers" :class="{ 'is-collapsed': false }">
+  <div class="overlay-layers" :class="{ 'is-collapsed': collapsed }">
     <h3 class="overlay-layers__title">Calques</h3>
     <div class="overlay-layers__list">
       <template v-for="item in topLevelItems" :key="item.id">
-        <div v-if="item.type === 'group'" class="overlay-layers__group">
+        <div v-if="item.type === 'group'" class="overlay-layers__group" :class="{ 'is-dragging': draggingId === item.id }">
           <div
             class="overlay-layers__item"
+            draggable="true"
+            :data-item-id="item.id"
             :class="{ 'is-active': store.selectedIds.has(item.id), 'is-hidden': item.hidden, 'is-locked': item.locked }"
             @click="selectItem(item.id, $event)"
+            @dragstart="onDragStart(item.id, $event)"
+            @dragend="onDragEnd"
+            @dragover.prevent
+            @drop="onDropOnTopLevel(item.id)"
           >
             <span class="material-symbols-rounded" aria-hidden="true">folder</span>
             <span v-if="renamingId !== item.id" class="overlay-layers__label" @dblclick.stop="startRename(item)">{{ overlayItemLabel(item) }}</span>
@@ -62,6 +129,12 @@ function commitRename(id: string): void {
               @keydown.esc="renamingId = null"
               @blur="commitRename(item.id)"
             />
+            <button type="button" class="icon-button" title="Monter" @click.stop="moveTopLevel(item.id, 1)">
+              <span class="material-symbols-rounded" aria-hidden="true">arrow_upward</span>
+            </button>
+            <button type="button" class="icon-button" title="Descendre" @click.stop="moveTopLevel(item.id, -1)">
+              <span class="material-symbols-rounded" aria-hidden="true">arrow_downward</span>
+            </button>
             <button type="button" class="icon-button" :class="{ 'overlay-layers__lock--active': item.hidden }" title="Afficher/masquer" @click.stop="store.toggleItemHidden(item.id)">
               <span class="material-symbols-rounded" aria-hidden="true">{{ item.hidden ? "visibility_off" : "visibility" }}</span>
             </button>
@@ -74,19 +147,37 @@ function commitRename(id: string): void {
               v-for="child in childrenOf(item)"
               :key="child.id"
               class="overlay-layers__item"
-              :class="{ 'is-active': store.selectedIds.has(child.id), 'is-hidden': child.hidden, 'is-locked': child.locked }"
+              draggable="true"
+              :data-item-id="child.id"
+              :class="{ 'is-active': store.selectedIds.has(child.id), 'is-hidden': child.hidden, 'is-locked': child.locked, 'is-dragging': draggingId === child.id }"
               @click="selectItem(child.id, $event)"
+              @dragstart="onDragStart(child.id, $event)"
+              @dragend="onDragEnd"
+              @dragover.prevent
+              @drop="onDropOnGroupChild(item, child.id)"
             >
               <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
               <span class="overlay-layers__label">{{ overlayItemLabel(child) }}</span>
+              <button type="button" class="icon-button" title="Monter" @click.stop="moveGroupChild(item, child.id, 1)">
+                <span class="material-symbols-rounded" aria-hidden="true">arrow_upward</span>
+              </button>
+              <button type="button" class="icon-button" title="Descendre" @click.stop="moveGroupChild(item, child.id, -1)">
+                <span class="material-symbols-rounded" aria-hidden="true">arrow_downward</span>
+              </button>
             </div>
           </div>
         </div>
         <div
           v-else
           class="overlay-layers__item"
-          :class="{ 'is-active': store.selectedIds.has(item.id), 'is-hidden': item.hidden, 'is-locked': item.locked }"
+          draggable="true"
+          :data-item-id="item.id"
+          :class="{ 'is-active': store.selectedIds.has(item.id), 'is-hidden': item.hidden, 'is-locked': item.locked, 'is-dragging': draggingId === item.id }"
           @click="selectItem(item.id, $event)"
+          @dragstart="onDragStart(item.id, $event)"
+          @dragend="onDragEnd"
+          @dragover.prevent
+          @drop="onDropOnTopLevel(item.id)"
         >
           <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
           <span v-if="renamingId !== item.id" class="overlay-layers__label" @dblclick.stop="startRename(item)">{{ overlayItemLabel(item) }}</span>
@@ -100,10 +191,10 @@ function commitRename(id: string): void {
             @keydown.esc="renamingId = null"
             @blur="commitRename(item.id)"
           />
-          <button type="button" class="icon-button" title="Monter" @click.stop="store.reorderItem(item.id, 1)">
+          <button type="button" class="icon-button" title="Monter" @click.stop="moveTopLevel(item.id, 1)">
             <span class="material-symbols-rounded" aria-hidden="true">arrow_upward</span>
           </button>
-          <button type="button" class="icon-button" title="Descendre" @click.stop="store.reorderItem(item.id, -1)">
+          <button type="button" class="icon-button" title="Descendre" @click.stop="moveTopLevel(item.id, -1)">
             <span class="material-symbols-rounded" aria-hidden="true">arrow_downward</span>
           </button>
           <button type="button" class="icon-button" :class="{ 'overlay-layers__lock--active': item.hidden }" title="Afficher/masquer" @click.stop="store.toggleItemHidden(item.id)">

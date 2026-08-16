@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import ProjectCards from "../components/ProjectCards.vue";
 import DashboardSearchBar from "../components/DashboardSearchBar.vue";
 import DashboardLibraryColumn from "../components/DashboardLibraryColumn.vue";
 import DashboardConnectionsSummary from "../components/DashboardConnectionsSummary.vue";
 import MediaGrid from "../components/MediaGrid.vue";
 import { useLibraryStore } from "../stores/library";
-import { mediaPreviewDialog } from "../composables/useDialogs";
+import { useProjectsStore } from "../stores/projects";
+import { mediaPreviewDialog, projectDialog } from "../composables/useDialogs";
 
 const libraryStore = useLibraryStore();
+const projectsStore = useProjectsStore();
 </script>
 
 <template>
@@ -20,12 +21,24 @@ const libraryStore = useLibraryStore();
         temps réel — sans jamais toucher à ce qui est déjà en ligne.
       </p>
     </div>
-    <ProjectCards />
-
     <div class="dashboard-view__columns">
       <section class="dashboard-view__group">
         <h3 class="dashboard-view__group-title">Ma bibliothèque</h3>
         <DashboardSearchBar />
+
+        <DashboardLibraryColumn
+          scope="project"
+          title="Projets"
+          :entries="projectsStore.projects"
+          empty-message="Aucun projet pour l’instant."
+          hint="Glisse un overlay, un widget ou une alerte sur un projet pour l’y déplacer."
+        >
+          <template #actions>
+            <button type="button" class="icon-button dashboard-view__filter-trigger" aria-label="Nouveau projet" title="Nouveau projet" @click="projectDialog?.openCreate()">
+              <span class="material-symbols-rounded" aria-hidden="true">create_new_folder</span>
+            </button>
+          </template>
+        </DashboardLibraryColumn>
 
         <DashboardLibraryColumn
           scope="overlay"
@@ -53,7 +66,7 @@ const libraryStore = useLibraryStore();
       <div class="dashboard-view__column dashboard-view__side">
         <section>
           <h3 class="dashboard-view__group-title">Médias</h3>
-          <MediaGrid @preview="mediaPreviewDialog?.open($event)" />
+          <MediaGrid paginated @preview="mediaPreviewDialog?.open($event)" />
         </section>
         <section>
           <h3 class="dashboard-view__group-title">Comptes</h3>

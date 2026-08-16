@@ -9,7 +9,9 @@ import {
   distributeItems,
   nextOverlayZIndex,
   overlayItemDefaultLabel,
-  overlayItemLabel
+  overlayItemLabel,
+  overlayLayerIcon,
+  overlayPreviewItemIcon
 } from "./overlayItems";
 import type { OverlayItem } from "./overlayTypes";
 
@@ -68,6 +70,35 @@ describe("overlayItemDefaultLabel / overlayItemLabel", () => {
 
   it("prefers a custom name over the default label", () => {
     expect(overlayItemLabel(item({ type: "text", name: "Titre principal" }))).toBe("Titre principal");
+  });
+});
+
+describe("overlayLayerIcon", () => {
+  it("returns a fixed generic icon per primitive type", () => {
+    expect(overlayLayerIcon(item({ type: "alert" }))).toBe("campaign");
+    expect(overlayLayerIcon(item({ type: "text" }))).toBe("title");
+    expect(overlayLayerIcon(item({ type: "icon", props: { name: "bolt" } }))).toBe("star");
+  });
+
+  it("falls back to a placeholder icon by sourceType, defaulting to native", () => {
+    expect(overlayLayerIcon(item({ type: "placeholder", props: { sourceType: "video" } }))).toBe("videocam");
+    expect(overlayLayerIcon(item({ type: "placeholder" }))).toBe("widgets");
+  });
+
+  it("resolves a widget item's icon via the lookup, defaulting to widgets", () => {
+    expect(overlayLayerIcon(item({ type: "widget", widgetId: "goal-bar" }), () => "social_leaderboard")).toBe("social_leaderboard");
+    expect(overlayLayerIcon(item({ type: "widget", widgetId: "missing" }), () => undefined)).toBe("widgets");
+  });
+});
+
+describe("overlayPreviewItemIcon", () => {
+  it("prefers the actual chosen glyph for an icon item", () => {
+    expect(overlayPreviewItemIcon(item({ type: "icon", props: { name: "bolt" } }))).toBe("bolt");
+  });
+
+  it("falls back to overlayLayerIcon for everything else", () => {
+    expect(overlayPreviewItemIcon(item({ type: "text" }))).toBe("title");
+    expect(overlayPreviewItemIcon(item({ type: "widget", widgetId: "goal-bar" }), () => "monitoring")).toBe("monitoring");
   });
 });
 

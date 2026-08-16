@@ -98,6 +98,32 @@ const widgetSrcdoc = computed(() => {
   return buildWidgetSrcdoc(bundle.value, widgetFieldData.value, { platform: PLATFORM_STREAM_ELEMENTS, transparent: true });
 });
 
+// Session/chaîne factices, comme WidgetPreviewFrame.vue (pas de récupération
+// de /api/state dans cette passe). Sans cet envoi au chargement de l'iframe,
+// équivalent au frame.onload de renderOverlayItemFrame côté vanille, un
+// widget/alerte posé sur le canevas ne reçoit jamais onWidgetLoad — son JS
+// (qui s'initialise systématiquement sur cet événement) ne s'exécute donc
+// jamais, laissant l'item visuellement vide/inerte sur le canevas.
+function onWidgetFrameLoad(event: Event): void {
+  const frame = event.target as HTMLIFrameElement;
+  frame.contentWindow?.postMessage(
+    {
+      source: "se-lab",
+      kind: "dispatch",
+      eventType: "onWidgetLoad",
+      eventTarget: "window",
+      detail: {
+        session: { data: {} },
+        recents: [],
+        currency: { code: "EUR", name: "Euro", symbol: "€" },
+        channel: { id: "local-channel", username: "MaChaine" },
+        fieldData: structuredClone(widgetFieldData.value)
+      }
+    },
+    "*"
+  );
+}
+
 function beginTextEdit(event: MouseEvent): void {
   event.stopPropagation();
   editingText.value = true;
@@ -159,7 +185,7 @@ defineExpose({ beginTextEdit });
     </div>
 
     <template v-if="item.type === 'widget' || item.type === 'alert'">
-      <iframe class="overlay-item__frame" sandbox="allow-scripts" scrolling="no" :title="item.widgetId" :srcdoc="widgetSrcdoc"></iframe>
+      <iframe class="overlay-item__frame" sandbox="allow-scripts" scrolling="no" :title="item.widgetId" :srcdoc="widgetSrcdoc" @load="onWidgetFrameLoad"></iframe>
     </template>
     <div
       v-else-if="item.type === 'text'"

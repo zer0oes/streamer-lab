@@ -4,6 +4,7 @@ import { useOverlayEditorStore } from "../stores/overlayEditor";
 import OverlayCanvas from "../components/OverlayCanvas.vue";
 import OverlayToolbar from "../components/OverlayToolbar.vue";
 import LayersPanel from "../components/LayersPanel.vue";
+import { overlayLayersCollapsed, toggleOverlayLayersCollapsed } from "../composables/useOverlayLayersCollapse";
 
 const store = useOverlayEditorStore();
 
@@ -39,7 +40,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div id="overlay-editor-view" class="overlay-editor">
+  <div id="overlay-editor-view" class="overlay-editor" :class="{ 'is-layers-collapsed': overlayLayersCollapsed }">
     <div class="overlay-editor__toolbar">
       <div class="overlay-editor__heading">
         <h2>{{ store.overlay?.name }}</h2>
@@ -55,6 +56,18 @@ onBeforeUnmount(() => {
       </OverlayCanvas>
     </div>
 
-    <LayersPanel />
+    <button
+      type="button"
+      id="overlay-layers-toggle"
+      class="overlay-layers-toggle icon-button"
+      :aria-expanded="!overlayLayersCollapsed"
+      :aria-label="overlayLayersCollapsed ? 'Déplier le panneau Calques' : 'Replier le panneau Calques'"
+      :title="overlayLayersCollapsed ? 'Déplier le panneau Calques' : 'Replier le panneau Calques'"
+      @click="toggleOverlayLayersCollapsed"
+    >
+      <span class="material-symbols-rounded" aria-hidden="true">{{ overlayLayersCollapsed ? "right_panel_open" : "right_panel_close" }}</span>
+    </button>
+
+    <LayersPanel :collapsed="overlayLayersCollapsed" />
   </div>
 </template>

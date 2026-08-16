@@ -64,6 +64,51 @@ function itemElAt(target: EventTarget | null): HTMLElement | null {
   return target instanceof Element ? (target.closest(".overlay-item") as HTMLElement | null) : null;
 }
 
+// --- Repères (lignes de guidage déplaçables, cf. bouton "Repères" du toolbar) ---
+
+function isOutsideStage(clientX: number, clientY: number): boolean {
+  const stage = document.querySelector(".overlay-canvas-stage");
+  if (!stage) return false;
+  const rect = stage.getBoundingClientRect();
+  return clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom;
+}
+
+const draggingGuideOutside = ref(false);
+
+// Glisser un repère hors du damier le supprime (comme sur Photoshop) ; sinon
+// il suit le pointeur. La position n'est persistée qu'au relâchement — pas à
+// chaque pointermove — pour ne pas déclencher une sauvegarde réseau par pixel.
+function startGuideDrag(event: PointerEvent, axis: "horizontal" | "vertical", index: number): void {
+  event.stopPropagation();
+  event.preventDefault();
+  const guides = store.overlay?.guides;
+  if (!guides) return;
+
+  const onMove = (moveEvent: PointerEvent) => {
+    const outside = isOutsideStage(moveEvent.clientX, moveEvent.clientY);
+    draggingGuideOutside.value = outside;
+    if (outside) return;
+    const point = pointFromEvent(moveEvent);
+    const value = Math.round(axis === "horizontal" ? point.y : point.x);
+    if (axis === "horizontal") guides.horizontal[index] = value;
+    else guides.vertical[index] = value;
+  };
+  const onUp = (upEvent: PointerEvent) => {
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    const outside = isOutsideStage(upEvent.clientX, upEvent.clientY);
+    draggingGuideOutside.value = false;
+    if (outside) {
+      if (axis === "horizontal") guides.horizontal.splice(index, 1);
+      else guides.vertical.splice(index, 1);
+    }
+    store.setGuides({ horizontal: [...guides.horizontal], vertical: [...guides.vertical] });
+  };
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+}
+
+
 function handleElAt(target: EventTarget | null): HTMLElement | null {
   return target instanceof Element ? (target.closest("[data-handle]") as HTMLElement | null) : null;
 }
@@ -295,6 +340,22 @@ function startGroupResize(event: PointerEvent, groupId: string, el: HTMLElement,
             :ref="(instance) => setItemRef(item.id, instance)"
             :item="item"
           />
+        </div>
+        <div v-if="store.guidesVisible && store.overlay" class="overlay-guides" :style="canvasStyle">
+          <div
+            v-for="(value, index) in store.overlay.guides.horizontal"
+            :key="`h-${index}`"
+            class="overlay-guide overlay-guide--horizontal"
+            :style="{ top: `${value}px` }"
+            @pointerdown="startGuideDrag($event, 'horizontal', index)"
+          ></div>
+          <div
+            v-for="(value, index) in store.overlay.guides.vertical"
+            :key="`v-${index}`"
+            class="overlay-guide overlay-guide--vertical"
+            :style="{ left: `${value}px` }"
+            @pointerdown="startGuideDrag($event, 'vertical', index)"
+          ></div>
         </div>
       </div>
     </div>

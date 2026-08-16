@@ -322,6 +322,47 @@ export const useOverlayEditorStore = defineStore("overlayEditor", () => {
     commit();
   }
 
+  // Réassigne z sur TOUS les items à partir d'un ordre d'affichage top-level
+  // (item ou groupe) : les enfants d'un groupe reçoivent d'abord les z les
+  // plus hauts du bloc, le groupe lui-même le plus bas — il reste ainsi
+  // toujours "sous" ses propres enfants, comme son cadre purement décoratif
+  // (pointer-events: none) le suppose. Port de commitOverlayLayerOrder, sans
+  // la manipulation DOM directe (remplacée par le glisser-déposer HTML5 natif
+  // du panneau Calques, qui ne réordonne qu'un tableau réactif).
+  function assignZFromTopLevelOrder(orderedTopLevelIds: string[]): void {
+    if (!overlay.value) return;
+    const flatOrder: string[] = [];
+    for (const id of orderedTopLevelIds) {
+      const entry = overlay.value.items.find((item) => item.id === id);
+      if (entry?.type === "group") flatOrder.push(...((entry.props?.children as string[] | undefined) || []), id);
+      else flatOrder.push(id);
+    }
+    let z = flatOrder.length;
+    const updates = new Map<string, Partial<OverlayItem>>();
+    for (const id of flatOrder) updates.set(id, { z: z-- });
+    patchItems(updates);
+    commit();
+  }
+
+  function reorderTopLevel(newOrderIds: string[]): void {
+    assignZFromTopLevelOrder(newOrderIds);
+  }
+
+  function reorderGroupChildren(groupId: string, newChildIds: string[]): void {
+    if (!overlay.value) return;
+    const group = overlay.value.items.find((item) => item.id === groupId);
+    if (!group) return;
+    patchItem(groupId, { props: { ...group.props, children: newChildIds } });
+    const childIdsInGroups = new Set(
+      overlay.value.items.filter((item) => item.type === "group").flatMap((item) => (item.props?.children as string[] | undefined) || [])
+    );
+    const topLevelIds = overlay.value.items
+      .filter((item) => !childIdsInGroups.has(item.id))
+      .sort((a, b) => b.z - a.z)
+      .map((item) => item.id);
+    assignZFromTopLevelOrder(topLevelIds);
+  }
+
   // --- Repères ---
 
   function setGuidesVisible(visible: boolean): void {
@@ -333,6 +374,16 @@ export const useOverlayEditorStore = defineStore("overlayEditor", () => {
     if (!overlay.value) return;
     overlay.value.guides = next;
     void saveOverlayGuides(overlay.value.id, next);
+  }
+
+  function addGuide(axis: "horizontal" | "vertical"): void {
+    if (!overlay.value) return;
+    const guides = overlay.value.guides;
+    const value = axis === "horizontal" ? Math.round(canvas.value.height / 2) : Math.round(canvas.value.width / 2);
+    setGuides({
+      horizontal: axis === "horizontal" ? [...guides.horizontal, value] : guides.horizontal,
+      vertical: axis === "vertical" ? [...guides.vertical, value] : guides.vertical
+    });
   }
 
   // --- Outil / zoom ---
@@ -390,8 +441,11 @@ export const useOverlayEditorStore = defineStore("overlayEditor", () => {
     toggleItemLocked,
     renameItem,
     reorderItem,
+    reorderTopLevel,
+    reorderGroupChildren,
     setGuidesVisible,
     setGuides,
+    addGuide,
     setTool,
     setZoomMode
   };

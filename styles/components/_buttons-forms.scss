@@ -57,7 +57,7 @@
     height: 28px;
     padding: 0;
     border: 0;
-    border-radius: var(--radius-6);
+    border-radius: var(--radius-4);
     transform: translateY(-50%);
     cursor: pointer;
     color: var(--muted);
@@ -75,7 +75,7 @@ textarea {
   min-height: 38px;
   padding: var(--space-9) var(--space-11);
   border: 1px solid var(--line);
-  border-radius: var(--radius-8);
+  border-radius: var(--radius-4);
   outline: none;
   color: var(--text);
   background: var(--panel-soft);
@@ -97,7 +97,7 @@ input {
   min-height: 37px;
   padding: 0 var(--space-14);
   border: 1px solid var(--line);
-  border-radius: var(--radius-8);
+  border-radius: var(--radius-4);
   cursor: pointer;
   background: var(--panel-soft);
   font-size: var(--text-12);
@@ -157,7 +157,7 @@ input {
   height: 32px;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: var(--radius-8);
+  border-radius: var(--radius-4);
   cursor: pointer;
   color: var(--muted);
   background: var(--panel-soft);

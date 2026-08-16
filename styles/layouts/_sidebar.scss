@@ -188,7 +188,7 @@
   gap: var(--space-9);
   padding: var(--space-8) var(--space-12);
   border: 1px solid var(--line);
-  border-radius: var(--radius-9);
+  border-radius: var(--radius-4);
   color: var(--muted);
   background: var(--panel);
   cursor: pointer;
@@ -296,7 +296,7 @@
   height: 38px;
   flex: 0 0 auto;
   border: 1px solid var(--line);
-  border-radius: var(--radius-10);
+  border-radius: var(--radius-4);
   color: var(--muted);
   background: var(--panel);
   cursor: pointer;
@@ -381,7 +381,7 @@
 .field-group {
   margin: 0 0 var(--space-14);
   border: 1px solid var(--line);
-  border-radius: var(--radius-9);
+  border-radius: var(--radius-4);
   background: color-mix(in srgb, var(--panel-soft) 65%, transparent);
   transition: border-color var(--duration-base);
 
@@ -440,7 +440,7 @@
     gap: var(--space-8);
     margin: 0;
     padding: var(--space-6) var(--space-8);
-    border-radius: var(--radius-6);
+    border-radius: var(--radius-4);
     transition: background var(--duration-fast);
 
     &:hover { background: var(--panel-soft); }

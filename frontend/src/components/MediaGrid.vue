@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useMediaStore } from "../stores/media";
+import { useDashboardLibraryStore, DASHBOARD_MEDIA_PAGE_SIZE } from "../stores/dashboardLibrary";
+import { paginate } from "../lib/libraryFilter";
 import { useToast } from "../composables/useToast";
 
 interface DisplayItem {
@@ -11,14 +13,20 @@ interface DisplayItem {
   id?: string;
 }
 
+// Deux instances de ce composant existent (panneau Médias complet de la
+// sidebar, et bloc du dashboard) : seule celle du dashboard est paginée
+// (cf. DASHBOARD_MEDIA_PAGE_SIZE) — la sidebar reste une liste unique.
+const props = withDefaults(defineProps<{ paginated?: boolean }>(), { paginated: false });
+
 const mediaStore = useMediaStore();
+const dashboardLibrary = useDashboardLibraryStore();
 const { showToast } = useToast();
 const emit = defineEmits<{ preview: [item: DisplayItem] }>();
 
 const isDragOver = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
-const items = computed<DisplayItem[]>(() => [
+const allItems = computed<DisplayItem[]>(() => [
   ...mediaStore.localMedia.map((media) => ({ source: "local" as const, type: media.type, url: media.url, name: media.name, id: media.id })),
   ...mediaStore.remoteMedia.map((media) => ({
     source: "streamelements" as const,
@@ -27,6 +35,9 @@ const items = computed<DisplayItem[]>(() => [
     name: media.overlayName ? `Depuis l'overlay "${media.overlayName}"` : media.url
   }))
 ]);
+
+const pagination = computed(() => paginate(allItems.value, dashboardLibrary.mediaPage, DASHBOARD_MEDIA_PAGE_SIZE));
+const items = computed<DisplayItem[]>(() => (props.paginated ? pagination.value.pageEntries : allItems.value));
 
 async function handleFiles(files: FileList | null): Promise<void> {
   if (!files) return;
@@ -112,5 +123,32 @@ function openPreview(item: DisplayItem, event: Event): void {
         <span class="material-symbols-rounded" aria-hidden="true">delete</span>
       </button>
     </div>
+  </div>
+
+  <!-- Hors de .media-library (grille 3 colonnes) : à l'intérieur, ce bloc
+  deviendrait lui-même une cellule de la grille au lieu de s'étendre sur
+  toute sa largeur pour se centrer, cf. DashboardLibraryColumn.vue où
+  .library-pagination est de la même façon un frère de .widget-library, pas
+  un enfant. -->
+  <div v-if="paginated" class="library-pagination" :hidden="pagination.pageCount <= 1">
+    <button
+      type="button"
+      class="icon-button"
+      aria-label="Page précédente"
+      :disabled="pagination.page <= 0"
+      @click="dashboardLibrary.setMediaPage(pagination.page - 1)"
+    >
+      <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+    </button>
+    <span class="library-pagination__label">{{ pagination.page + 1 }} / {{ pagination.pageCount }}</span>
+    <button
+      type="button"
+      class="icon-button"
+      aria-label="Page suivante"
+      :disabled="pagination.page >= pagination.pageCount - 1"
+      @click="dashboardLibrary.setMediaPage(pagination.page + 1)"
+    >
+      <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+    </button>
   </div>
 </template>
