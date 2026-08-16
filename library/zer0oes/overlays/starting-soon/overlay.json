@@ -42,7 +42,7 @@
       "y": 906,
       "w": 709,
       "h": 121,
-      "z": 4,
+      "z": 3,
       "hidden": false,
       "locked": false,
       "name": "",
@@ -61,7 +61,7 @@
       "y": 86,
       "w": 420,
       "h": 750,
-      "z": 3,
+      "z": 4,
       "hidden": false,
       "locked": false,
       "name": "",
@@ -98,12 +98,14 @@
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1786640660113,
+  "updatedAt": 1786923197382,
   "guides": {
     "horizontal": [
       966
     ],
-    "vertical": []
+    "vertical": [
+      956
+    ]
   },
   "sourcePlatform": "streamelements",
   "sourceOverlayId": "694be54917a922067a98d0fe"

@@ -1,17 +1,22 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref, toRaw } from "vue";
 import { useOverlayEditorStore } from "../stores/overlayEditor";
-import { overlayItemDefaultLabel } from "../lib/overlayItems";
+import { overlayItemDefaultLabel, resolveOverlayItemFieldData } from "../lib/overlayItems";
 import { buildWidgetSrcdoc } from "../lib/widgetSrcdoc";
 import type { OverlayItem, TextProps } from "../lib/overlayTypes";
 import { PLATFORM_STREAM_ELEMENTS } from "../lib/platformEvents";
+import { loadAppState, useAppState } from "../composables/useAppState";
+import { buildRecents, DEFAULT_CURRENCY } from "../lib/sessionState";
 
 const props = defineProps<{ item: OverlayItem }>();
 const emit = defineEmits<{ (e: "enter-text-edit"): void; (e: "exit-text-edit"): void }>();
 
 const store = useOverlayEditorStore();
+const appState = useAppState();
 const editingText = ref(false);
 const textEl = ref<HTMLElement | null>(null);
+
+onMounted(() => void loadAppState());
 
 const label = computed(() => overlayItemDefaultLabel(props.item));
 
@@ -76,21 +81,7 @@ const bundle = computed(() => (props.item.widgetId ? store.widgetBundles[props.i
 const widgetFieldData = computed<Record<string, unknown>>(() => {
   const b = bundle.value;
   if (!b) return {};
-  const defaults = Object.fromEntries(Object.entries(b.fields).map(([key, field]) => [key, field.value]));
-  const saved = (props.item.props?.fieldData as Record<string, unknown> | undefined) || {};
-  const merged: Record<string, unknown> = { ...defaults };
-  for (const [key, definition] of Object.entries(b.fields)) {
-    if (!Object.hasOwn(saved, key)) continue;
-    if (definition.type === "dropdown" && !Object.hasOwn(definition.options || {}, saved[key] as string)) continue;
-    if (definition.type === "number" || definition.type === "slider") {
-      const numericValue = Number(saved[key]);
-      if (!Number.isFinite(numericValue)) continue;
-      merged[key] = Math.min(definition.max ?? numericValue, Math.max(definition.min ?? numericValue, numericValue));
-      continue;
-    }
-    merged[key] = saved[key];
-  }
-  return merged;
+  return resolveOverlayItemFieldData(b.fields, props.item.props?.fieldData as Record<string, unknown> | undefined);
 });
 
 const widgetSrcdoc = computed(() => {
@@ -98,14 +89,18 @@ const widgetSrcdoc = computed(() => {
   return buildWidgetSrcdoc(bundle.value, widgetFieldData.value, { platform: PLATFORM_STREAM_ELEMENTS, transparent: true });
 });
 
-// Session/chaîne factices, comme WidgetPreviewFrame.vue (pas de récupération
-// de /api/state dans cette passe). Sans cet envoi au chargement de l'iframe,
-// équivalent au frame.onload de renderOverlayItemFrame côté vanille, un
-// widget/alerte posé sur le canevas ne reçoit jamais onWidgetLoad — son JS
-// (qui s'initialise systématiquement sur cet événement) ne s'exécute donc
-// jamais, laissant l'item visuellement vide/inerte sur le canevas.
-function onWidgetFrameLoad(event: Event): void {
+// Sans cet envoi au chargement de l'iframe, équivalent au frame.onload de
+// renderOverlayItemFrame côté vanille, un widget/alerte posé sur le canevas
+// ne reçoit jamais onWidgetLoad — son JS (qui s'initialise systématiquement
+// sur cet événement) ne s'exécute donc jamais, laissant l'item visuellement
+// vide/inerte sur le canevas. Session/chaîne : chargées depuis /api/state
+// (cf. useAppState.ts) — sans quoi un widget qui affiche "dernier
+// follower/sub/tip" n'a jamais rien à montrer (session envoyée vide).
+async function onWidgetFrameLoad(event: Event): Promise<void> {
+  await loadAppState();
   const frame = event.target as HTMLIFrameElement;
+  const rawSession = toRaw(appState.value?.session) || {};
+  const rawChannel = toRaw(appState.value?.channel) || { id: "local-channel", username: "MaChaine" };
   frame.contentWindow?.postMessage(
     {
       source: "se-lab",
@@ -113,10 +108,10 @@ function onWidgetFrameLoad(event: Event): void {
       eventType: "onWidgetLoad",
       eventTarget: "window",
       detail: {
-        session: { data: {} },
-        recents: [],
-        currency: { code: "EUR", name: "Euro", symbol: "€" },
-        channel: { id: "local-channel", username: "MaChaine" },
+        session: { data: structuredClone(rawSession) },
+        recents: buildRecents(rawSession),
+        currency: DEFAULT_CURRENCY,
+        channel: rawChannel,
         fieldData: structuredClone(widgetFieldData.value)
       }
     },

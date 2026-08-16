@@ -28,6 +28,19 @@ $ruler-size: 20px;
 
 .overlay-editor__heading { display: flex; flex-direction: column; gap: var(--space-4); }
 
+// .preview-column (AppShell.vue, layouts/_preview.scss) applique le même
+// padding sur ses 4 côtés à TOUTES les vues qu'elle héberge — correct pour
+// le Dashboard/l'éditeur widget, qui peuvent défiler normalement, mais en
+// trop ici : .overlay-layers (position: fixed) s'arrête déjà pile au bas du
+// viewport sans ce padding, alors que le reste du contenu (flux normal) en
+// hérite quand même en bas — cette réserve inutile faisait déborder toute
+// la PAGE d'exactement ce padding, au lieu de rester contenue au viewport
+// comme le panneau fixe. Seul le bas est retiré : le haut reste utile (c'est
+// lui qui positionne .overlay-editor__toolbar sous la topbar).
+.preview-column:has(> .overlay-editor) {
+  padding-bottom: 0;
+}
+
 .overlay-editor__body {
   display: flex;
   align-items: flex-start;
@@ -56,16 +69,31 @@ $ruler-size: 20px;
 .overlay-layers-toggle {
   position: fixed;
   z-index: 7;
-  // Aligné sur le titre "Calques" (padding-top du panneau + moitié de sa
-  // ligne de titre), pas centré verticalement sur tout le viewport : plus
-  // proche du haut, il se lit comme le contrôle du panneau juste à côté,
-  // plutôt que comme un élément flottant sans rapport avec lui.
-  top: calc(var(--topbar-height) + var(--space-24) + 10px);
-  right: calc(#{$overlay-layers-width} + var(--space-8));
-  transform: translateY(-50%);
+  // 40px de marge au-dessus du bouton (son bord haut, pas son centre) :
+  // même valeur que le padding-top de .overlay-layers ci-dessous, pour que
+  // le bouton et le panneau démarrent visuellement à la même hauteur sous
+  // la topbar.
+  top: calc(var(--topbar-height) + 40px);
+  right: calc(#{$overlay-layers-width} + 40px);
   transition: right var(--duration-base) ease;
 
-  .overlay-editor.is-layers-collapsed & { right: var(--space-8); }
+  .overlay-editor.is-layers-collapsed & { right: 40px; }
+}
+
+// Réutilise .event-fab/.event-simulator (styles/components/_event-simulator.scss)
+// tel quel dans l'éditeur d'overlay : les deux vues (éditeur widget/alerte,
+// éditeur overlay) ne sont jamais montées en même temps, donc aucune
+// collision de classe — seul le décalage horizontal diffère, puisque le
+// panneau à éviter n'a pas la même largeur ici ($overlay-layers-width) que
+// dans l'éditeur widget/alerte (--side-panel-width).
+.overlay-editor {
+  .event-fab,
+  .event-simulator { right: calc(#{$overlay-layers-width} + var(--space-24)); }
+
+  &.is-layers-collapsed {
+    .event-fab,
+    .event-simulator { right: var(--space-24); }
+  }
 }
 
 // Simple coquille de mise en page dans le flex-row .overlay-editor__body :
@@ -120,7 +148,10 @@ $ruler-size: 20px;
   position: relative;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: var(--radius-12);
+  // Moitié de --radius-12, cf. même changement sur .preview-shell
+  // (layouts/_preview.scss) — les deux aperçus (widget/alerte, overlay)
+  // restent cohérents entre eux.
+  border-radius: 6px;
   background-color: #15171c;
   background-image:
     linear-gradient(45deg, #1f2229 25%, transparent 25%),
@@ -667,11 +698,19 @@ $ruler-size: 20px;
   z-index: 6;
   display: flex;
   flex-direction: column;
+  // Le panneau lui-même ne doit jamais dépasser cette boîte fixe (topbar →
+  // bas du viewport) : seul &__list ci-dessous scrolle en interne (cf. son
+  // commentaire). Sans ce overflow:hidden, un contenu plus haut que prévu
+  // (ex. réglages d'un calque widget/alerte avec beaucoup de champs) pousse
+  // le panneau au-delà du viewport et fait scroller la PAGE entière, pas le
+  // panneau — un position:fixed qui déborde peut agrandir la zone
+  // scrollable du document, même s'il reste visuellement ancré.
+  overflow: hidden;
   width: $overlay-layers-width;
-  // Même marge que .account-panel-drawer__body (l'autre panneau latéral
-  // droit, cf. styles/components/_account-panel.scss) : les deux doivent
-  // s'aligner visuellement, pas seulement en largeur.
-  padding: var(--space-24);
+  // Marge du haut à 40px (au lieu de 24 comme les 3 autres côtés) : espace
+  // volontairement plus généreux sous le topbar, en écho au padding-top de
+  // .preview-column (clamp(--space-18, 3vw, 40px)) côté éditeur widget.
+  padding: 40px var(--space-24) var(--space-24);
   border-left: 1px solid var(--line);
   background: var(--panel);
   transition: width var(--duration-base) ease, padding var(--duration-base) ease, border-color var(--duration-base) ease;

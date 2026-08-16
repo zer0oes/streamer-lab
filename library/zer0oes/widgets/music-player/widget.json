@@ -1,0 +1,11 @@
+{
+  "id": "music-player",
+  "name": "zer0oes - Music player",
+  "description": "Affichage de la musique en cours de lecture sur Spotify",
+  "icon": "star",
+  "width": 500,
+  "height": 100,
+  "order": 60,
+  "createdAt": 1786920861793,
+  "updatedAt": 1786920897410
+}

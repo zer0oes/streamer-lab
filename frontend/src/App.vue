@@ -14,36 +14,15 @@ import { useProjectsStore } from "./stores/projects";
 import { useLibraryStore } from "./stores/library";
 import { useAccountStore } from "./stores/account";
 import { useMediaStore } from "./stores/media";
-import { useWidgetEditorStore } from "./stores/widgetEditor";
-import { useOverlayEditorStore } from "./stores/overlayEditor";
 import { contactDialog, mediaPreviewDialog, overlayDialog, projectDialog, widgetDialog } from "./composables/useDialogs";
-import { activeView, setActiveView } from "./composables/useAppView";
+import { activeView } from "./composables/useAppView";
+import { resolveInitialRoute, startRouteSync } from "./composables/useRouteSync";
+import { loadAppState } from "./composables/useAppState";
 
 const projectsStore = useProjectsStore();
 const libraryStore = useLibraryStore();
 const accountStore = useAccountStore();
 const mediaStore = useMediaStore();
-const widgetEditorStore = useWidgetEditorStore();
-const overlayEditorStore = useOverlayEditorStore();
-
-// Liens directs ?widget=<id> / ?overlay=<id> (ex. partagés depuis la
-// bibliothèque) : portage de la même logique que public/app.js, retiré à la
-// bascule Phase 4. `overlay` est prioritaire sur `widget` si les deux sont
-// présents, comme côté vanille.
-async function openFromQueryParams(): Promise<void> {
-  const params = new URLSearchParams(window.location.search);
-  const requestedOverlayId = params.get("overlay");
-  const requestedWidgetId = params.get("widget");
-  if (requestedOverlayId && libraryStore.overlays.some((entry) => entry.id === requestedOverlayId)) {
-    await overlayEditorStore.open(requestedOverlayId);
-    setActiveView("overlay");
-    return;
-  }
-  if (requestedWidgetId && libraryStore.widgets.some((entry) => entry.id === requestedWidgetId)) {
-    await widgetEditorStore.open(requestedWidgetId);
-    setActiveView("widget");
-  }
-}
 
 const projectDialogRef = ref<InstanceType<typeof ProjectSettingsDialog> | null>(null);
 const widgetDialogRef = ref<InstanceType<typeof WidgetSettingsDialog> | null>(null);
@@ -58,12 +37,17 @@ onMounted(() => {
   contactDialog.value = contactDialogRef.value;
   mediaPreviewDialog.value = mediaPreviewDialogRef.value;
   void projectsStore.fetchProjects();
-  void libraryStore.fetchAll().then(openFromQueryParams);
+  void libraryStore.fetchAll().then(resolveInitialRoute);
+  // Chargée une fois pour toute l'app (session/chaîne de démo) : les
+  // aperçus widget/overlay en ont besoin dès leur premier onWidgetLoad, pas
+  // la peine d'attendre qu'un éditeur soit ouvert pour la lancer.
+  void loadAppState();
   void mediaStore.fetchAll();
   void accountStore.fetchMe().then(() => {
     void accountStore.fetchIntegrations();
     void accountStore.fetchEnvDefaults();
   });
+  startRouteSync();
 });
 </script>
 

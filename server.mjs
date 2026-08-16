@@ -1273,8 +1273,20 @@ function sendJson(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
+// Routes gerees cote client par le frontend Vue (pas de vrai routeur, juste
+// ces 3 prefixes synchronises avec l'URL, cf. useRouteSync.ts) : un GET
+// direct dessus (chargement initial, rechargement de page) doit renvoyer le
+// meme index.html que "/", pour que le JS puisse lire l'URL et rouvrir le
+// bon widget/alerte/overlay - sinon ce serait une 404, le serveur n'ayant
+// aucune ressource reelle a cet emplacement.
+const CLIENT_ROUTE_PREFIXES = ["/widget/", "/alerte/", "/overlay/"];
+
+function isClientRoute(requestPath) {
+  return CLIENT_ROUTE_PREFIXES.some((prefix) => requestPath.startsWith(prefix));
+}
+
 function serveStatic(request, response, requestPath) {
-  const relative = requestPath === "/" ? "index.html" : decodeURIComponent(requestPath.slice(1));
+  const relative = requestPath === "/" || isClientRoute(requestPath) ? "index.html" : decodeURIComponent(requestPath.slice(1));
   const normalized = normalize(relative).replace(/^([.][.][/\\])+/, "");
   const path = resolve(PUBLIC_ROOT, normalized);
   if (!path.startsWith(resolve(PUBLIC_ROOT))) return sendJson(response, 403, { error: "Chemin interdit" });

@@ -3,11 +3,13 @@ import { computed, onMounted, onUnmounted, ref, toRaw, watch } from "vue";
 import { useWidgetEditorStore } from "../stores/widgetEditor";
 import { widgetFrameEl, dispatchToWidget } from "../composables/useWidgetPreviewBridge";
 import { PLATFORM_STREAMLABS, buildStreamlabsLoadDetail } from "../lib/platformEvents";
+import { widgetFieldsCollapsed, toggleWidgetFieldsCollapsed } from "../composables/useWidgetFieldsCollapse";
+import { loadAppState, useAppState } from "../composables/useAppState";
+import { buildRecents, DEFAULT_CURRENCY } from "../lib/sessionState";
 
 const store = useWidgetEditorStore();
 const frameEl = ref<HTMLIFrameElement | null>(null);
 const shellWrapperEl = ref<HTMLElement | null>(null);
-const isChecker = ref(true);
 
 // .preview-shell__canvas garde toujours la taille RÉELLE du widget
 // (transform:scale ensuite) : sans ça .preview-shell (position:relative,
@@ -32,21 +34,17 @@ const canvasStyle = computed(() => ({
   transform: `scale(${fitScale.value})`
 }));
 
-// Session/chaîne factices, comme la valeur par défaut de l'app vanille en
-// mode simulation locale (pas de récupération de /api/state dans cette
-// passe — l'aperçu reste fonctionnel, juste sans totaux de session réels).
-const session: Record<string, unknown> = {};
-const channelInfo = { id: "local-channel", username: "MaChaine" };
+// Session/chaîne : chargées depuis /api/state (mocks/session.json côté
+// serveur), avec un repli local le temps du tout premier fetch — sans quoi
+// un widget qui affiche "dernier follower/sub/tip" n'a jamais rien à
+// montrer (cf. useAppState.ts).
+const appState = useAppState();
+const FALLBACK_CHANNEL = { id: "local-channel", username: "MaChaine" };
+const session = computed<Record<string, unknown>>(() => appState.value?.session || {});
+const channelInfo = computed(() => appState.value?.channel || FALLBACK_CHANNEL);
 
 function isChatWidget(): boolean {
   return store.editorFiles.html.includes('id="chatlist_item"') || store.editorFiles.js.includes("attachEmotes");
-}
-
-function buildRecents(data: Record<string, unknown>) {
-  return Object.entries(data)
-    .filter(([key]) => key.endsWith("-latest"))
-    .map(([type, value]) => ({ type: type.replace("-latest", ""), ...(value as object) }))
-    .slice(-25);
 }
 
 function dispatchChatMessage(name: string, message: string, color = "#9f75ff"): void {
@@ -76,20 +74,29 @@ function toStreamlabsChatEvent(detail: { listener: string; event: { data: Record
   return { ...detail.event.data, type: "message", tag: "message", isTest: true };
 }
 
-function onFrameLoad(): void {
-  // toRaw() : store.fieldData est un Proxy réactif Pinia — structuredClone()
-  // lève un DataCloneError si on le lui passe directement, il lui faut
-  // l'objet brut sous-jacent.
+// async + attend loadAppState() : la fixture de session n'est pas
+// forcément déjà chargée quand l'iframe termine son propre chargement (deux
+// requêtes concurrentes) — sans cette attente, le widget recevait souvent
+// onWidgetLoad avec une session vide et n'affichait jamais rien, la plupart
+// des widgets custom ne se réinitialisant pas sur un second onWidgetLoad.
+async function onFrameLoad(): Promise<void> {
+  await loadAppState();
+  // toRaw() : store.fieldData/session.value/channelInfo.value sont des Proxy
+  // réactifs (Pinia, ou un ref Vue enveloppant l'objet JSON reçu) —
+  // structuredClone() lève un DataCloneError si on les lui passe
+  // directement, il leur faut l'objet brut sous-jacent.
   const rawFieldData = toRaw(store.fieldData);
+  const rawSession = toRaw(session.value);
+  const rawChannel = toRaw(channelInfo.value);
   if (store.platform === PLATFORM_STREAMLABS) {
-    dispatchToWidget("onLoad", buildStreamlabsLoadDetail(store.fields, rawFieldData, structuredClone(session)), "document");
+    dispatchToWidget("onLoad", buildStreamlabsLoadDetail(store.fields, rawFieldData, structuredClone(rawSession)), "document");
     store.addConsoleLine("event", "onLoad · Streamlabs");
   } else {
     dispatchToWidget("onWidgetLoad", {
-      session: { data: structuredClone(session) },
-      recents: buildRecents(session),
-      currency: { code: "EUR", name: "Euro", symbol: "€" },
-      channel: { ...channelInfo, apiToken: "" },
+      session: { data: structuredClone(rawSession) },
+      recents: buildRecents(rawSession),
+      currency: DEFAULT_CURRENCY,
+      channel: { ...rawChannel, apiToken: "" },
       fieldData: structuredClone(rawFieldData)
     });
     store.addConsoleLine("event", "onWidgetLoad · StreamElements");
@@ -139,6 +146,7 @@ function handleApiRequest(request: { id: string; method: string; args: unknown[]
 }
 
 onMounted(() => {
+  void loadAppState();
   widgetFrameEl.value = frameEl.value;
   window.addEventListener("message", handleWidgetMessage);
   if (shellWrapperEl.value) {
@@ -168,17 +176,33 @@ watch(frameEl, (el) => {
       <button
         type="button"
         class="checker-button"
-        :class="{ 'is-active': isChecker }"
-        :aria-pressed="isChecker"
-        :aria-label="isChecker ? 'Désactiver le damier' : 'Activer le damier'"
-        :title="isChecker ? 'Désactiver le damier' : 'Activer le damier'"
-        @click="isChecker = !isChecker"
+        :class="{ 'is-active': store.isChecker }"
+        :aria-pressed="store.isChecker"
+        :aria-label="store.isChecker ? 'Désactiver le damier' : 'Activer le damier'"
+        :title="store.isChecker ? 'Désactiver le damier' : 'Activer le damier'"
+        @click="store.toggleChecker"
       >
         <span class="material-symbols-rounded" aria-hidden="true">grid_on</span>
       </button>
+      <!-- Dans le flux normal (flex row), pas en position:fixed avec une
+      position calculée indépendamment de .checker-button : les deux boutons
+      se chevauchaient selon la largeur de fenêtre, chaque formule ignorant
+      la position réelle de l'autre. Un simple gap de rangée flex élimine le
+      problème structurellement, plutôt que de l'ajuster au pixel près. -->
+      <button
+        type="button"
+        id="widget-fields-toggle"
+        class="icon-button"
+        :aria-expanded="!widgetFieldsCollapsed"
+        :aria-label="widgetFieldsCollapsed ? 'Déplier le panneau Champs' : 'Replier le panneau Champs'"
+        :title="widgetFieldsCollapsed ? 'Déplier le panneau Champs' : 'Replier le panneau Champs'"
+        @click="toggleWidgetFieldsCollapsed"
+      >
+        <span class="material-symbols-rounded" aria-hidden="true">{{ widgetFieldsCollapsed ? "right_panel_open" : "right_panel_close" }}</span>
+      </button>
     </div>
   </div>
-  <div ref="shellWrapperEl" class="preview-shell" :class="{ 'is-checker': isChecker }" :style="shellStyle">
+  <div ref="shellWrapperEl" class="preview-shell" :class="{ 'is-checker': store.isChecker }" :style="shellStyle">
     <div class="preview-shell__canvas" :style="canvasStyle">
       <iframe
         ref="frameEl"

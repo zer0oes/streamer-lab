@@ -12,15 +12,28 @@ $preview-surface: #11141a;
 // cf. plus bas) : sans cette marge, le toolbar/aperçu/éditeur de code
 // passerait dessous. Uniquement sur la vue widget/alerte (#widget-editor-view
 // est masqué·e ailleurs) — même principe que .overlay-editor__body pour le
-// panneau Calques, cf. layouts/_overlay-canvas.scss.
+// panneau Calques, cf. layouts/_overlay-canvas.scss. Repliement manuel (cf.
+// #widget-fields-toggle) : .is-fields-collapsed supprime cette réserve,
+// comme .overlay-editor.is-layers-collapsed pour les Calques.
 #widget-editor-view {
   padding-right: calc(var(--side-panel-width) + var(--space-12));
+
+  &.is-fields-collapsed { padding-right: 0; }
 }
+
+// Onglet de repliement : simple bouton dans le flux de .preview-toolbar__actions
+// (WidgetPreviewFrame.vue), juste à côté de .checker-button — pas en
+// position:fixed avec une position calculée indépendamment de ce dernier
+// (les deux se chevauchaient selon la largeur de fenêtre, chaque formule
+// ignorant la position réelle de l'autre). Reste donc toujours visible et
+// correctement espacé sans règle dédiée, y compris quand .widget-fields
+// passe à width: 0 en .is-collapsed — son fonctionnement n'en dépend plus.
 
 // Panneau "Champs" d'un widget/alerte, en écho direct au panneau Calques
 // d'un overlay (.overlay-layers, layouts/_overlay-canvas.scss) : même
 // position/largeur/marges fixes sur le bord droit du viewport, pour que les
-// deux panneaux de réglages se ressemblent d'une vue à l'autre.
+// deux panneaux de réglages se ressemblent d'une vue à l'autre — y compris
+// le repliement manuel (.is-collapsed).
 .widget-fields {
   position: fixed;
   top: var(--topbar-height);
@@ -30,9 +43,17 @@ $preview-surface: #11141a;
   display: flex;
   flex-direction: column;
   width: var(--side-panel-width);
-  padding: var(--space-24);
+  padding: 40px var(--space-24) var(--space-24);
   border-left: 1px solid var(--line);
   background: var(--panel);
+  transition: width var(--duration-base) ease, padding var(--duration-base) ease, border-color var(--duration-base) ease;
+
+  &.is-collapsed {
+    overflow: hidden;
+    width: 0;
+    padding: 0;
+    border-left-color: transparent;
+  }
 
   &__header {
     display: flex;
@@ -201,7 +222,10 @@ $preview-surface: #11141a;
   width: min(100%, var(--preview-width));
   margin: 0 auto;
   border: 1px solid var(--line);
-  border-radius: var(--radius-12);
+  // Moitié de --radius-12 (12px), sur demande explicite pour les aperçus
+  // (widget/alerte/overlay) uniquement — pas un changement du token partagé,
+  // encore utilisé tel quel ailleurs (ex. _account-panel.scss).
+  border-radius: 6px;
   background: #151820;
   box-shadow: 0 24px 60px rgb(0 0 0 / 28%);
 

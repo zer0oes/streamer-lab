@@ -11,9 +11,11 @@ import {
   overlayItemDefaultLabel,
   overlayItemLabel,
   overlayLayerIcon,
-  overlayPreviewItemIcon
+  overlayPreviewItemIcon,
+  resolveOverlayItemFieldData
 } from "./overlayItems";
 import type { OverlayItem } from "./overlayTypes";
+import type { FieldDefinitions } from "../api/widgetDetail";
 
 function item(overrides: Partial<OverlayItem>): OverlayItem {
   return { id: "i", type: "shape", x: 0, y: 0, w: 100, h: 100, z: 1, ...overrides };
@@ -162,5 +164,38 @@ describe("distributeItems", () => {
     const updates = distributeItems(items, "horizontal");
     expect(updates.size).toBe(1);
     expect(updates.get("b")).toEqual({ x: 450 });
+  });
+});
+
+describe("resolveOverlayItemFieldData", () => {
+  const fields: FieldDefinitions = {
+    label: { type: "textfield", value: "Hello" },
+    volume: { type: "slider", value: 50, min: 0, max: 100 },
+    theme: { type: "dropdown", value: "dark", options: { dark: "Sombre", light: "Clair" } }
+  };
+
+  it("falls back to each field's default when there is no saved override", () => {
+    expect(resolveOverlayItemFieldData(fields, undefined)).toEqual({ label: "Hello", volume: 50, theme: "dark" });
+  });
+
+  it("applies a saved override for a plain field", () => {
+    expect(resolveOverlayItemFieldData(fields, { label: "Custom" })).toMatchObject({ label: "Custom" });
+  });
+
+  it("clamps a saved numeric override to the field's min/max", () => {
+    expect(resolveOverlayItemFieldData(fields, { volume: 999 })).toMatchObject({ volume: 100 });
+    expect(resolveOverlayItemFieldData(fields, { volume: -5 })).toMatchObject({ volume: 0 });
+  });
+
+  it("ignores a non-numeric saved override for a numeric field", () => {
+    expect(resolveOverlayItemFieldData(fields, { volume: "not-a-number" })).toMatchObject({ volume: 50 });
+  });
+
+  it("ignores a saved dropdown override that isn't one of the field's options", () => {
+    expect(resolveOverlayItemFieldData(fields, { theme: "neon" })).toMatchObject({ theme: "dark" });
+  });
+
+  it("accepts a saved dropdown override that is a valid option", () => {
+    expect(resolveOverlayItemFieldData(fields, { theme: "light" })).toMatchObject({ theme: "light" });
   });
 });

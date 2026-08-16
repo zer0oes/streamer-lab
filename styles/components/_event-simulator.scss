@@ -1,8 +1,14 @@
 // Floating action button + local event trigger drawer.
 
+// right: calc(--side-panel-width + espace) plutôt que juste --space-24 :
+// cette vue (éditeur widget/alerte) a en permanence le panneau "Champs" fixé
+// à droite (.widget-fields, cf. layouts/_preview.scss) — sans ce décalage,
+// le bouton flottant s'affichait par-dessus ce panneau au lieu de juste à
+// sa gauche. Repliement manuel du panneau (#widget-fields-toggle) : reprend
+// alors sa position d'origine, le panneau ne réservant plus cette largeur.
 .event-fab {
   position: fixed;
-  right: var(--space-24);
+  right: calc(var(--side-panel-width) + var(--space-24));
   bottom: 22px;
   z-index: 35;
   display: grid;
@@ -18,7 +24,9 @@
   box-shadow:
     0 12px 30px rgb(0 0 0 / 42%),
     0 0 28px color-mix(in srgb, var(--accent) 30%, transparent);
-  transition: transform var(--duration-base), box-shadow var(--duration-base), background var(--duration-base);
+  transition: transform var(--duration-base), box-shadow var(--duration-base), background var(--duration-base), right var(--duration-base) ease;
+
+  #widget-editor-view.is-fields-collapsed & { right: var(--space-24); }
 
   &:hover {
     transform: translateY(-2px);
@@ -35,10 +43,12 @@
 
 .event-simulator {
   position: fixed;
-  right: var(--space-24);
+  right: calc(var(--side-panel-width) + var(--space-24));
   bottom: 92px;
   z-index: 34;
   overflow: auto;
+
+  #widget-editor-view.is-fields-collapsed & { right: var(--space-24); }
   width: min(360px, calc(100vw - 32px));
   max-height: calc(100vh - 116px);
   border: 1px solid #343944;

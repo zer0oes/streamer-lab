@@ -23,7 +23,9 @@ export interface OverlayWidgetBundle extends WidgetBundle {
   name: string;
 }
 
-export type OverlayTool = "select" | "text" | "image" | "video" | "embed" | "icon" | "shape";
+export type OverlayTool = "select" | "text" | "eyedropper" | "image" | "video" | "embed" | "icon" | "shape";
+
+export type EyedropperResult = "not-text" | "captured" | "applied";
 
 const GUIDES_VISIBLE_STORAGE_KEY = "se-lab-overlay-guides-visible";
 const PERSIST_DEBOUNCE_MS = 650;
@@ -34,6 +36,12 @@ export const useOverlayEditorStore = defineStore("overlayEditor", () => {
   const error = ref<string | null>(null);
   const selectedIds = ref<Set<string>>(new Set());
   const tool = ref<OverlayTool>("select");
+  // Style texte capturé par la pipette (tous les props texte sauf le
+  // contenu) : null = pas encore capturé, un objet = prêt à être appliqué au
+  // prochain clic sur un texte. Réinitialisé dès qu'on quitte l'outil
+  // pipette (cf. setTool) pour qu'un style capturé ne fuite jamais vers une
+  // session ultérieure.
+  const eyedropperStyle = ref<Record<string, unknown> | null>(null);
   const zoomMode = ref<"fit" | number>("fit");
   const guidesVisible = ref(localStorage.getItem(GUIDES_VISIBLE_STORAGE_KEY) !== "false");
   const widgetBundles = reactive<Record<string, OverlayWidgetBundle | null>>({});
@@ -376,20 +384,31 @@ export const useOverlayEditorStore = defineStore("overlayEditor", () => {
     void saveOverlayGuides(overlay.value.id, next);
   }
 
-  function addGuide(axis: "horizontal" | "vertical"): void {
-    if (!overlay.value) return;
-    const guides = overlay.value.guides;
-    const value = axis === "horizontal" ? Math.round(canvas.value.height / 2) : Math.round(canvas.value.width / 2);
-    setGuides({
-      horizontal: axis === "horizontal" ? [...guides.horizontal, value] : guides.horizontal,
-      vertical: axis === "vertical" ? [...guides.vertical, value] : guides.vertical
-    });
-  }
-
   // --- Outil / zoom ---
 
   function setTool(next: OverlayTool): void {
     tool.value = next;
+    if (next !== "eyedropper") eyedropperStyle.value = null;
+  }
+
+  // Port de handleOverlayEyedropperClick : premier clic sur un texte capture
+  // son style (tout item.props sauf `content`), un clic suivant sur un
+  // AUTRE texte applique ce style capturé — l'outil reste armé pour
+  // enchaîner sur plusieurs items sans le rouvrir. Ne fait rien (sauf
+  // renvoyer "not-text") si l'item cliqué n'est pas un texte ; c'est
+  // l'appelant (OverlayCanvas.vue) qui traduit le résultat en toast, pour
+  // garder ce store sans dépendance UI.
+  function captureOrApplyEyedropper(itemId: string): EyedropperResult {
+    const item = getItem(itemId);
+    if (!item || item.type !== "text") return "not-text";
+    if (!eyedropperStyle.value) {
+      const { content: _content, ...style } = (item.props || {}) as Record<string, unknown> & { content?: string };
+      eyedropperStyle.value = style;
+      return "captured";
+    }
+    patchItem(itemId, { props: { ...item.props, ...eyedropperStyle.value } });
+    commit();
+    return "applied";
   }
 
   function setZoomMode(mode: "fit" | number): void {
@@ -406,6 +425,7 @@ export const useOverlayEditorStore = defineStore("overlayEditor", () => {
     selectedItems,
     soleSelection,
     tool,
+    eyedropperStyle,
     zoomMode,
     guidesVisible,
     widgetBundles,
@@ -445,8 +465,8 @@ export const useOverlayEditorStore = defineStore("overlayEditor", () => {
     reorderGroupChildren,
     setGuidesVisible,
     setGuides,
-    addGuide,
     setTool,
+    captureOrApplyEyedropper,
     setZoomMode
   };
 });

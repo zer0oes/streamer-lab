@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useOverlayEditorStore } from "../stores/overlayEditor";
 import { overlayItemLabel } from "../lib/overlayItems";
+import OverlayItemFieldsForm from "./OverlayItemFieldsForm.vue";
+import OverlayItemCodeDialog from "./OverlayItemCodeDialog.vue";
 import type { TextProps } from "../lib/overlayTypes";
 
 const store = useOverlayEditorStore();
@@ -9,6 +11,15 @@ const store = useOverlayEditorStore();
 const item = computed(() => store.soleSelection);
 const textItemProps = computed(() => (item.value?.props as TextProps) || ({} as TextProps));
 const mediaItemProps = computed(() => (item.value?.props as { src?: string; fit?: string }) || {});
+
+const codeDialogRef = ref<InstanceType<typeof OverlayItemCodeDialog> | null>(null);
+
+function openCode(): void {
+  const current = item.value;
+  if (!current?.widgetId) return;
+  const name = store.widgetBundles[current.widgetId]?.name || overlayItemLabel(current);
+  codeDialogRef.value?.open(current.widgetId, name);
+}
 
 function updatePosition(key: "x" | "y" | "w" | "h", event: Event): void {
   if (!item.value) return;
@@ -81,7 +92,17 @@ function updateProp(key: string, value: unknown): void {
           </select>
         </label>
       </template>
+
+      <template v-else-if="item.type === 'widget' || item.type === 'alert'">
+        <button type="button" class="button button--quiet button--wide" @click="openCode">
+          <span class="material-symbols-rounded" aria-hidden="true">code</span>
+          Voir le code
+        </button>
+        <OverlayItemFieldsForm :item="item" />
+      </template>
     </div>
   </div>
   <p v-else class="hint">Sélectionnez un élément pour modifier ses réglages.</p>
+
+  <OverlayItemCodeDialog ref="codeDialogRef" />
 </template>

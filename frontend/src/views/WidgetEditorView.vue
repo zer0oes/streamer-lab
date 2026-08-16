@@ -6,26 +6,33 @@ import CodeEditorPanel from "../components/CodeEditorPanel.vue";
 import ConsolePanel from "../components/ConsolePanel.vue";
 import FieldsForm from "../components/FieldsForm.vue";
 import EventSimulatorPanel from "../components/EventSimulatorPanel.vue";
+import { widgetFieldsCollapsed } from "../composables/useWidgetFieldsCollapse";
 
 const store = useWidgetEditorStore();
 const simulatorOpen = ref(false);
 </script>
 
 <template>
-  <div id="widget-editor-view">
+  <div id="widget-editor-view" :class="{ 'is-fields-collapsed': widgetFieldsCollapsed }">
     <WidgetPreviewFrame />
 
     <CodeEditorPanel />
     <ConsolePanel />
 
-    <aside class="widget-fields" aria-label="Champs">
+    <aside class="widget-fields" :class="{ 'is-collapsed': widgetFieldsCollapsed }" aria-label="Champs">
       <div class="widget-fields__header">
         <h3 class="widget-fields__title">Champs</h3>
         <span class="hint">{{ store.detail?.files.fields }}</span>
       </div>
-      <FieldsForm />
+      <div class="widget-fields__list">
+        <FieldsForm />
+      </div>
     </aside>
-  </div>
 
-  <EventSimulatorPanel v-model:open="simulatorOpen" />
+    <!-- À l'intérieur de #widget-editor-view (pas un frère) : nécessaire
+    pour que le sélecteur CSS #widget-editor-view.is-fields-collapsed
+    .event-fab (repositionnement quand le panneau Champs est replié,
+    cf. components/_event-simulator.scss) trouve réellement un descendant. -->
+    <EventSimulatorPanel v-model:open="simulatorOpen" />
+  </div>
 </template>

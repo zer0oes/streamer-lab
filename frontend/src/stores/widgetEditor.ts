@@ -26,6 +26,13 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
   const detail = ref<WidgetDetail | null>(null);
   const platform = ref<Platform>(normalizePlatform(localStorage.getItem(PREVIEW_PLATFORM_KEY)));
   const fields = ref<FieldDefinitions>({});
+  // Doit vivre ici (pas juste un ref local à WidgetPreviewFrame.vue) : c'est
+  // `srcdoc` ci-dessous qui a besoin de sa valeur pour poser la classe
+  // "se-lab-checker" sur le <html> du document iframe — sans quoi le damier
+  // du bouton .checker-button (qui, lui, ne pilote que le fond de
+  // .preview-shell côté parent) ne s'applique jamais à l'intérieur du
+  // document du widget, qui recouvre pourtant toute la zone visible.
+  const isChecker = ref(true);
 
   // fieldData : reflète immédiatement chaque changement de champ (v-model du
   // formulaire) ; previewFieldData : copie débouncée utilisée pour l'aperçu,
@@ -50,9 +57,13 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
 
   const srcdoc = computed(() => {
     if (!detail.value) return "";
-    const options: BuildSrcdocOptions = { platform: platform.value };
+    const options: BuildSrcdocOptions = { platform: platform.value, checkerClass: isChecker.value ? " se-lab-checker" : "" };
     return buildWidgetSrcdoc(previewSource, previewFieldData, options);
   });
+
+  function toggleChecker(): void {
+    isChecker.value = !isChecker.value;
+  }
 
   function addConsoleLine(level: ConsoleLine["level"], message: string): void {
     consoleLines.value.push({
@@ -195,6 +206,7 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
     activeFile,
     consoleLines,
     loading,
+    isChecker,
     srcdoc,
     addConsoleLine,
     clearConsole,
@@ -205,6 +217,7 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
     applyEditorSource,
     saveFile,
     flushDirtyFiles,
-    setActiveFile
+    setActiveFile,
+    toggleChecker
   };
 });

@@ -1,14 +1,21 @@
 <script setup lang="ts">
+// Variante de EventSimulatorPanel.vue pour l'éditeur d'overlay : même
+// panneau/FAB, mais diffuse à TOUS les items widget/alerte du canevas
+// (dispatchToOverlayItems) plutôt qu'à une seule iframe d'aperçu, toujours
+// au format StreamElements (comme OverlayCanvasItem.vue, qui rend chaque
+// item widget/alerte dans ce seul format), et sans panneau de console à
+// alimenter (un toast confirme l'envoi à la place). Dupliqué plutôt que
+// partagé avec l'éditeur widget/alerte : les deux sources de vérité
+// (store.platform, store.addConsoleLine) n'existent pas côté overlay, et le
+// panneau reste petit (~130 lignes) — une abstraction commune coûterait plus
+// qu'elle ne ferait gagner ici.
 import { reactive, ref } from "vue";
-import { useWidgetEditorStore } from "../stores/widgetEditor";
 import { useToast } from "../composables/useToast";
-import { dispatchToWidget } from "../composables/useWidgetPreviewBridge";
-import { toStreamlabsEvent, PLATFORM_STREAMLABS } from "../lib/platformEvents";
+import { dispatchToOverlayItems } from "../composables/useOverlayPreviewBridge";
 import { randomChatBadges, randomChatMessage, randomEventAmount, randomEventName, chatRoleBadges } from "../lib/eventSimulatorData";
 
 const isOpen = defineModel<boolean>("open", { default: false });
 
-const store = useWidgetEditorStore();
 const { showToast } = useToast();
 
 interface EventFormState {
@@ -46,13 +53,8 @@ const customEvent = ref(`{
   "event": { "name": "DebugUser", "amount": 1 }
 }`);
 
-function dispatchPlatformEvent(detail: { listener: string; event: Record<string, unknown> }): void {
-  if (store.platform === PLATFORM_STREAMLABS) dispatchToWidget("onEventReceived", toStreamlabsEvent(detail), "document");
-  else dispatchToWidget("onEventReceived", detail);
-}
-
 function dispatchChatMessage(name: string, message: string, badges: unknown[]): void {
-  dispatchPlatformEvent({
+  dispatchToOverlayItems("onEventReceived", {
     listener: "message",
     event: {
       data: {
@@ -79,7 +81,7 @@ function sendPreset(listener: string): void {
     const badges = isBroadcaster ? [chatRoleBadges.broadcaster] : randomChatBadges();
     const message = form.message.trim() || randomChatMessage();
     dispatchChatMessage(name, message, badges);
-    store.addConsoleLine("event", `${listener} · ${name}`);
+    showToast(`Événement envoyé : ${listener}`);
     return;
   }
 
@@ -102,15 +104,15 @@ function sendPreset(listener: string): void {
     event.bulkGifted = subType === "communitygift";
   }
 
-  dispatchPlatformEvent({ listener, event });
-  store.addConsoleLine("event", `${listener} · ${name}`);
+  dispatchToOverlayItems("onEventReceived", { listener, event });
+  showToast(`Événement envoyé : ${listener}`);
 }
 
 function sendCustomEvent(): void {
   try {
     const parsed = JSON.parse(customEvent.value);
-    dispatchToWidget("onEventReceived", parsed);
-    store.addConsoleLine("event", `JSON personnalisé · ${parsed.listener || "?"}`);
+    dispatchToOverlayItems("onEventReceived", parsed);
+    showToast(`Événement JSON envoyé : ${parsed.listener || "?"}`);
   } catch (error) {
     showToast(`JSON invalide : ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -122,11 +124,11 @@ function close(): void {
 </script>
 
 <template>
-  <section class="event-simulator" :class="{ 'is-open': isOpen }" aria-labelledby="event-simulator-title" :hidden="!isOpen">
+  <section class="event-simulator" :class="{ 'is-open': isOpen }" aria-labelledby="overlay-event-simulator-title" :hidden="!isOpen">
     <header class="event-simulator__header">
       <div>
         <span class="eyebrow">SIMULATION LOCALE</span>
-        <h2 id="event-simulator-title">Déclencher un événement</h2>
+        <h2 id="overlay-event-simulator-title">Déclencher un événement</h2>
       </div>
       <button type="button" class="icon-button" aria-label="Fermer" @click="close">
         <span class="material-symbols-rounded" aria-hidden="true">close_small</span>

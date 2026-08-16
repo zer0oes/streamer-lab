@@ -14,7 +14,7 @@
       "id": "se-placeholder-1-d5b1f622",
       "type": "placeholder",
       "x": 0,
-      "y": 0.93,
+      "y": 0,
       "w": 1920,
       "h": 1080,
       "z": 2,
@@ -82,5 +82,5 @@
   "sourcePlatform": "streamelements",
   "sourceOverlayId": "694befa5810ac363549999c0",
   "createdAt": 1786640611854,
-  "updatedAt": 1786640611859
+  "updatedAt": 1786916355901
 }

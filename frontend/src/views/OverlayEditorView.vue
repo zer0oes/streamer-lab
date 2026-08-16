@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { onBeforeUnmount } from "vue";
+import { onBeforeUnmount, ref } from "vue";
 import { useOverlayEditorStore } from "../stores/overlayEditor";
 import OverlayCanvas from "../components/OverlayCanvas.vue";
 import OverlayToolbar from "../components/OverlayToolbar.vue";
 import LayersPanel from "../components/LayersPanel.vue";
+import OverlayEventSimulatorPanel from "../components/OverlayEventSimulatorPanel.vue";
 import { overlayLayersCollapsed, toggleOverlayLayersCollapsed } from "../composables/useOverlayLayersCollapse";
 
 const store = useOverlayEditorStore();
+const simulatorOpen = ref(false);
 
 function onKeydown(event: KeyboardEvent): void {
   const active = document.activeElement as HTMLElement | null;
@@ -27,7 +29,11 @@ function onKeydown(event: KeyboardEvent): void {
       store.deleteSelected();
     }
   } else if (key === "escape") {
-    store.clearSelection();
+    // Un outil actif (pipette, texte...) se ferme d'abord — laisse ensuite
+    // un second Échap vider la sélection, comme un Échap "annule l'étape en
+    // cours" avant "désélectionne tout".
+    if (store.tool !== "select") store.setTool("select");
+    else store.clearSelection();
   }
 }
 
@@ -69,5 +75,7 @@ onBeforeUnmount(() => {
     </button>
 
     <LayersPanel :collapsed="overlayLayersCollapsed" />
+
+    <OverlayEventSimulatorPanel v-model:open="simulatorOpen" />
   </div>
 </template>

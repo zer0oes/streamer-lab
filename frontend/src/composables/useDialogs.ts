@@ -34,3 +34,11 @@ export const widgetDialog = ref<WidgetDialogHandle | null>(null);
 export const overlayDialog = ref<OverlayDialogHandle | null>(null);
 export const contactDialog = ref<ContactDialogHandle | null>(null);
 export const mediaPreviewDialog = ref<MediaPreviewDialogHandle | null>(null);
+
+// Port de creatingWidgetForOverlay (app.js) : quand l'éditeur d'overlay
+// ouvre widgetDialog en mode création ("Nouveau widget"/"Nouvelle alerte"
+// du menu Ajouter), il pose ici un callback à exécuter juste après la
+// création réussie — WidgetSettingsDialog.vue le consomme et le réinitialise
+// systématiquement (succès OU fermeture sans enregistrer), pour qu'il ne
+// fuite jamais vers une création lancée depuis le tableau de bord.
+export const pendingOverlayWidgetPlacement = ref<((entry: LibraryEntry) => void) | null>(null);

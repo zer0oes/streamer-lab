@@ -1,15 +1,20 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useOverlayEditorStore } from "../stores/overlayEditor";
 import OverlayCanvasItem from "./OverlayCanvasItem.vue";
 import { canvasPointFromEvent, computeOverlayFitScale, overlayGuidesWithCenter, snapEdge, snapMovePosition } from "../lib/overlayGeometry";
+import { drawOverlayRulers } from "../lib/overlayRulers";
 import { MIN_OVERLAY_ITEM_SIZE } from "../lib/overlayTypes";
 import type { OverlayItem } from "../lib/overlayTypes";
+import { useToast } from "../composables/useToast";
 
 const store = useOverlayEditorStore();
+const { showToast } = useToast();
 
 const wrapEl = ref<HTMLElement | null>(null);
 const canvasEl = ref<HTMLElement | null>(null);
+const rulerTopEl = ref<HTMLCanvasElement | null>(null);
+const rulerLeftEl = ref<HTMLCanvasElement | null>(null);
 const fitScale = ref(1);
 const itemRefs = new Map<string, InstanceType<typeof OverlayCanvasItem>>();
 
@@ -30,6 +35,25 @@ const canvasStyle = computed(() => ({
   height: `${store.canvas.height}px`,
   transform: `scale(${scale.value})`
 }));
+
+// Redessine les rubans gradués à chaque changement d'échelle (zoom) ou
+// d'overlay (dimensions différentes), et une fois de plus quand "Repères"
+// passe de masqué à affiché (les canvas <canvas> n'existent qu'en DOM une
+// fois affichés — leur premier rendu doit donc suivre leur apparition, pas
+// juste les changements ultérieurs).
+function redrawRulers(): void {
+  if (!store.guidesVisible) return;
+  drawOverlayRulers(rulerTopEl.value, rulerLeftEl.value, store.canvas, scale.value);
+}
+
+watch(
+  [scale, () => store.guidesVisible, () => store.canvas],
+  async () => {
+    await nextTick();
+    redrawRulers();
+  },
+  { immediate: true }
+);
 
 let resizeObserver: ResizeObserver | undefined;
 
@@ -108,6 +132,47 @@ function startGuideDrag(event: PointerEvent, axis: "horizontal" | "vertical", in
   window.addEventListener("pointerup", onUp);
 }
 
+// Nouveau repère créé en glissant depuis un ruban (cf. .overlay-ruler
+// ci-dessous) : suit le pointeur via une ligne de prévisualisation locale
+// (creatingGuide), sans toucher au store tant que le geste n'est pas
+// terminé — un simple clic sur le ruban (relâché sans avoir bougé d'au
+// moins 3px) ne doit jamais créer de repère parasite à la position 0, et un
+// relâchement hors du damier annule la création plutôt que d'en créer un.
+const creatingGuide = ref<{ axis: "horizontal" | "vertical"; value: number } | null>(null);
+
+function startGuideCreateFromRuler(event: PointerEvent, axis: "horizontal" | "vertical"): void {
+  event.preventDefault();
+  if (!store.overlay) return;
+  const startX = event.clientX;
+  const startY = event.clientY;
+  let moved = false;
+  creatingGuide.value = null;
+
+  const onMove = (moveEvent: PointerEvent) => {
+    if (!moved && Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) < 3) return;
+    moved = true;
+    if (isOutsideStage(moveEvent.clientX, moveEvent.clientY)) {
+      creatingGuide.value = null;
+      return;
+    }
+    const point = pointFromEvent(moveEvent);
+    const value = Math.round(axis === "horizontal" ? point.y : point.x);
+    creatingGuide.value = { axis, value };
+  };
+  const onUp = (upEvent: PointerEvent) => {
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    const pending = creatingGuide.value;
+    creatingGuide.value = null;
+    if (!moved || isOutsideStage(upEvent.clientX, upEvent.clientY) || !pending) return;
+    const guides = store.overlay!.guides;
+    if (axis === "horizontal") guides.horizontal.push(pending.value);
+    else guides.vertical.push(pending.value);
+    store.setGuides({ horizontal: [...guides.horizontal], vertical: [...guides.vertical] });
+  };
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+}
 
 function handleElAt(target: EventTarget | null): HTMLElement | null {
   return target instanceof Element ? (target.closest("[data-handle]") as HTMLElement | null) : null;
@@ -115,6 +180,20 @@ function handleElAt(target: EventTarget | null): HTMLElement | null {
 
 async function onCanvasPointerDown(event: PointerEvent): Promise<void> {
   const tool = store.tool;
+
+  // Pipette de style (texte) : hit-test direct, jamais de création/sélection
+  // "normale" tant que l'outil est armé — même si le clic tombe hors de tout
+  // item, on ne fait rien plutôt que de retomber sur le comportement select.
+  if (tool === "eyedropper") {
+    const eyedropperEl = itemElAt(event.target);
+    if (eyedropperEl) {
+      const result = store.captureOrApplyEyedropper(eyedropperEl.dataset.itemId as string);
+      if (result === "not-text") showToast("La pipette de style ne fonctionne que sur des éléments texte.");
+      else if (result === "captured") showToast("Style copié — cliquez un autre texte pour l'appliquer (Échap pour annuler).");
+      else showToast("Style appliqué.");
+    }
+    return;
+  }
 
   if (tool === "text") {
     const textItemEl = target(event.target)?.closest(".overlay-item--text") as HTMLElement | null;
@@ -325,7 +404,18 @@ function startGroupResize(event: PointerEvent, groupId: string, el: HTMLElement,
 
 <template>
   <div ref="wrapEl" class="overlay-canvas-wrap">
-    <div class="overlay-canvas-rulers">
+    <div class="overlay-canvas-rulers" :class="{ 'show-rulers': store.guidesVisible }">
+      <div class="overlay-ruler__corner"></div>
+      <canvas
+        ref="rulerTopEl"
+        class="overlay-ruler overlay-ruler--top"
+        @pointerdown="startGuideCreateFromRuler($event, 'horizontal')"
+      ></canvas>
+      <canvas
+        ref="rulerLeftEl"
+        class="overlay-ruler overlay-ruler--left"
+        @pointerdown="startGuideCreateFromRuler($event, 'vertical')"
+      ></canvas>
       <div class="overlay-canvas-stage" :style="stageStyle">
         <div
           ref="canvasEl"
@@ -355,6 +445,12 @@ function startGroupResize(event: PointerEvent, groupId: string, el: HTMLElement,
             class="overlay-guide overlay-guide--vertical"
             :style="{ left: `${value}px` }"
             @pointerdown="startGuideDrag($event, 'vertical', index)"
+          ></div>
+          <div
+            v-if="creatingGuide"
+            class="overlay-guide is-dragging"
+            :class="`overlay-guide--${creatingGuide.axis}`"
+            :style="creatingGuide.axis === 'horizontal' ? { top: `${creatingGuide.value}px` } : { left: `${creatingGuide.value}px` }"
           ></div>
         </div>
       </div>

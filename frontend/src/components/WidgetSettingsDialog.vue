@@ -4,6 +4,7 @@ import { useLibraryStore } from "../stores/library";
 import { useProjectsStore } from "../stores/projects";
 import { useToast } from "../composables/useToast";
 import { useDialogBackdropClose } from "../composables/useDialogBackdropClose";
+import { pendingOverlayWidgetPlacement } from "../composables/useDialogs";
 import { WIDGET_ICON_CHOICES } from "../constants/icons";
 import IconPicker from "./IconPicker.vue";
 import type { LibraryEntry } from "../api/types";
@@ -34,6 +35,15 @@ function close(): void {
 }
 
 const { onMousedown, onClick } = useDialogBackdropClose(dialogEl, close);
+
+// Couvre aussi une fermeture par Échap (le seul chemin qui ne passe pas par
+// close() ci-dessus) : sans ça, un callback posé par l'éditeur d'overlay
+// (cf. pendingOverlayWidgetPlacement) resterait armé après une création
+// annulée et se déclencherait sur la PROCHAINE création lancée depuis le
+// tableau de bord.
+function onNativeClose(): void {
+  pendingOverlayWidgetPlacement.value = null;
+}
 
 function reset(): void {
   message.value = "";
@@ -93,6 +103,13 @@ async function save(): Promise<void> {
     if (mode.value === "create") {
       const widget = await libraryStore.addWidget(input, projectId.value);
       showToast(`${widget.name} créé`);
+      // Consommé ici (avant close()) plutôt que dans onNativeClose : une
+      // création réussie doit déclencher le placement, pas juste être
+      // traitée comme une fermeture qui l'annule.
+      if (pendingOverlayWidgetPlacement.value) {
+        pendingOverlayWidgetPlacement.value(widget);
+        pendingOverlayWidgetPlacement.value = null;
+      }
     } else if (editingId.value) {
       await libraryStore.updateWidget(editingId.value, input);
       showToast("Informations du widget enregistrées");
@@ -108,7 +125,7 @@ async function save(): Promise<void> {
 </script>
 
 <template>
-  <dialog ref="dialogEl" class="widget-settings" aria-labelledby="widget-settings-title" @mousedown="onMousedown" @click="onClick">
+  <dialog ref="dialogEl" class="widget-settings" aria-labelledby="widget-settings-title" @mousedown="onMousedown" @click="onClick" @close="onNativeClose">
     <form class="widget-settings__form" @submit.prevent="save">
       <header class="widget-settings__header">
         <div>

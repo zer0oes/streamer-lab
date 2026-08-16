@@ -49,7 +49,7 @@ Le menu d’export génère une archive ZIP prête à copier dans l’éditeur d
 
 Chaque widget possède son propre dossier, accompagné d’un fichier `widget.json` qui définit son nom, sa description et son icône. La bibliothèque dans le panneau de gauche (« Ma bibliothèque ») propose deux onglets, **Widgets** et **Alertes**, pour passer de l’un à l’autre sans déplacer de fichiers ; l’onglet actif détermine dans quel sous-dossier (`widgets/` ou `alerts/`) du projet choisi un nouveau widget est créé — la création demande explicitement le projet cible. Le crayon placé sur chaque entrée permet de modifier ces informations, de choisir visuellement une icône Material, et de basculer un widget entre les deux catégories (ce qui déplace son dossier) ; déplacer un widget vers un autre projet n’est pas pris en charge depuis l’interface. Les sections **Ma bibliothèque** et **Champs** peuvent être repliées ; leur état est mémorisé dans le navigateur.
 
-Par exemple, le dossier `library/principal/widgets/zer0oes-goal-bar/` contient :
+Par exemple, le dossier `library/zer0oes/widgets/zer0oes-goal-bar/` contient :
 
 | Fichier local | Plateforme | Onglet |
 |---|---|---|
@@ -173,7 +173,8 @@ npm run dev
 - `node_modules/` (racine et `frontend/`) : réinstallés par `npm install` à partir des `package-lock.json` respectifs.
 - `frontend/dist/` : régénéré automatiquement au prochain `npm run dev`, `npm start` ou `npm run build`.
 - `data/app.sqlite` : base SQLite locale (comptes Twitch et StreamElements liés, jetons chiffrés, sessions). La supprimer réinitialise l'authentification et l'historique local ; elle est recréée automatiquement au démarrage du serveur.
-- `.env` n'est **pas** supprimé par cette procédure : il contient les jetons (`SE_TOKEN`, `SL_SOCKET_TOKEN`, secrets OAuth Twitch et StreamElements, `SESSION_SECRET`, `TOKEN_ENCRYPTION_KEY`) et n'est pas versionné. Le recréer avec `Copy-Item .env.example .env` uniquement si besoin de repartir aussi de zéro sur la config.
+- `.env` n'est **pas** supprimé par cette procédure : il contient les jetons (`SE_TOKEN`, `SL_SOCKET_TOKEN`, secrets OAuth Twitch et StreamElements, `SESSION_SECRET`, `TOKEN_ENCRYPTION_KEY`) et n'est pas versionné. Le recréer avec `Copy-Item .env.example .env` uniquement si besoin de repartir aussi de zéro sur la config. Deux autres variables optionnelles y sont disponibles : `COOKIE_SECURE` (à mettre à `true` uniquement derrière HTTPS, en production) et `ENABLE_DEV_LOGIN` (active la route de test `POST /api/auth/dev-login`, à ne jamais activer en production).
+- `backups/` : archives ZIP de sauvegardes manuelles, non gérées par cette procédure de nettoyage.
 
 ## Références officielles
 

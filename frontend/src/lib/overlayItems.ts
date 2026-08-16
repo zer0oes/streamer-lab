@@ -1,5 +1,30 @@
 import type { OverlayCanvasSize, OverlayItem, OverlayItemType } from "./overlayTypes";
 import { generateOverlayItemId } from "./overlayGeometry";
+import type { FieldDefinitions } from "../api/widgetDetail";
+
+// Fusionne les valeurs par défaut d'un widget (fields.json) avec les
+// éventuelles surcharges propres à CET item d'overlay (item.props.fieldData,
+// distinctes des valeurs par défaut du widget partagées entre tous les
+// overlays qui l'utilisent) — port de la logique auparavant en double dans
+// le computed widgetFieldData de OverlayCanvasItem.vue, réutilisée telle
+// quelle par le formulaire de champs de ItemInspector.vue.
+export function resolveOverlayItemFieldData(fields: FieldDefinitions, savedFieldData: Record<string, unknown> | undefined): Record<string, unknown> {
+  const defaults = Object.fromEntries(Object.entries(fields).map(([key, field]) => [key, field.value]));
+  const saved = savedFieldData || {};
+  const merged: Record<string, unknown> = { ...defaults };
+  for (const [key, definition] of Object.entries(fields)) {
+    if (!Object.hasOwn(saved, key)) continue;
+    if (definition.type === "dropdown" && !Object.hasOwn(definition.options || {}, saved[key] as string)) continue;
+    if (definition.type === "number" || definition.type === "slider") {
+      const numericValue = Number(saved[key]);
+      if (!Number.isFinite(numericValue)) continue;
+      merged[key] = Math.min(definition.max ?? numericValue, Math.max(definition.min ?? numericValue, numericValue));
+      continue;
+    }
+    merged[key] = saved[key];
+  }
+  return merged;
+}
 
 export function nextOverlayZIndex(items: OverlayItem[]): number {
   return items.reduce((max, item) => Math.max(max, item.z), 0) + 1;
