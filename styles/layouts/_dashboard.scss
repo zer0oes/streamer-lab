@@ -2,19 +2,30 @@
 
 .dashboard-view {
   position: absolute;
-  inset: 0;
+  // Étend la zone défilable jusque sous la topbar (fixed, cf. _topbar.scss)
+  // au lieu de s'arrêter à son bord — sans ça rien ne passe jamais derrière
+  // elle et son flou/sa transparence ne se voient jamais au scroll. Le
+  // padding-top supplémentaire (var(--topbar-height)) compense pour que le
+  // contenu visible démarre exactement à la même position qu'avant.
+  top: calc(-1 * var(--topbar-height));
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 5;
   overflow: auto;
-  padding: clamp(var(--space-18), 3vw, 40px);
-  background: var(--bg);
+  padding: calc(var(--topbar-height) + clamp(var(--space-18), 3vw, 40px)) clamp(var(--space-18), 3vw, 40px) clamp(var(--space-18), 3vw, 40px);
 
   &[hidden] { display: none; }
 
+  // Figma : juste l'étiquette "DASHBOARD" + une ligne de description, pas de
+  // grand titre de bienvenue séparé — l'étiquette fait déjà office d'en-tête
+  // de page, comme sur les autres vues (éditeur widget/overlay). 12px partout
+  // (étiquette → description → CATEGORIES), comme le gap uniforme du cadre
+  // Figma correspondant.
   &__hero {
-    margin-bottom: 28px;
+    margin-bottom: var(--space-12);
 
-    h2 { margin: var(--space-6) 0 var(--space-8); font-size: clamp(20px, 2.4vw, 26px); }
-    p { margin: 0; color: var(--muted); font-size: var(--text-13); line-height: 1.5; }
+    p { margin: var(--space-12) 0 0; color: var(--muted); font-size: var(--text-12); line-height: 1.5; }
   }
 
   &__projects-hint {
@@ -33,7 +44,7 @@
   &__columns {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(280px, 640px);
-    gap: var(--space-20);
+    gap: var(--space-24);
     align-items: start;
   }
 
@@ -42,10 +53,10 @@
   &__group-title {
     margin: 0 0 var(--space-12);
     color: var(--accent-bright);
-    font-size: var(--text-14);
-    font-weight: 800;
+    font-size: 15px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.03em;
   }
 
   &__search-row {
@@ -69,7 +80,7 @@
     border-radius: var(--radius-4);
     background: var(--panel-soft);
 
-    .material-symbols-rounded { font-size: 14px; color: var(--muted); }
+    .material-symbols-sharp { font-size: 14px; color: var(--muted); }
 
     input {
       width: 100%;
@@ -77,7 +88,7 @@
       padding: 0;
       border: 0;
       background: none;
-      font-size: var(--text-12);
+      font-size: var(--text-10);
 
       &:focus { box-shadow: none; }
     }
@@ -103,10 +114,10 @@
     color: var(--text);
     background: var(--panel-soft);
     cursor: pointer;
-    font-size: var(--text-12);
+    font-size: var(--text-10);
     transition: border-color var(--duration-fast), background var(--duration-fast);
 
-    .material-symbols-rounded:first-child { font-size: 14px; color: var(--muted); }
+    .material-symbols-sharp:first-child { font-size: 14px; color: var(--muted); }
     &:hover { border-color: #3b404b; background: #1d2027; }
 
     &[aria-expanded="true"] {
@@ -127,10 +138,15 @@
   }
 
   &__overlays {
+    margin-top: var(--space-20);
     margin-bottom: var(--space-20);
   }
 
-  &__overlays-grid {
+  // Partagée par la grille Overlays et la grille Projets (3 vignettes par
+  // ligne, cf. DashboardLibraryColumn.vue) — même gabarit de colonnes pour
+  // les deux, seul .dashboard-view__overlays (ci-dessus) porte la marge
+  // propre aux overlays.
+  &__cards-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -173,15 +189,15 @@
   }
 
   // 22px (au lieu des 32px par défaut de .icon-button) : dans la maquette,
-  // ce bouton accolé au titre d'une colonne ("Overlays", "Widgets"...) est
-  // nettement plus discret qu'un bouton d'action pleine taille. Sélecteur à
-  // deux classes (pas seulement &__filter-trigger) pour l'emporter sur
-  // .icon-button quel que soit l'ordre des règles compilées.
-  .icon-button#{&}__filter-trigger {
+  // tout bouton accolé au titre d'une colonne ("Overlays", "Widgets"...) —
+  // tri, import StreamElements — est nettement plus discret qu'un bouton
+  // d'action pleine taille. Ciblé via &__column-actions plutôt que
+  // &__filter-trigger seul, pour couvrir aussi le bouton d'import.
+  #{&}__column-actions .icon-button {
     width: 22px;
     height: 22px;
 
-    .material-symbols-rounded { font-size: 14px; }
+    .material-symbols-sharp { font-size: 14px; }
   }
 
   &__filter-trigger[aria-expanded="true"] {
@@ -250,6 +266,20 @@
     span { color: var(--muted); }
 
     &.is-connected .dashboard-view__connections-logo { opacity: 1; filter: none; }
+
+    // Figma : la carte d'un compte non connecté se distingue en incitation à
+    // l'action (bordure/fond teintés accent, bouton "link" assorti) plutôt
+    // que de rester neutre comme une carte déjà connectée.
+    &:not(.is-connected) {
+      border-color: color-mix(in srgb, var(--accent-bright) 55%, transparent);
+      background: color-mix(in srgb, var(--accent-bright) 10%, var(--panel));
+
+      .dashboard-view__connections-disconnect {
+        border-color: color-mix(in srgb, var(--accent-bright) 60%, transparent);
+        color: var(--accent-bright);
+        background: color-mix(in srgb, var(--accent-bright) 16%, var(--panel));
+      }
+    }
   }
 
   &__connections-logo {
@@ -303,7 +333,7 @@
     height: 28px;
     flex: 0 0 auto;
 
-    .material-symbols-rounded { font-size: 16px; }
+    .material-symbols-sharp { font-size: 16px; }
   }
 
   &__connections-dot {
@@ -396,7 +426,7 @@
   background: color-mix(in srgb, var(--accent-bright) 18%, transparent);
   color: #fff;
 
-  .material-symbols-rounded { font-size: clamp(8px, 40%, 18px); }
+  .material-symbols-sharp { font-size: clamp(8px, 40%, 18px); }
 }
 
 // Logo de la plateforme d'origine (cf. entry.sourcePlatform) pour un overlay
@@ -406,18 +436,30 @@
 // position: left ne montre que la partie gauche du logo (le seul symbole,
 // sans le nom de marque) - même intention que .dashboard-view__connections-logo,
 // implémentée en une seule <img> ici plutôt qu'un conteneur + image séparés.
+// Figma (composant "CARTOUCHE + APERÇU", node "SE 1") : carré à coins
+// arrondis 6px — pas un cercle (50%) comme codé initialement ici.
 .overlay-preview-card__badge {
   position: absolute;
   top: 6px;
   right: 6px;
-  width: 22px;
-  height: 22px;
+  width: 25px;
+  height: 25px;
   overflow: hidden;
   object-fit: cover;
   object-position: left center;
-  border-radius: 50%;
+  border-radius: 6px;
   background: color-mix(in srgb, #0b0c10 82%, transparent);
   box-shadow: 0 2px 6px rgb(0 0 0 / 45%);
+
+  // StreamElements utilise un pictogramme dédié (streamelements-icon.svg,
+  // déjà cadré et isolé du bandeau icône+texte complet) plutôt qu'un
+  // recadrage cover/object-position du logo complet — donc juste le centrer
+  // en entier (contain) avec un peu de marge, sans deviner un recadrage.
+  &--icon {
+    padding: 3px;
+    object-fit: contain;
+    object-position: center;
+  }
 }
 
 .dashboard-add-fab {
@@ -445,7 +487,7 @@
     &:hover { transform: translateY(-2px); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
     &[aria-expanded="true"] { transform: rotate(45deg); }
-    .material-symbols-rounded { font-size: 26px; }
+    .material-symbols-sharp { font-size: 26px; }
   }
 
   &__panel {
@@ -482,7 +524,7 @@
     text-align: left;
     white-space: nowrap;
 
-    .material-symbols-rounded { color: var(--accent-bright); font-size: 18px; }
+    .material-symbols-sharp { color: var(--accent-bright); font-size: 18px; }
     &:hover { color: #fff; background: color-mix(in srgb, var(--accent-bright) 12%, transparent); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
   }

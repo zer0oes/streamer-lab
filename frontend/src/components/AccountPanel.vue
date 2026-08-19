@@ -38,7 +38,7 @@ watch(accountPanelOpen, (open) => {
     <header class="account-panel-drawer__header">
       <h2>Mon compte</h2>
       <button type="button" class="icon-button" aria-label="Fermer" @click="close">
-        <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+        <span class="material-symbols-sharp" aria-hidden="true">close_small</span>
       </button>
     </header>
     <div class="account-panel-drawer__body">

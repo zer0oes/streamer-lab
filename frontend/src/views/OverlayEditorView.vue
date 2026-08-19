@@ -71,7 +71,7 @@ onBeforeUnmount(() => {
       :title="overlayLayersCollapsed ? 'Déplier le panneau Calques' : 'Replier le panneau Calques'"
       @click="toggleOverlayLayersCollapsed"
     >
-      <span class="material-symbols-rounded" aria-hidden="true">{{ overlayLayersCollapsed ? "right_panel_open" : "right_panel_close" }}</span>
+      <span class="material-symbols-sharp" aria-hidden="true">{{ overlayLayersCollapsed ? "right_panel_open" : "right_panel_close" }}</span>
     </button>
 
     <LayersPanel :collapsed="overlayLayersCollapsed" />

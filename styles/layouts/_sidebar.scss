@@ -1,5 +1,4 @@
 // Left sidebar: workspace grid, collapsible rail, sidebar sections, field-groups.
-@use "../base/primitives";
 
 .workspace {
   display: grid;
@@ -12,6 +11,10 @@
   // animating. `auto` sizes this column to `.controls`'s own (animated)
   // width, so the grid track rides along smoothly for free.
   grid-template-columns: auto minmax(0, 1fr);
+  // Compense la topbar passée en position: fixed (cf. _topbar.scss) : elle
+  // ne réserve plus sa hauteur dans le flux, donc sans cette marge tout le
+  // workspace (sidebar comprise) remonterait sous elle.
+  margin-top: var(--topbar-height);
   min-height: calc(100vh - var(--topbar-height));
 
   // Intentional cross-block cascade: the collapsed-sidebar layout state is
@@ -37,14 +40,17 @@
   &.is-sidebar-collapsed {
     // Delayed by one phase (--duration-slow) so the width doesn't start
     // narrowing until the label-fade/padding phase just below has finished.
-    .controls { width: 58px; padding: 0; border-right: 0; transition: width var(--duration-slow) var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1); }
+    // Figma (mis à jour) : rail à 72px (pas 58px) — 20px de marge de chaque
+    // côté d'une icône de 32px, cf. .controls__toolbar/.sidebar-nav-item
+    // ci-dessous pour la répartition exacte.
+    .controls { width: 72px; padding: 0; border-right: 0; transition: width var(--duration-slow) var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1); }
     // Only the copyright/GitHub/Discord row hides — the contact button
     // stays reachable (icon-only, via the shared .sidebar-nav-item rules
     // below) at the bottom of the collapsed rail. margin-top:auto pins the
     // footer to the bottom now that .controls__body's flex:1 filler (which
     // does this in the expanded state) is gone.
     .controls__footer { margin-top: auto; }
-    .controls__toolbar { padding: var(--space-14) var(--space-10); }
+    .controls__toolbar { padding: var(--space-20); }
 
     .controls__body,
     .controls__footer-links {
@@ -54,7 +60,10 @@
     }
 
     .sidebar-nav-item {
-      padding: var(--space-8);
+      // 32px de large au total (18px d'icône + 7px de chaque côté), pour
+      // atterrir pile sur les 72px du rail une fois combiné au padding de
+      // 20px de .controls__toolbar ci-dessus.
+      padding: var(--space-7);
 
       // max-width (not just opacity) shrinks here too: opacity alone leaves
       // the label's layout box — and thus the button's width — untouched,
@@ -108,17 +117,21 @@
   width: clamp(290px, 24vw, 348px);
   transition: width var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
 
+  // Figma (cadre "Top", panneau ouvert) : la rangée Dashboard et les 3
+  // panneaux repliables (Projets/Bibliothèque/Médias) vivent dans UN seul
+  // cadre à 20px de marge et 12px d'écart entre rangées — pas de séparateur
+  // entre eux. __toolbar et __body restent deux éléments distincts (pour
+  // garder __body seul défilant/flex:1), donc la marge de 20px est répartie
+  // entre eux (bas nul sur l'un, haut = l'écart de 12px sur l'autre) plutôt
+  // que dupliquée aux deux, ce qui aurait doublé l'espace au lieu de les
+  // faire lire comme un seul groupe.
   &__toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex: 0 0 auto;
     gap: var(--space-12);
-    // Matches .sidebar-section__summary's padding — when expanded, this row
-    // is meant to read like "Ma bibliothèque"'s section header. Overridden
-    // back to a compact rail padding by the .is-sidebar-collapsed rule.
-    padding: var(--space-20) var(--space-25);
-    border-bottom: 1px solid var(--line);
+    padding: var(--space-20) var(--space-20) 0;
     transition: padding var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
   }
 
@@ -126,6 +139,10 @@
     flex: 1;
     min-width: 0;
     overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-20) var(--space-20);
     opacity: 1;
     transform: translateX(0);
     transition: opacity var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1), transform var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
@@ -178,7 +195,7 @@
     color: var(--accent-bright);
     font-size: var(--text-11);
 
-    .material-symbols-rounded { font-size: 16px; }
+    .material-symbols-sharp { font-size: 16px; }
   }
 }
 
@@ -194,6 +211,8 @@
   cursor: pointer;
   font-size: var(--text-12);
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   transition: color var(--duration-fast), background var(--duration-fast), border-color var(--duration-fast), padding var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
 
   // Shared hover language across the whole sidebar: a border tint at 52%
@@ -206,7 +225,7 @@
     border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
     background: color-mix(in srgb, var(--panel) 92%, var(--accent-bright) 8%);
   }
-  .material-symbols-rounded { font-size: 18px; color: var(--accent-bright); }
+  .material-symbols-sharp { font-size: 18px; color: var(--accent-bright); }
   &--rail-only { display: none; }
 
   span:last-child {
@@ -226,7 +245,7 @@
     background: var(--accent-gradient);
     border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
 
-    .material-symbols-rounded { color: #fff; }
+    .material-symbols-sharp { color: #fff; }
   }
 }
 
@@ -272,7 +291,7 @@
 
   &:hover { color: var(--text); background: color-mix(in srgb, var(--accent-bright) 8%, transparent); }
 
-  .material-symbols-rounded {
+  .material-symbols-sharp {
     padding-right: var(--space-12);
     border-right: 1px solid var(--line);
     font-size: 24px;
@@ -307,75 +326,56 @@
     border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
     background: color-mix(in srgb, var(--panel) 92%, var(--accent-bright) 8%);
   }
-  .material-symbols-rounded { font-size: 20px; }
+  .material-symbols-sharp { font-size: 20px; }
 }
 
-.sidebar-section {
-  border-bottom: 1px solid var(--line);
-
-  &[open] {
-    .sidebar-section__chevron {
-      color: var(--accent-bright);
-      transform: rotate(180deg);
-    }
+// Figma : rangées "Projets"/"Bibliothèque"/"Médias" du panneau ouvert — même
+// gabarit de pastille que .sidebar-nav-item (fond --panel-soft, bordure
+// --line, coins --radius-4, 32px de haut), mais avec son propre chevron
+// plutôt que le fondu de libellé au repliement (pas concerné ici, ces
+// rangées sont entièrement masquées avec .controls__body en mode rail, cf.
+// plus haut).
+.sidebar-panel {
+  &[open] .sidebar-panel__chevron {
+    color: var(--accent-bright);
+    transform: rotate(180deg);
   }
 
   &__summary {
-    display: block;
-    padding: var(--space-20) var(--space-25);
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    min-height: 32px;
+    padding: var(--space-7);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-4);
     cursor: pointer;
     list-style: none;
+    color: var(--text);
+    background: var(--panel-soft);
+    font-size: var(--text-12);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
     user-select: none;
-    transition: color var(--duration-fast), background var(--duration-fast);
+    transition: color var(--duration-fast), background var(--duration-fast), border-color var(--duration-fast);
 
     &::-webkit-details-marker { display: none; }
-    .sidebar-section__heading { margin: 0; }
-    &:hover { color: var(--accent-bright); }
+    &:hover { border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent); background: color-mix(in srgb, var(--panel-soft) 92%, var(--accent-bright) 8%); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
+
+    .material-symbols-sharp:first-child { font-size: 18px; color: var(--accent-bright); }
   }
 
-  &__meta {
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-end;
-    flex: 1;
-    gap: var(--space-8);
-    min-width: 0;
-
-    .hint {
-      overflow: hidden;
-      min-width: 0;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
+  &__label { flex: 1; }
 
   &__chevron {
-    color: #747b88;
-    font-size: 18px;
-    transition: transform var(--duration-base), color var(--duration-base);
-  }
-
-  &__body { padding: 0 var(--space-25) var(--space-25); }
-
-  &__heading {
-    @include primitives.heading-row;
-    justify-content: space-between;
-    gap: var(--space-12);
-    margin-bottom: var(--space-20);
-
-    &-actions { display: flex; flex-shrink: 0; gap: var(--space-12); }
-  }
-
-  &__step {
-    display: grid;
-    place-items: center;
-    flex: 0 0 auto;
-    padding-right: var(--space-12);
-    border-right: 1px solid var(--line);
     color: var(--accent-bright);
-    font-size: 24px;
+    font-size: 18px;
+    transition: transform var(--duration-base);
   }
+
+  &__body { padding-top: var(--space-12); }
 }
 
 .field-group {

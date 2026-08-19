@@ -26,8 +26,8 @@
     cursor: pointer;
     list-style: none;
     color: var(--muted);
-    font-size: var(--text-12);
-    font-weight: 650;
+    font-size: var(--text-11);
+    font-weight: 600;
     user-select: none;
     transition: color var(--duration-fast), background var(--duration-fast);
 
@@ -35,7 +35,7 @@
     &:hover { color: var(--text); background: color-mix(in srgb, var(--accent-bright) 8%, transparent); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
 
-    .material-symbols-rounded:first-child { font-size: 17px; }
+    .material-symbols-sharp:first-child { font-size: 17px; }
   }
 
   &__label { flex: 1; }
@@ -57,123 +57,6 @@
 
   &__body {
     padding: 0 var(--space-8) var(--space-8);
-  }
-}
-
-.library-projects-bar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: var(--space-8);
-
-  &__add {
-    min-height: 30px;
-    padding: 0 var(--space-10);
-    font-size: var(--text-11);
-  }
-}
-
-// Regroupement des overlays/widgets/alertes par projet à l'intérieur de
-// chacun des 3 groupes existants (cf. .library-group ci-dessus) : même
-// principe de <details> repliable, imbriqué un niveau plus loin. N'apparaît
-// que si la bibliothèque compte 2+ projets (cf. populateLibraryListGroupedByProject
-// côté JS) : avec un seul projet, cet en-tête ne ferait que répéter celui du
-// groupe Overlays/Widgets/Alertes juste au-dessus, pour un rendu "boîte dans
-// la boîte" chargé - volontairement discret (pas de carte bordée, libellé en
-// petites capitales, crayon révélé seulement au survol) pour rester léger
-// même une fois affiché.
-.library-subgroup {
-  margin-bottom: var(--space-9);
-
-  &:last-child { margin-bottom: 0; }
-
-  &[open] {
-    .library-subgroup__chevron { color: var(--accent-bright); transform: rotate(180deg); }
-  }
-
-  &__summary {
-    display: flex;
-    align-items: center;
-    gap: var(--space-7);
-    min-height: 24px;
-    margin-bottom: var(--space-6);
-    padding-bottom: var(--space-5);
-    border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
-    cursor: pointer;
-    list-style: none;
-    color: var(--muted);
-    font-size: var(--text-10);
-    font-weight: 720;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    user-select: none;
-    transition: color var(--duration-fast);
-
-    &::-webkit-details-marker { display: none; }
-    &:hover, &:focus-within { color: var(--text); }
-    &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
-
-    // Survolé pendant le glisser-déposer d'une ligne (cf. handleLibraryItemDrop) :
-    // même déclencheur visuel que .project-card.is-drop-target ci-dessous.
-    &.is-drop-target {
-      color: var(--text);
-      background: color-mix(in srgb, var(--accent-bright) 18%, transparent);
-      outline: 2px dashed var(--accent-bright);
-      outline-offset: -2px;
-    }
-
-    .material-symbols-rounded:first-child { font-size: 13px; }
-  }
-
-  &__label { flex: 1; }
-
-  &__count {
-    padding: 1px var(--space-6);
-    border-radius: 999px;
-    color: var(--muted);
-    background: rgb(255 255 255 / 8%);
-    font-size: var(--text-10);
-    font-weight: 720;
-    text-transform: none;
-    letter-spacing: normal;
-  }
-
-  &__edit {
-    display: grid;
-    place-items: center;
-    width: 20px;
-    height: 20px;
-    padding: 0;
-    border: none;
-    border-radius: var(--radius-4);
-    color: var(--muted);
-    background: transparent;
-    cursor: pointer;
-    // Masqué par défaut : un crayon d'édition par projet en permanence à
-    // côté de chaque section, en plus du reste, ajoutait du bruit visuel
-    // pour une action ponctuelle - il suffit de survoler ou de naviguer au
-    // clavier jusqu'à l'en-tête pour le faire apparaître.
-    opacity: 0;
-    transition: opacity var(--duration-fast), color var(--duration-fast), background var(--duration-fast);
-
-    &:hover { color: var(--text); background: rgb(255 255 255 / 8%); }
-    &:focus-visible { opacity: 1; outline: 2px solid var(--accent-bright); outline-offset: 1px; }
-    .material-symbols-rounded { font-size: 13px; }
-  }
-
-  &__summary:hover &__edit,
-  &__summary:focus-within &__edit {
-    opacity: 1;
-  }
-
-  &__chevron {
-    color: #747b88;
-    font-size: 15px;
-    transition: transform var(--duration-base), color var(--duration-base);
-  }
-
-  &__body {
-    display: grid;
-    gap: var(--space-7);
   }
 }
 
@@ -229,7 +112,7 @@
       border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
       background: color-mix(in srgb, var(--panel-soft) 92%, var(--accent-bright) 8%);
     }
-    .material-symbols-rounded { font-size: 16px; color: var(--accent-bright); }
+    .material-symbols-sharp { font-size: 16px; color: var(--accent-bright); }
   }
 
   &__item {
@@ -269,6 +152,8 @@
     &:hover {
       border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
       background: color-mix(in srgb, color-mix(in srgb, var(--panel-soft) 65%, transparent) 92%, var(--accent-bright) 8%);
+
+      .widget-library__icon { color: #fff; }
     }
     &:has(.widget-library__item:focus-visible) { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
     &:has(.widget-library__item:disabled) { cursor: wait; opacity: 0.65; }
@@ -296,12 +181,12 @@
   &__options {
     display: grid;
     place-items: center;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     padding: 0;
     border: 0;
     border-radius: var(--radius-4);
-    color: var(--muted);
+    color: var(--icon-default);
     background: transparent;
     cursor: pointer;
     transition: color var(--duration-fast), background var(--duration-fast);
@@ -310,7 +195,7 @@
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
     &:disabled { cursor: wait; opacity: 0.6; }
     &[aria-expanded="true"] { color: #fff; background: color-mix(in srgb, var(--accent-bright) 18%, transparent); }
-    .material-symbols-rounded { font-size: 19px; }
+    .material-symbols-sharp { font-size: 19px; }
   }
 
   &__options-panel {
@@ -346,26 +231,32 @@
     font-weight: 700;
     text-align: left;
 
-    .material-symbols-rounded { color: var(--accent-bright); font-size: 16px; }
+    .material-symbols-sharp { color: var(--accent-bright); font-size: 16px; }
     &:hover { color: #fff; background: color-mix(in srgb, var(--accent-bright) 8%, transparent); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
 
     &.is-danger {
-      .material-symbols-rounded { color: var(--danger-bright); }
+      .material-symbols-sharp { color: var(--danger-bright); }
       &:hover { color: var(--danger-bright); background: color-mix(in srgb, var(--danger) 8%, transparent); }
     }
   }
 
+  // Figma (composant "CARTOUCHE + APERÇU", bloc ICONE) : fond accent 15%
+  // mélangé à --panel-alt (pas --accent 17% sur transparent, qui laissait
+  // transparaître le fond translucide de &__row en dessous), icône
+  // --icon-default par défaut, blanche au survol de la carte (cf. &:hover
+  // ci-dessus).
   &__icon {
     display: grid;
     place-items: center;
     width: 40px;
     height: 40px;
     border-radius: var(--radius-4);
-    color: #cbbaff;
-    background: color-mix(in srgb, var(--accent) 17%, transparent);
+    color: var(--icon-default);
+    background: color-mix(in srgb, var(--accent-bright) 15%, var(--panel-alt));
+    transition: color var(--duration-fast);
 
-    .material-symbols-rounded { font-size: 21px; }
+    .material-symbols-sharp { font-size: 21px; }
   }
 
   &__copy {
@@ -441,7 +332,7 @@
     text-align: center;
     transition: border-color var(--duration-fast), background var(--duration-fast), color var(--duration-fast);
 
-    .material-symbols-rounded { font-size: 19px; color: var(--accent-bright); }
+    .material-symbols-sharp { font-size: 19px; color: var(--accent-bright); }
 
     &:hover,
     &:focus-within {
@@ -462,11 +353,7 @@
     font-weight: 650;
   }
 
-  // Cellule de grille (position: relative pour ancrer &__delete en overlay) :
-  // &__item lui-même n'est plus le placement direct dans la grille dès
-  // qu'un média local porte aussi un bouton de suppression à côté.
   &__item-wrap {
-    position: relative;
     // min-width: 0 impose : un item de grille garde par defaut min-width:auto,
     // c'est-a-dire la largeur de son contenu incompressible — ici le nom de
     // fichier en white-space:nowrap. Sans ce reset, une colonne 1fr est
@@ -488,9 +375,12 @@
     cursor: pointer;
     transition: border-color var(--duration-fast), background var(--duration-fast);
 
+    // Figma (composant MEDIA) : liseré plein accent + fond teinté 20%, pas
+    // le liseré/fond dilués utilisés ailleurs — traitement propre à cette
+    // grille, cf. le composant Figma dédié plutôt qu'une convention générale.
     &:hover {
-      border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent);
-      background: color-mix(in srgb, var(--panel-alt) 92%, var(--accent-bright) 8%);
+      border-color: var(--accent-bright);
+      background: color-mix(in srgb, var(--accent-bright) 20%, var(--panel-alt));
     }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
   }
@@ -509,7 +399,7 @@
     background: color-mix(in srgb, var(--panel) 85%, transparent);
     transition: opacity var(--duration-fast);
 
-    .material-symbols-rounded { font-size: 14px; }
+    .material-symbols-sharp { font-size: 14px; }
   }
 
   // Agrandit l'aperçu (cf. openMediaPreview) : même visibilité au survol que
@@ -525,7 +415,7 @@
     background: color-mix(in srgb, var(--panel) 85%, transparent);
     transition: opacity var(--duration-fast);
 
-    .material-symbols-rounded { font-size: 14px; }
+    .material-symbols-sharp { font-size: 14px; }
   }
 
   &__item-wrap:hover &__delete,
@@ -587,14 +477,6 @@
   }
 }
 
-// Aperçu du dashboard (#dashboard-media-library) : plus de colonnes que la
-// sidebar ci-dessus (.media-library, 3 colonnes) — la carte "Médias" du
-// dashboard dispose de bien plus de largeur que la colonne étroite de la
-// sidebar gauche.
-#dashboard-media-library {
-  grid-template-columns: repeat(4, 1fr);
-}
-
 // Pagination des listes du dashboard (Overlays/Widgets/Alertes/Médias) :
 // cf. paginateDashboardEntries dans app.js. Un seul composant partagé entre
 // les 4 sections plutôt qu'un par section, leur structure prev/label/next
@@ -615,7 +497,7 @@
     width: 26px;
     height: 26px;
 
-    .material-symbols-rounded { font-size: 16px; }
+    .material-symbols-sharp { font-size: 16px; }
   }
   .icon-button:disabled { opacity: .4; pointer-events: none; }
 
@@ -803,7 +685,7 @@
       box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 24%, transparent);
     }
 
-    .material-symbols-rounded { font-size: 17px; }
+    .material-symbols-sharp { font-size: 17px; }
   }
 }
 
@@ -846,7 +728,7 @@
       box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 22%, transparent);
     }
 
-    .material-symbols-rounded { font-size: 20px; }
+    .material-symbols-sharp { font-size: 20px; }
   }
 }
 

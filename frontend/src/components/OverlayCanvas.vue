@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useOverlayEditorStore } from "../stores/overlayEditor";
 import OverlayCanvasItem from "./OverlayCanvasItem.vue";
-import { canvasPointFromEvent, computeOverlayFitScale, overlayGuidesWithCenter, snapEdge, snapMovePosition } from "../lib/overlayGeometry";
+import { canvasPointFromEvent, computeOverlayFitScale, overlayGuidesWithCenter, snapEdge, snapGuideToCenter, snapMovePosition } from "../lib/overlayGeometry";
 import { drawOverlayRulers } from "../lib/overlayRulers";
 import { MIN_OVERLAY_ITEM_SIZE } from "../lib/overlayTypes";
 import type { OverlayItem } from "../lib/overlayTypes";
@@ -113,7 +113,8 @@ function startGuideDrag(event: PointerEvent, axis: "horizontal" | "vertical", in
     draggingGuideOutside.value = outside;
     if (outside) return;
     const point = pointFromEvent(moveEvent);
-    const value = Math.round(axis === "horizontal" ? point.y : point.x);
+    const raw = Math.round(axis === "horizontal" ? point.y : point.x);
+    const value = snapGuideToCenter(raw, axis, store.canvas, scale.value, store.guidesVisible);
     if (axis === "horizontal") guides.horizontal[index] = value;
     else guides.vertical[index] = value;
   };
@@ -156,7 +157,8 @@ function startGuideCreateFromRuler(event: PointerEvent, axis: "horizontal" | "ve
       return;
     }
     const point = pointFromEvent(moveEvent);
-    const value = Math.round(axis === "horizontal" ? point.y : point.x);
+    const raw = Math.round(axis === "horizontal" ? point.y : point.x);
+    const value = snapGuideToCenter(raw, axis, store.canvas, scale.value, store.guidesVisible);
     creatingGuide.value = { axis, value };
   };
   const onUp = (upEvent: PointerEvent) => {

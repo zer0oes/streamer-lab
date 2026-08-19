@@ -27,7 +27,7 @@ function select(mode: SortMode): void {
       :aria-label="label"
       @click="toggle"
     >
-      <span class="material-symbols-rounded" aria-hidden="true">filter_list</span>
+      <span class="material-symbols-sharp" aria-hidden="true">filter_list</span>
     </button>
     <div class="dashboard-view__filter-panel" role="menu" :hidden="!open">
       <button
@@ -39,7 +39,7 @@ function select(mode: SortMode): void {
         :aria-checked="dashboardLibrary.sortMode[scope] === mode"
         @click="select(mode)"
       >
-        <span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span>
+        <span class="material-symbols-sharp dashboard-view__filter-check" aria-hidden="true">check</span>
         <span>{{ modeLabel }}</span>
       </button>
     </div>

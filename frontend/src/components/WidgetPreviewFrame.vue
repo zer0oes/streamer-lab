@@ -182,7 +182,7 @@ watch(frameEl, (el) => {
         :title="store.isChecker ? 'Désactiver le damier' : 'Activer le damier'"
         @click="store.toggleChecker"
       >
-        <span class="material-symbols-rounded" aria-hidden="true">grid_on</span>
+        <span class="material-symbols-sharp" aria-hidden="true">grid_on</span>
       </button>
       <!-- Dans le flux normal (flex row), pas en position:fixed avec une
       position calculée indépendamment de .checker-button : les deux boutons
@@ -198,7 +198,7 @@ watch(frameEl, (el) => {
         :title="widgetFieldsCollapsed ? 'Déplier le panneau Champs' : 'Replier le panneau Champs'"
         @click="toggleWidgetFieldsCollapsed"
       >
-        <span class="material-symbols-rounded" aria-hidden="true">{{ widgetFieldsCollapsed ? "right_panel_open" : "right_panel_close" }}</span>
+        <span class="material-symbols-sharp" aria-hidden="true">{{ widgetFieldsCollapsed ? "right_panel_open" : "right_panel_close" }}</span>
       </button>
     </div>
   </div>

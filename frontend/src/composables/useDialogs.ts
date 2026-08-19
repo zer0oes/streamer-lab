@@ -29,11 +29,16 @@ export interface MediaPreviewDialogHandle {
   open(item: { type: "image" | "video"; url: string; name: string }): void;
 }
 
+export interface StreamElementsOverlayPickerDialogHandle {
+  open(): void;
+}
+
 export const projectDialog = ref<ProjectDialogHandle | null>(null);
 export const widgetDialog = ref<WidgetDialogHandle | null>(null);
 export const overlayDialog = ref<OverlayDialogHandle | null>(null);
 export const contactDialog = ref<ContactDialogHandle | null>(null);
 export const mediaPreviewDialog = ref<MediaPreviewDialogHandle | null>(null);
+export const streamElementsOverlayPickerDialog = ref<StreamElementsOverlayPickerDialogHandle | null>(null);
 
 // Port de creatingWidgetForOverlay (app.js) : quand l'éditeur d'overlay
 // ouvre widgetDialog en mode création ("Nouveau widget"/"Nouvelle alerte"

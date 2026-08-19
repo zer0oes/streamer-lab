@@ -16,6 +16,18 @@ const overlayEditorStore = useOverlayEditorStore();
 const canvas = computed(() => props.entry.canvas || DEFAULT_OVERLAY_CANVAS);
 const visibleItems = computed(() => props.entry.items.filter((item) => item.type !== "group"));
 
+// streamelements-icon.svg est un recadrage du seul pictogramme (fusée),
+// extrait du logo complet (streamelements.svg, utilisé tel quel ailleurs —
+// compte connecté, sélecteur de plateforme) : le logo complet est un
+// bandeau large icône+texte, et le cadrer via object-fit/object-position
+// dans ce badge rond de 22px laissait dépasser le début du texte à côté de
+// la fusée. Streamlabs n'a pas ce problème (son propre recadrage reste net).
+const badgeSrc = computed(() =>
+  props.entry.sourcePlatform === "streamelements"
+    ? "/assets/platforms/streamelements-icon.svg"
+    : `/assets/platforms/${props.entry.sourcePlatform}.svg`
+);
+
 function widgetIcon(widgetId: string): string | undefined {
   return libraryStore.widgets.find((entry) => entry.id === widgetId)?.icon;
 }
@@ -53,12 +65,13 @@ async function open(): Promise<void> {
     @click="open"
   >
     <span v-for="item in visibleItems" :key="item.id" class="overlay-preview-card__item" :style="item.type === 'shape' ? { ...itemStyle(item), ...shapeStyle(item) } : itemStyle(item)">
-      <span v-if="item.type !== 'shape'" class="material-symbols-rounded" aria-hidden="true">{{ overlayPreviewItemIcon(item, widgetIcon) }}</span>
+      <span v-if="item.type !== 'shape'" class="material-symbols-sharp" aria-hidden="true">{{ overlayPreviewItemIcon(item, widgetIcon) }}</span>
     </span>
     <img
       v-if="entry.sourcePlatform"
       class="overlay-preview-card__badge"
-      :src="`/assets/platforms/${entry.sourcePlatform}.svg`"
+      :class="{ 'overlay-preview-card__badge--icon': entry.sourcePlatform === 'streamelements' }"
+      :src="badgeSrc"
       :alt="entry.sourcePlatform === 'streamlabs' ? 'Importé depuis Streamlabs' : 'Importé depuis StreamElements'"
       :title="entry.sourcePlatform === 'streamlabs' ? 'Importé depuis Streamlabs' : 'Importé depuis StreamElements'"
     />

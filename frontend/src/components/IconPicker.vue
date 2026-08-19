@@ -19,7 +19,7 @@ defineProps<{
       :aria-pressed="model === iconName"
       @click="model = iconName"
     >
-      <span class="material-symbols-rounded" aria-hidden="true">{{ iconName }}</span>
+      <span class="material-symbols-sharp" aria-hidden="true">{{ iconName }}</span>
     </button>
   </div>
 </template>

@@ -7,7 +7,7 @@ const year = new Date().getFullYear();
 <template>
   <div class="controls__footer">
     <button type="button" class="sidebar-nav-item controls__footer-contact" @click="contactDialog?.open()">
-      <span class="material-symbols-rounded" aria-hidden="true">mail</span>
+      <span class="material-symbols-sharp" aria-hidden="true">mail</span>
       <span>Nous contacter</span>
     </button>
     <div class="controls__footer-links">

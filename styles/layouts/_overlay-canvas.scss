@@ -355,7 +355,7 @@ $ruler-size: 20px;
     color: var(--muted);
     cursor: grab;
 
-    .material-symbols-rounded { font-size: 18px; }
+    .material-symbols-sharp { font-size: 18px; }
   }
 
   &.is-dragging &__handle { cursor: grabbing; }
@@ -383,7 +383,7 @@ $ruler-size: 20px;
     white-space: nowrap;
     transition: color var(--duration-fast), background var(--duration-fast), border-color var(--duration-fast);
 
-    .material-symbols-rounded { font-size: 16px; }
+    .material-symbols-sharp { font-size: 16px; }
 
     &:hover {
       color: var(--text);
@@ -392,6 +392,18 @@ $ruler-size: 20px;
     }
     &.is-active { color: #fff; border-color: transparent; background: var(--accent-gradient); }
     &:disabled { opacity: .4; pointer-events: none; }
+
+    // Figma : "Repères" ne garde son libellé que dépliés/actif — replié sur
+    // son icône seule (comme les autres boutons outil) quand les repères
+    // sont masqués, au lieu de rester une pastille large en permanence.
+    &--guides:not(.is-active) {
+      justify-content: center;
+      width: 32px;
+      padding: 0;
+      gap: 0;
+
+      span:last-child { display: none; }
+    }
     // display:flex ci-dessus a la même spécificité que [hidden] (une classe
     // vs un attribut) : sans cette redéclaration, .overlay-toolbar__button
     // gagnerait la cascade et resterait affiché malgré l'attribut hidden.
@@ -467,7 +479,7 @@ $ruler-size: 20px;
     text-align: left;
     white-space: nowrap;
 
-    .material-symbols-rounded { font-size: 16px; color: var(--muted); }
+    .material-symbols-sharp { font-size: 16px; color: var(--muted); }
 
     &:hover { color: var(--text); background: var(--panel-soft); }
   }
@@ -729,7 +741,16 @@ $ruler-size: 20px;
     border-left-color: transparent;
   }
 
-  &__title { margin: 0 0 var(--space-8); color: var(--muted); font-size: var(--text-12); }
+  // Figma (mis à jour) : même traitement que les autres titres de section
+  // majeurs de l'app (DASHBOARD, MA BIBLIOTHÈQUE...) — capitales, accent.
+  &__title {
+    margin: 0 0 var(--space-8);
+    color: var(--accent-bright);
+    font-size: var(--text-12);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
 
   // flex: 1 1 auto + overflow-y: auto : la liste (pas le panneau, toujours
   // pile la hauteur du viewport par construction maintenant) absorbe tout
@@ -764,25 +785,29 @@ $ruler-size: 20px;
     user-select: none;
     transition: background var(--duration-fast);
 
-    .material-symbols-rounded { font-size: 16px; color: var(--muted); }
+    .material-symbols-sharp { font-size: 16px; color: var(--muted); }
 
     // Rangée compacte (largeur fixe de 240px, voir plus haut) : la taille
     // par défaut de .icon-button (32px) laisserait trop peu de place au
     // libellé maintenant qu'un item widget/alerte porte plusieurs boutons
-    // (verrou, réglages, supprimer) au lieu d'un seul.
-    .icon-button { width: 24px; height: 24px; }
+    // (verrou, réglages, supprimer) au lieu d'un seul. Fond --panel-alt (pas
+    // --panel-soft, le défaut de .icon-button) : composant CALQUE Figma.
+    .icon-button { width: 24px; height: 24px; background: var(--panel-alt); }
 
-    &:hover { background: var(--panel-soft); }
+    // Composant CALQUE (page Figma "COMPONENTS") : Hovered et Selected
+    // partagent le même fond teinté accent 20% : seul Selected ajoute le
+    // liseré. Pas de distinction multi- vs mono-sélection côté Figma — tous
+    // les calques sélectionnés à la fois (multi-sélection) reçoivent donc le
+    // même traitement, liseré compris.
+    &:hover,
+    &.is-active {
+      background: color-mix(in srgb, var(--accent-bright) 20%, transparent);
+
+      .overlay-layers__label { color: #fff; }
+    }
     &.is-dragging { opacity: .5; cursor: grabbing; }
 
-    // Même traitement discret qu'un item actif dans .widget-library__row
-    // (fond légèrement teinté + liseré gauche) plutôt qu'un aplat
-    // accent-gradient plein — trop appuyé sur une liste dense où plusieurs
-    // lignes peuvent être sélectionnées en même temps (multi-sélection).
-    &.is-active {
-      background: linear-gradient(135deg, color-mix(in srgb, var(--accent-bright) 16%, transparent), color-mix(in srgb, var(--accent) 7%, transparent));
-      box-shadow: inset 3px 0 0 var(--accent-bright);
-    }
+    &.is-active { border: 1px solid var(--accent-bright); }
 
     // Calque masqué : la ligne reste pleinement utilisable (c'est le seul
     // moyen de le resélectionner/réafficher, cf. .overlay-item--hidden), donc
@@ -819,14 +844,14 @@ $ruler-size: 20px;
     &[hidden] { display: none; }
   }
 
-  &__lock--active .material-symbols-rounded { color: var(--accent-bright); }
+  &__lock--active .material-symbols-sharp { color: var(--accent-bright); }
 
   &__disclosure {
     flex: 0 0 auto;
     color: var(--muted);
     transition: transform var(--duration-fast);
 
-    .material-symbols-rounded { color: inherit; }
+    .material-symbols-sharp { color: inherit; }
 
     &.is-open { transform: rotate(90deg); }
   }
@@ -835,7 +860,7 @@ $ruler-size: 20px;
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    color: var(--text);
+    color: var(--icon-default);
     font-size: var(--text-11);
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -866,21 +891,25 @@ $ruler-size: 20px;
   padding-top: var(--space-10);
   border-top: 1px solid var(--line);
 
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-8);
+  // Figma : "Position & taille" / "Champs" — même traitement que le
+  // "Calques" en tête du panneau, mais sans la couleur accent (celle-ci
+  // reste réservée au titre du panneau lui-même).
+  &__section-title {
+    display: block;
     margin-bottom: var(--space-8);
+    color: var(--text);
+    font-size: var(--text-10);
+    font-weight: 720;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
-  &__title {
-    overflow: hidden;
-    color: var(--text);
-    font-size: var(--text-11);
-    font-weight: 650;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  // "Voir le code" en capitales dans la maquette — scopé à ce bouton
+  // précis (pas .button--quiet en général, qui reste en minuscules
+  // ailleurs, ex. "Ajouter un overlay").
+  &__code-button {
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
   &__fields {
@@ -898,4 +927,12 @@ $ruler-size: 20px;
   gap: var(--space-8);
 
   .field { margin-bottom: 0; }
+
+  // Figma : libellés X/Y/Largeur/Hauteur en petites capitales — scopé ici
+  // plutôt que sur .field__label globalement, qui reste en minuscules
+  // partout ailleurs (dialogues, panneau Champs...).
+  .field__label {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
 }

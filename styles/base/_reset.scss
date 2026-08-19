@@ -19,11 +19,22 @@
 html,
 body { min-height: 100%; }
 
+// Figma (fond de page, mis à jour) : un dégradé radial très doux (calque à
+// 10% d'opacité globale, stops accent-bright → rgb(6, 6, 6)) centré vers
+// ~70%/10% du viewport, s'étendant sur ~70rem — beaucoup plus large et plus
+// proche du haut de la page que l'ancien halo (accent standard à 16%, centré
+// au-dessus du viewport, rayon 34rem). Les deux stops sont dilués à 10% via
+// color-mix (pas juste le premier vers transparent) pour reproduire l'opacité
+// de calque Figma plutôt qu'un fondu vers rien.
 body {
   margin: 0;
   color: var(--text);
   background:
-    radial-gradient(circle at 73% -20%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 34rem),
+    radial-gradient(
+      circle at 70% 10%,
+      color-mix(in srgb, var(--accent-bright) 10%, transparent),
+      color-mix(in srgb, rgb(6, 6, 6) 10%, transparent) 70rem
+    ),
     var(--bg);
 }
 

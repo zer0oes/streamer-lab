@@ -6,6 +6,7 @@ import { sidebarCollapsed, setSidebarCollapsed, toggleSidebarCollapsed } from ".
 import { activeView, setActiveView } from "../composables/useAppView";
 import { useWidgetEditorStore } from "../stores/widgetEditor";
 import LibraryGroupSection from "./LibraryGroupSection.vue";
+import ProjectLibraryRow from "./ProjectLibraryRow.vue";
 import SidebarFooter from "./SidebarFooter.vue";
 import MediaGrid from "./MediaGrid.vue";
 
@@ -34,16 +35,20 @@ async function goToDashboard(): Promise<void> {
         title="Tableau de bord"
         @click="goToDashboard"
       >
-        <span class="material-symbols-rounded" aria-hidden="true">dashboard</span>
+        <span class="material-symbols-sharp" aria-hidden="true">dashboard</span>
         <span>Dashboard</span>
       </button>
-      <button type="button" class="sidebar-nav-item sidebar-nav-item--rail-only" aria-label="Ma bibliothèque" title="Ma bibliothèque" @click="expandTo">
-        <span class="material-symbols-rounded" aria-hidden="true">topic</span>
-        <span>Ma bibliothèque</span>
-      </button>
       <button type="button" class="sidebar-nav-item sidebar-nav-item--rail-only" aria-label="Médias" title="Médias" @click="expandTo">
-        <span class="material-symbols-rounded" aria-hidden="true">perm_media</span>
+        <span class="material-symbols-sharp" aria-hidden="true">perm_media</span>
         <span>Médias</span>
+      </button>
+      <button type="button" class="sidebar-nav-item sidebar-nav-item--rail-only" aria-label="Bibliothèque" title="Bibliothèque" @click="expandTo">
+        <span class="material-symbols-sharp" aria-hidden="true">topic</span>
+        <span>Bibliothèque</span>
+      </button>
+      <button type="button" class="sidebar-nav-item sidebar-nav-item--rail-only" aria-label="Projets" title="Projets" @click="expandTo">
+        <span class="material-symbols-sharp" aria-hidden="true">folder_open</span>
+        <span>Projets</span>
       </button>
       <button
         type="button"
@@ -52,29 +57,34 @@ async function goToDashboard(): Promise<void> {
         :aria-label="sidebarCollapsed ? 'Déplier le panneau' : 'Replier le panneau'"
         @click="toggleSidebarCollapsed"
       >
-        <span class="material-symbols-rounded" aria-hidden="true">{{ sidebarCollapsed ? "chevron_right" : "chevron_left" }}</span>
+        <span class="material-symbols-sharp" aria-hidden="true">{{ sidebarCollapsed ? "left_panel_open" : "left_panel_close" }}</span>
       </button>
     </div>
     <div class="controls__body">
-      <details class="sidebar-section" data-sidebar-section="library" open>
-        <summary class="sidebar-section__summary">
-          <div class="sidebar-section__heading">
-            <div class="sidebar-section__heading-actions">
-              <span class="sidebar-section__step material-symbols-rounded" aria-hidden="true">topic</span>
-              <h2>Ma bibliothèque</h2>
-            </div>
-            <span class="sidebar-section__meta">
-              <span class="material-symbols-rounded sidebar-section__chevron" aria-hidden="true">expand_more</span>
-            </span>
-          </div>
+      <details class="sidebar-panel" data-sidebar-panel="projects">
+        <summary class="sidebar-panel__summary">
+          <span class="material-symbols-sharp" aria-hidden="true">folder_open</span>
+          <span class="sidebar-panel__label">Projets</span>
+          <span class="material-symbols-sharp sidebar-panel__chevron" aria-hidden="true">expand_more</span>
         </summary>
-        <div class="sidebar-section__body">
-          <div class="library-projects-bar">
-            <button type="button" class="button button--quiet library-projects-bar__add" @click="projectDialog?.openCreate()">
-              <span class="material-symbols-rounded" aria-hidden="true">create_new_folder</span>
-              <span>Nouveau projet</span>
-            </button>
+        <div class="sidebar-panel__body">
+          <div class="widget-library">
+            <ProjectLibraryRow v-for="project in projectsStore.projects" :key="project.id" :entry="project" />
+            <p v-if="!projectsStore.projects.length" class="widget-library__empty">Aucun projet pour l’instant.</p>
           </div>
+          <button type="button" class="button button--wide widget-library__add" @click="projectDialog?.openCreate()">
+            <span class="material-symbols-sharp" aria-hidden="true">add</span>
+            <span>Ajouter un projet</span>
+          </button>
+        </div>
+      </details>
+      <details class="sidebar-panel" data-sidebar-panel="library" open>
+        <summary class="sidebar-panel__summary">
+          <span class="material-symbols-sharp" aria-hidden="true">topic</span>
+          <span class="sidebar-panel__label">Bibliothèque</span>
+          <span class="material-symbols-sharp sidebar-panel__chevron" aria-hidden="true">expand_more</span>
+        </summary>
+        <div class="sidebar-panel__body">
           <LibraryGroupSection
             kind="overlay"
             icon="desktop_landscape"
@@ -83,6 +93,7 @@ async function goToDashboard(): Promise<void> {
             :projects="projectsStore.projects"
             empty-message="Aucun overlay pour l’instant."
             add-label="Ajouter un overlay"
+            open-by-default
           />
           <LibraryGroupSection
             kind="widget"
@@ -104,19 +115,13 @@ async function goToDashboard(): Promise<void> {
           />
         </div>
       </details>
-      <details class="sidebar-section" data-sidebar-section="media">
-        <summary class="sidebar-section__summary">
-          <div class="sidebar-section__heading">
-            <div class="sidebar-section__heading-actions">
-              <span class="sidebar-section__step material-symbols-rounded" aria-hidden="true">perm_media</span>
-              <h2>Médias</h2>
-            </div>
-            <span class="sidebar-section__meta">
-              <span class="material-symbols-rounded sidebar-section__chevron" aria-hidden="true">expand_more</span>
-            </span>
-          </div>
+      <details class="sidebar-panel" data-sidebar-panel="media">
+        <summary class="sidebar-panel__summary">
+          <span class="material-symbols-sharp" aria-hidden="true">perm_media</span>
+          <span class="sidebar-panel__label">Médias</span>
+          <span class="material-symbols-sharp sidebar-panel__chevron" aria-hidden="true">expand_more</span>
         </summary>
-        <div class="sidebar-section__body">
+        <div class="sidebar-panel__body">
           <MediaGrid @preview="mediaPreviewDialog?.open($event)" />
         </div>
       </details>

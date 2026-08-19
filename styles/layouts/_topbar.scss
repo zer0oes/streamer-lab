@@ -2,17 +2,26 @@
 @use "../base/primitives";
 
 .topbar {
-  position: sticky;
-  z-index: 10;
+  // fixed (pas sticky) : sticky n'a d'effet que si un ancêtre défile, or ici
+  // c'est chaque vue (.dashboard-view etc.) qui défile en interne, jamais la
+  // page — sticky restait donc inerte et rien ne passait jamais derrière le
+  // bandeau, d'où le flou/la transparence invisibles au scroll. fixed sort
+  // la topbar du flux ; .workspace compense avec margin-top ci-dessous pour
+  // que sidebar/contenu gardent la même position visuelle qu'avant.
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   min-height: var(--topbar-height);
   padding: var(--space-14) clamp(var(--space-18), 3vw, 42px);
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  backdrop-filter: blur(18px);
+  // Figma (mis à jour) : 75% d'opacité (pas 82%), flou réduit à 2px (pas 18px).
+  background: color-mix(in srgb, var(--bg) 75%, transparent);
+  backdrop-filter: blur(2px);
 
   &__actions {
     @include primitives.heading-row;
@@ -136,7 +145,7 @@
     font-weight: 720;
     transition: color var(--duration-base), border-color var(--duration-base), filter var(--duration-base), transform var(--duration-fast);
 
-    > .material-symbols-rounded:first-child { color: var(--accent-bright); font-size: 16px; }
+    > .material-symbols-sharp:first-child { color: var(--accent-bright); font-size: 16px; }
     &:hover { color: #fff; border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent); }
     &:active { transform: translateY(1px); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
@@ -190,10 +199,10 @@
     font-weight: 700;
     text-align: left;
 
-    .material-symbols-rounded { color: var(--accent-bright); font-size: 17px; }
+    .material-symbols-sharp { color: var(--accent-bright); font-size: 17px; }
     &:hover { color: #fff; background: color-mix(in srgb, var(--accent-bright) 12%, transparent); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
   }
 }
 
-.account-fab.is-live .material-symbols-rounded { color: var(--green); }
+.account-fab.is-live .material-symbols-sharp { color: var(--green); }

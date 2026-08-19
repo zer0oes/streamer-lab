@@ -64,17 +64,17 @@ function convertToOther(): void {
       :disabled="busy"
       @click="menu.toggle"
     >
-      <span class="material-symbols-rounded" aria-hidden="true">download</span>
+      <span class="material-symbols-sharp" aria-hidden="true">download</span>
       <span>Exporter</span>
-      <span class="material-symbols-rounded export-menu__chevron" aria-hidden="true">expand_more</span>
+      <span class="material-symbols-sharp export-menu__chevron" aria-hidden="true">expand_more</span>
     </button>
     <div class="export-menu__panel" role="menu" :hidden="!menu.open.value">
       <button type="button" class="export-menu__item" role="menuitem" @click="downloadCurrent">
-        <span class="material-symbols-rounded" aria-hidden="true">download</span>
+        <span class="material-symbols-sharp" aria-hidden="true">download</span>
         <span>Télécharger</span>
       </button>
       <button type="button" class="export-menu__item" role="menuitem" @click="convertToOther">
-        <span class="material-symbols-rounded" aria-hidden="true">sync_alt</span>
+        <span class="material-symbols-sharp" aria-hidden="true">sync_alt</span>
         <span>Convertir pour {{ otherPlatformLabel }}</span>
       </button>
     </div>

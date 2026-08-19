@@ -82,7 +82,7 @@ async function onPreviewFrameLoad(event: Event): Promise<void> {
     <header class="widget-code-editor-dialog__header">
       <span id="overlay-item-code-title" class="widget-code-editor-dialog__title">{{ title }}</span>
       <button type="button" class="icon-button" aria-label="Fermer" @click="close">
-        <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+        <span class="material-symbols-sharp" aria-hidden="true">close_small</span>
       </button>
     </header>
     <div class="widget-code-editor-dialog__preview">

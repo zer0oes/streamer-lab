@@ -22,12 +22,15 @@
 
 .text-accent { color: var(--accent-bright); }
 
-.material-symbols-rounded {
+.material-symbols-sharp {
   // Vendor class (Google Material Symbols) — intentionally excluded from
-  // the BEM rename, renaming it would break the icon font hook.
-  font-family: "Material Symbols Rounded";
+  // the BEM rename, renaming it would break the icon font hook. Figma (mis
+  // à jour) : passage du style Rounded au style Sharp rempli, weight 300
+  // (au lieu de 500) — cf. la balise <link> Google Fonts dans index.html,
+  // qui doit charger la même famille/poids.
+  font-family: "Material Symbols Sharp";
   font-style: normal;
-  font-weight: 500;
+  font-weight: 300;
   line-height: 1;
   letter-spacing: normal;
   text-transform: none;

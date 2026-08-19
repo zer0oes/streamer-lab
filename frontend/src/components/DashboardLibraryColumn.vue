@@ -37,19 +37,22 @@ const emptyMessageResolved = computed(() =>
   dashboardLibrary.searchTerm.trim() ? `Aucun résultat pour « ${dashboardLibrary.searchTerm.trim()} ».` : props.emptyMessage
 );
 
-// Les overlays s'affichent en grille 3 colonnes dans leur propre bloc
-// pleine largeur (.dashboard-view__overlays) ; widgets/alertes/projets
-// restent en liste simple.
+// Overlays et projets s'affichent en grille 3 colonnes ; widgets/alertes
+// restent en liste simple. Overlays garde son propre bloc pleine largeur
+// (.dashboard-view__overlays, qui porte aussi la marge Figma) plutôt que
+// .dashboard-view__column, comme avant.
 const outerClass = computed(() => (props.scope === "overlay" ? "dashboard-view__overlays" : "dashboard-view__column"));
-const gridClass = computed(() => (props.scope === "overlay" ? "dashboard-view__overlays-grid" : ""));
+const gridClass = computed(() => (props.scope === "overlay" || props.scope === "project" ? "dashboard-view__cards-grid" : ""));
 </script>
 
 <template>
   <div :class="outerClass">
     <div class="dashboard-view__column-header">
       <h4 class="dashboard-view__column-title">{{ title }}</h4>
-      <slot name="actions" />
-      <SortFilterMenu :scope="scope" :label="`Trier : ${title}`" />
+      <div class="dashboard-view__column-actions">
+        <slot name="actions" />
+        <SortFilterMenu :scope="scope" :label="`Trier : ${title}`" />
+      </div>
     </div>
     <p v-if="hint" class="dashboard-view__projects-hint">{{ hint }}</p>
     <div class="widget-library" :class="gridClass">
@@ -75,7 +78,7 @@ const gridClass = computed(() => (props.scope === "overlay" ? "dashboard-view__o
         :disabled="pagination.page <= 0"
         @click="dashboardLibrary.setPage(scope, pagination.page - 1)"
       >
-        <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+        <span class="material-symbols-sharp" aria-hidden="true">chevron_left</span>
       </button>
       <span class="library-pagination__label">{{ pagination.page + 1 }} / {{ pagination.pageCount }}</span>
       <button
@@ -85,7 +88,7 @@ const gridClass = computed(() => (props.scope === "overlay" ? "dashboard-view__o
         :disabled="pagination.page >= pagination.pageCount - 1"
         @click="dashboardLibrary.setPage(scope, pagination.page + 1)"
       >
-        <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+        <span class="material-symbols-sharp" aria-hidden="true">chevron_right</span>
       </button>
     </div>
   </div>

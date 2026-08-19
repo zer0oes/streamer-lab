@@ -114,7 +114,7 @@ watch(
         @scroll="syncScroll"
       ></textarea>
       <button class="widget-editor__copy-button" type="button" title="Copier le code" aria-label="Copier le code" @click="copyCode">
-        <span class="material-symbols-rounded" aria-hidden="true">content_copy</span>
+        <span class="material-symbols-sharp" aria-hidden="true">content_copy</span>
       </button>
     </div>
     <footer class="widget-editor__footer">

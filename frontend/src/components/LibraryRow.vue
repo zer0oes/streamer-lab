@@ -88,7 +88,7 @@ async function remove(): Promise<void> {
   <div class="widget-library__row" draggable="true" @dragstart="startDrag($event, kind, entry.id)">
     <button type="button" class="widget-library__item" @click="openItem">
       <span class="widget-library__icon">
-        <span class="material-symbols-rounded" aria-hidden="true">{{ entry.icon }}</span>
+        <span class="material-symbols-sharp" aria-hidden="true">{{ entry.icon }}</span>
       </span>
       <span class="widget-library__copy">
         <strong>{{ entry.name }}</strong>
@@ -104,15 +104,15 @@ async function remove(): Promise<void> {
         :aria-label="`Options de ${entry.name}`"
         @click.stop="toggleMenu"
       >
-        <span class="material-symbols-rounded" aria-hidden="true">more_vert</span>
+        <span class="material-symbols-sharp" aria-hidden="true">more_vert</span>
       </button>
       <div class="widget-library__options-panel" role="menu" :hidden="!menuOpen">
         <button type="button" class="widget-library__options-item" role="menuitem" @click="edit">
-          <span class="material-symbols-rounded" aria-hidden="true">edit</span>
+          <span class="material-symbols-sharp" aria-hidden="true">edit</span>
           <span>Modifier</span>
         </button>
         <button type="button" class="widget-library__options-item is-danger" role="menuitem" @click="remove">
-          <span class="material-symbols-rounded" aria-hidden="true">delete</span>
+          <span class="material-symbols-sharp" aria-hidden="true">delete</span>
           <span>Supprimer</span>
         </button>
       </div>

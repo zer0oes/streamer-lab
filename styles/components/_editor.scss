@@ -130,7 +130,7 @@ $editor-panel: #0f1116;
     opacity: 0.75;
     transition: opacity var(--duration-fast), color var(--duration-fast), border-color var(--duration-fast), background var(--duration-fast);
 
-    .material-symbols-rounded { font-size: 15px; }
+    .material-symbols-sharp { font-size: 15px; }
     &:hover { opacity: 1; color: #fff; border-color: color-mix(in srgb, var(--accent-bright) 52%, transparent); }
     &:focus-visible { opacity: 1; outline: 2px solid var(--accent-bright); outline-offset: 2px; }
     &.is-copied { opacity: 1; color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); }

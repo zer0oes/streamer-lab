@@ -22,7 +22,7 @@ import { activeView } from "../composables/useAppView";
     </div>
     <div class="topbar__actions">
       <button type="button" class="icon-button" aria-label="Mon compte" title="Mon compte" @click="toggleAccountPanel()">
-        <span class="material-symbols-rounded" aria-hidden="true">account_circle</span>
+        <span class="material-symbols-sharp" aria-hidden="true">account_circle</span>
       </button>
     </div>
   </header>

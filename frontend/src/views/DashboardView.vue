@@ -3,9 +3,10 @@ import DashboardSearchBar from "../components/DashboardSearchBar.vue";
 import DashboardLibraryColumn from "../components/DashboardLibraryColumn.vue";
 import DashboardConnectionsSummary from "../components/DashboardConnectionsSummary.vue";
 import MediaGrid from "../components/MediaGrid.vue";
+import DashboardAddFab from "../components/DashboardAddFab.vue";
 import { useLibraryStore } from "../stores/library";
 import { useProjectsStore } from "../stores/projects";
-import { mediaPreviewDialog, projectDialog } from "../composables/useDialogs";
+import { mediaPreviewDialog, streamElementsOverlayPickerDialog } from "../composables/useDialogs";
 
 const libraryStore = useLibraryStore();
 const projectsStore = useProjectsStore();
@@ -15,11 +16,7 @@ const projectsStore = useProjectsStore();
   <div class="dashboard-view">
     <div class="dashboard-view__hero">
       <span class="eyebrow">DASHBOARD</span>
-      <h2>Bienvenue sur Streamer <span class="text-accent">Lab</span></h2>
-      <p>
-        Ton bac à sable local pour créer, tester et peaufiner tes widgets, alertes et overlays StreamElements ou Streamlabs en aperçu
-        temps réel — sans jamais toucher à ce qui est déjà en ligne.
-      </p>
+      <p>Ton bac à sable local pour créer, tester et peaufiner tes widgets, alertes et overlays StreamElements ou Streamlabs avec aperçu en temps réel — sans jamais toucher à ce qui est déjà en ligne.</p>
     </div>
     <div class="dashboard-view__columns">
       <section class="dashboard-view__group">
@@ -32,20 +29,26 @@ const projectsStore = useProjectsStore();
           :entries="projectsStore.projects"
           empty-message="Aucun projet pour l’instant."
           hint="Glisse un overlay, un widget ou une alerte sur un projet pour l’y déplacer."
-        >
-          <template #actions>
-            <button type="button" class="icon-button dashboard-view__filter-trigger" aria-label="Nouveau projet" title="Nouveau projet" @click="projectDialog?.openCreate()">
-              <span class="material-symbols-rounded" aria-hidden="true">create_new_folder</span>
-            </button>
-          </template>
-        </DashboardLibraryColumn>
+        />
 
         <DashboardLibraryColumn
           scope="overlay"
           title="Overlays"
           :entries="libraryStore.overlays"
           empty-message="Aucun overlay pour l’instant."
-        />
+        >
+          <template #actions>
+            <button
+              type="button"
+              class="icon-button dashboard-view__filter-trigger"
+              aria-label="Importer un overlay depuis StreamElements"
+              title="Importer depuis StreamElements"
+              @click="streamElementsOverlayPickerDialog?.open()"
+            >
+              <span class="material-symbols-sharp" aria-hidden="true">cloud_download</span>
+            </button>
+          </template>
+        </DashboardLibraryColumn>
 
         <div class="dashboard-view__group-columns">
           <DashboardLibraryColumn
@@ -74,5 +77,6 @@ const projectsStore = useProjectsStore();
         </section>
       </div>
     </div>
+    <DashboardAddFab />
   </div>
 </template>

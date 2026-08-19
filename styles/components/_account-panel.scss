@@ -109,7 +109,7 @@
     font-weight: 720;
     transition: color var(--duration-base), background var(--duration-base), box-shadow var(--duration-base);
 
-    .material-symbols-rounded { font-size: 15px; }
+    .material-symbols-sharp { font-size: 15px; }
 
     &:hover { color: var(--text); }
     &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
@@ -186,7 +186,7 @@
     text-decoration: none;
 
     &:hover { text-decoration: underline; }
-    .material-symbols-rounded { font-size: 14px; }
+    .material-symbols-sharp { font-size: 14px; }
     &[hidden] { display: none; }
   }
 

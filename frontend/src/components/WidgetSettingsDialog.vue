@@ -133,7 +133,7 @@ async function save(): Promise<void> {
           <h2 id="widget-settings-title">{{ mode === "create" ? (type === "alert" ? "Nouvelle alerte" : "Nouveau widget") : "Modifier le widget" }}</h2>
         </div>
         <button type="button" class="icon-button" aria-label="Fermer" @click="close">
-          <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+          <span class="material-symbols-sharp" aria-hidden="true">close_small</span>
         </button>
       </header>
       <div class="widget-settings__body">
@@ -157,7 +157,7 @@ async function save(): Promise<void> {
               :aria-pressed="type === 'widget'"
               @click="type = 'widget'"
             >
-              <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
+              <span class="material-symbols-sharp" aria-hidden="true">widgets</span>
               <span>Widget</span>
             </button>
             <button
@@ -167,7 +167,7 @@ async function save(): Promise<void> {
               :aria-pressed="type === 'alert'"
               @click="type = 'alert'"
             >
-              <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
+              <span class="material-symbols-sharp" aria-hidden="true">campaign</span>
               <span>Alerte</span>
             </button>
           </div>

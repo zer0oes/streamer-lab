@@ -92,7 +92,7 @@ function openPreview(item: DisplayItem, event: Event): void {
       @dragleave="isDragOver = false"
       @drop.prevent="onDrop"
     >
-      <span class="material-symbols-rounded" aria-hidden="true">upload</span>
+      <span class="material-symbols-sharp" aria-hidden="true">upload</span>
       <span class="media-library__dropzone-text">Glisser un média ici, ou cliquer pour parcourir</span>
       <input ref="fileInput" type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden @change="onFileInputChange" />
     </label>
@@ -100,28 +100,43 @@ function openPreview(item: DisplayItem, event: Event): void {
     <p v-if="!items.length" class="media-library__empty">Aucun média pour l’instant.</p>
 
     <div v-for="item in items" :key="item.id ?? item.url" class="media-library__item-wrap">
-      <button type="button" class="media-library__item" :title="item.name" @click="copyUrl(item)">
+      <div
+        class="media-library__item"
+        role="button"
+        tabindex="0"
+        :title="item.name"
+        @click="copyUrl(item)"
+        @keydown.enter="copyUrl(item)"
+        @keydown.space.prevent="copyUrl(item)"
+      >
         <span class="media-library__thumb-frame">
           <video v-if="item.type === 'video'" class="media-library__thumb media-library__thumb--video" :src="item.url" muted preload="metadata"></video>
           <img v-else class="media-library__thumb" :src="item.url" alt="" loading="lazy" />
           <span v-if="item.type === 'video'" class="media-library__play-badge">
-            <span class="material-symbols-rounded" aria-hidden="true">play_circle</span>
+            <span class="material-symbols-sharp" aria-hidden="true">play_circle</span>
           </span>
+          <!-- Enfants de &__thumb-frame (pas de &__item-wrap) : ancrés en
+          position:absolute sur le cadre de la vignette elle-même, pas sur
+          toute la carte (qui inclut aussi le nom de fichier en dessous) —
+          sinon la loupe (bottom:4px) flottait sous l'image, au niveau du
+          bas de la carte plutôt que du coin de la vignette. Nécessite que
+          &__item ne soit plus un <button> (un bouton ne peut pas en
+          contenir d'autres). -->
+          <button type="button" class="icon-button media-library__zoom" aria-label="Agrandir" @click="openPreview(item, $event)">
+            <span class="material-symbols-sharp" aria-hidden="true">zoom_in</span>
+          </button>
+          <button
+            v-if="item.source === 'local'"
+            type="button"
+            class="icon-button media-library__delete"
+            aria-label="Supprimer"
+            @click="removeItem(item, $event)"
+          >
+            <span class="material-symbols-sharp" aria-hidden="true">delete</span>
+          </button>
         </span>
         <span class="media-library__label">{{ item.name }}</span>
-      </button>
-      <button type="button" class="icon-button media-library__zoom" aria-label="Agrandir" @click="openPreview(item, $event)">
-        <span class="material-symbols-rounded" aria-hidden="true">zoom_in</span>
-      </button>
-      <button
-        v-if="item.source === 'local'"
-        type="button"
-        class="icon-button media-library__delete"
-        aria-label="Supprimer"
-        @click="removeItem(item, $event)"
-      >
-        <span class="material-symbols-rounded" aria-hidden="true">delete</span>
-      </button>
+      </div>
     </div>
   </div>
 
@@ -138,7 +153,7 @@ function openPreview(item: DisplayItem, event: Event): void {
       :disabled="pagination.page <= 0"
       @click="dashboardLibrary.setMediaPage(pagination.page - 1)"
     >
-      <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+      <span class="material-symbols-sharp" aria-hidden="true">chevron_left</span>
     </button>
     <span class="library-pagination__label">{{ pagination.page + 1 }} / {{ pagination.pageCount }}</span>
     <button
@@ -148,7 +163,7 @@ function openPreview(item: DisplayItem, event: Event): void {
       :disabled="pagination.page >= pagination.pageCount - 1"
       @click="dashboardLibrary.setMediaPage(pagination.page + 1)"
     >
-      <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+      <span class="material-symbols-sharp" aria-hidden="true">chevron_right</span>
     </button>
   </div>
 </template>

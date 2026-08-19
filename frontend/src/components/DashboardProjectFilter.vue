@@ -28,9 +28,9 @@ function select(projectId: string): void {
       aria-label="Filtrer par projet"
       @click="toggle"
     >
-      <span class="material-symbols-rounded" aria-hidden="true">folder</span>
+      <span class="material-symbols-sharp" aria-hidden="true">folder</span>
       <span class="dashboard-view__project-filter-label">{{ currentLabel }}</span>
-      <span class="material-symbols-rounded dashboard-view__project-filter-chevron" aria-hidden="true">expand_more</span>
+      <span class="material-symbols-sharp dashboard-view__project-filter-chevron" aria-hidden="true">expand_more</span>
     </button>
     <div class="dashboard-view__filter-panel" role="menu" :hidden="!open">
       <button
@@ -40,7 +40,7 @@ function select(projectId: string): void {
         :aria-checked="dashboardLibrary.projectFilterId === ''"
         @click="select('')"
       >
-        <span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span>
+        <span class="material-symbols-sharp dashboard-view__filter-check" aria-hidden="true">check</span>
         <span>Tous les projets</span>
       </button>
       <button
@@ -52,7 +52,7 @@ function select(projectId: string): void {
         :aria-checked="dashboardLibrary.projectFilterId === project.id"
         @click="select(project.id)"
       >
-        <span class="material-symbols-rounded dashboard-view__filter-check" aria-hidden="true">check</span>
+        <span class="material-symbols-sharp dashboard-view__filter-check" aria-hidden="true">check</span>
         <span>{{ project.name }}</span>
       </button>
     </div>

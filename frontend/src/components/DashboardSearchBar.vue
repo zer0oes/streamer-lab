@@ -20,7 +20,7 @@ function onInput(event: Event): void {
 <template>
   <div class="dashboard-view__search-row">
     <label class="dashboard-view__search" for="dashboard-library-search">
-      <span class="material-symbols-rounded" aria-hidden="true">search</span>
+      <span class="material-symbols-sharp" aria-hidden="true">search</span>
       <input
         id="dashboard-library-search"
         type="search"

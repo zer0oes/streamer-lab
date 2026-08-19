@@ -45,6 +45,10 @@ export const useLibraryStore = defineStore("library", () => {
     widgets.value = await listWidgets();
   }
 
+  async function refreshOverlays(): Promise<void> {
+    overlays.value = await listOverlays();
+  }
+
   async function addWidget(input: WidgetMetadataInput, projectId: string): Promise<LibraryEntry> {
     const widget = await createWidget(input, projectId);
     widgets.value = [...widgets.value, widget];
@@ -119,6 +123,7 @@ export const useLibraryStore = defineStore("library", () => {
     alertEntries,
     fetchAll,
     refreshWidgets,
+    refreshOverlays,
     addWidget,
     updateWidget,
     addOverlay,

@@ -108,7 +108,7 @@ async function save(): Promise<void> {
           <h2 id="overlay-settings-title">{{ mode === "create" ? "Nouvel overlay" : "Modifier l’overlay" }}</h2>
         </div>
         <button type="button" class="icon-button" aria-label="Fermer" @click="close">
-          <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+          <span class="material-symbols-sharp" aria-hidden="true">close_small</span>
         </button>
       </header>
       <div class="widget-settings__body">

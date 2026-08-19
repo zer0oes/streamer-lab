@@ -33,6 +33,11 @@ $danger-bright: color.scale($danger, $lightness: 20%);
   --text: #f6f7f9;
   --text-secondary: #d6d9e0;
   --muted: #858b98;
+  // Figma (composants CALQUE / Button Toolbar) : blanc légèrement teinté
+  // lavande utilisé comme couleur par défaut des icônes/libellés de calque,
+  // pas --text ni --muted — passe à #fff au survol/actif (géré au cas par
+  // cas, pas via ce token).
+  --icon-default: #ebdfff;
 
   // --- Brand / accent ------------------------------------------------------
   --accent: #{$accent};
@@ -139,4 +144,5 @@ $danger-bright: color.scale($danger, $lightness: 20%);
   --text: #14161a;
   --text-secondary: #3c4048;
   --muted: #6b7180;
+  --icon-default: #3c4048;
 }

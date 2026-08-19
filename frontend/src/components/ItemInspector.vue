@@ -44,10 +44,8 @@ function updateProp(key: string, value: unknown): void {
 
 <template>
   <div v-if="item" class="overlay-item-settings">
-    <div class="overlay-item-settings__header">
-      <span class="overlay-item-settings__title">{{ overlayItemLabel(item) }}</span>
-    </div>
     <div class="overlay-item-settings__fields">
+      <span class="overlay-item-settings__section-title">Position &amp; taille</span>
       <div class="overlay-item-position">
         <label class="field"><span class="field__label">X</span><input type="number" :value="item.x" @change="updatePosition('x', $event)" /></label>
         <label class="field"><span class="field__label">Y</span><input type="number" :value="item.y" @change="updatePosition('y', $event)" /></label>
@@ -94,10 +92,11 @@ function updateProp(key: string, value: unknown): void {
       </template>
 
       <template v-else-if="item.type === 'widget' || item.type === 'alert'">
-        <button type="button" class="button button--quiet button--wide" @click="openCode">
-          <span class="material-symbols-rounded" aria-hidden="true">code</span>
+        <button type="button" class="button button--quiet button--wide overlay-item-settings__code-button" @click="openCode">
+          <span class="material-symbols-sharp" aria-hidden="true">code</span>
           Voir le code
         </button>
+        <span class="overlay-item-settings__section-title">Champs</span>
         <OverlayItemFieldsForm :item="item" />
       </template>
     </div>

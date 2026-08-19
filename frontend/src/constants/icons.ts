@@ -1,5 +1,5 @@
 // Mêmes listes que public/app.js (widgetIconChoices / overlayIconChoices /
-// projectIconChoices) — noms d'icônes Material Symbols Rounded.
+// projectIconChoices) — noms d'icônes Material Symbols Sharp.
 
 export const WIDGET_ICON_CHOICES: [string, string][] = [
   ["widgets", "Widgets"],

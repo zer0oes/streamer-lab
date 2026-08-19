@@ -92,7 +92,7 @@ async function disconnect(): Promise<void> {
 
     <template v-else>
       <a v-if="showOAuthLink" :href="`/auth/${provider}/start`" class="button button--wide" data-role="oauth-connect">
-        <span class="material-symbols-rounded" aria-hidden="true">bolt</span>
+        <span class="material-symbols-sharp" aria-hidden="true">bolt</span>
         <span>Se connecter en OAuth2</span>
       </a>
       <div v-if="showOAuthLink" class="integration-card__divider">ou avec un jeton manuel</div>
@@ -124,7 +124,7 @@ async function disconnect(): Promise<void> {
     </template>
 
     <a v-if="helpUrl" :href="helpUrl" target="_blank" rel="noopener" class="integration-card__help">
-      <span class="material-symbols-rounded" aria-hidden="true">help</span>
+      <span class="material-symbols-sharp" aria-hidden="true">help</span>
       <span>Où trouver mon token ?</span>
     </a>
   </section>

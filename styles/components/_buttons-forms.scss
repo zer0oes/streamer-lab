@@ -64,7 +64,7 @@
     background: none;
 
     &:hover { color: var(--text); background: var(--panel-soft); }
-    .material-symbols-rounded { font-size: 18px; }
+    .material-symbols-sharp { font-size: 18px; }
   }
 }
 
@@ -112,7 +112,7 @@ input {
   // le bouton de base n'est pas flex, donc l'icône et le texte ne sont ni
   // centrés ensemble ni alignés sur la même ligne de base - visible surtout
   // sur --wide, où le contenu se retrouve à gauche, icône légèrement décalée.
-  &:has(.material-symbols-rounded) {
+  &:has(.material-symbols-sharp) {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -150,6 +150,9 @@ input {
 
 .twitch-logo { width: 18px; height: 18px; flex: 0 0 auto; fill: currentColor; }
 
+// Figma (composant "Button Toolbar") : fond --panel-alt (pas --panel-soft),
+// icône --icon-default par défaut ; au survol, liseré + fond teintés accent
+// et icône blanche — pas juste un éclaircissement neutre comme avant.
 .icon-button {
   display: grid;
   place-items: center;
@@ -159,11 +162,16 @@ input {
   border: 1px solid var(--line);
   border-radius: var(--radius-4);
   cursor: pointer;
-  color: var(--muted);
-  background: var(--panel-soft);
+  color: var(--icon-default);
+  background: var(--panel-alt);
+  transition: color var(--duration-fast), background var(--duration-fast), border-color var(--duration-fast);
 
-  &:hover { color: var(--text); border-color: #414753; }
-  .material-symbols-rounded { font-size: 18px; }
+  &:hover {
+    color: #fff;
+    border-color: var(--accent-bright);
+    background: color-mix(in srgb, var(--accent-bright) 15%, var(--panel-alt));
+  }
+  .material-symbols-sharp { font-size: 18px; }
   // display:grid ci-dessus a la même spécificité que la règle [hidden] du
   // navigateur (une classe vs un attribut) : sans cette redéclaration
   // explicite, l'ordre de cascade fait gagner .icon-button et l'attribut

@@ -48,12 +48,12 @@ async function pick(entry: LibraryEntry): Promise<void> {
         <h2 id="overlay-item-picker-title">Widget / Alerte</h2>
       </div>
       <button type="button" class="icon-button" aria-label="Fermer" @click="close">
-        <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+        <span class="material-symbols-sharp" aria-hidden="true">close_small</span>
       </button>
     </header>
     <div class="widget-settings__body">
       <button v-for="entry in entries" :key="entry.id" type="button" class="overlay-toolbar__add-item" @click="pick(entry)">
-        <span class="material-symbols-rounded" aria-hidden="true">{{ entry.icon }}</span>
+        <span class="material-symbols-sharp" aria-hidden="true">{{ entry.icon }}</span>
         <span>{{ entry.name }}</span>
       </button>
       <p v-if="entries.length === 0" class="hint">Aucun widget ou alerte dans ce projet.</p>

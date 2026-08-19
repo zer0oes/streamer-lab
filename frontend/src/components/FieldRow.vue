@@ -32,13 +32,13 @@ function onInputChange(event: Event): void {
   </button>
 
   <label v-else-if="definition.type === 'checkbox'" class="checkbox-field">
-    <span class="material-symbols-rounded field__icon" aria-hidden="true">{{ fieldTypeIcon(definition.type) }}</span>
+    <span class="material-symbols-sharp field__icon" aria-hidden="true">{{ fieldTypeIcon(definition.type) }}</span>
     <span class="checkbox-field__label" :title="definition.label || fieldKey">{{ definition.label || fieldKey }}</span>
     <input type="checkbox" :checked="Boolean(store.fieldData[fieldKey])" @change="onCheckboxChange" />
   </label>
 
   <label v-else class="field" :class="{ 'field--inline': FIELD_INLINE_TYPES.has(definition.type) }">
-    <span class="material-symbols-rounded field__icon" aria-hidden="true">{{ fieldTypeIcon(definition.type) }}</span>
+    <span class="material-symbols-sharp field__icon" aria-hidden="true">{{ fieldTypeIcon(definition.type) }}</span>
     <span class="field__label" :title="definition.label || fieldKey">{{ definition.label || fieldKey }}</span>
     <div v-if="definition.type === 'slider'" class="field-group__control-row">
       <input

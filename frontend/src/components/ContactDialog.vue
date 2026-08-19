@@ -65,7 +65,7 @@ async function submit(): Promise<void> {
       <header class="widget-settings__header">
         <h2 id="contact-dialog-title">Nous contacter</h2>
         <button type="button" class="icon-button" aria-label="Fermer" @click="close">
-          <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+          <span class="material-symbols-sharp" aria-hidden="true">close_small</span>
         </button>
       </header>
       <div class="widget-settings__body">

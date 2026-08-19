@@ -128,7 +128,7 @@ $preview-surface: #11141a;
   cursor: pointer;
   transition: color var(--duration-base), border-color var(--duration-base), background var(--duration-base), box-shadow var(--duration-base), transform var(--duration-fast);
 
-  .material-symbols-rounded { font-size: 18px; }
+  .material-symbols-sharp { font-size: 18px; }
   &:hover { color: var(--text); border-color: #454b58; }
   &:active { transform: translateY(1px); }
   &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }

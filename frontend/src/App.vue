@@ -10,11 +10,19 @@ import WidgetSettingsDialog from "./components/WidgetSettingsDialog.vue";
 import OverlaySettingsDialog from "./components/OverlaySettingsDialog.vue";
 import ContactDialog from "./components/ContactDialog.vue";
 import MediaPreviewDialog from "./components/MediaPreviewDialog.vue";
+import StreamElementsOverlayPickerDialog from "./components/StreamElementsOverlayPickerDialog.vue";
 import { useProjectsStore } from "./stores/projects";
 import { useLibraryStore } from "./stores/library";
 import { useAccountStore } from "./stores/account";
 import { useMediaStore } from "./stores/media";
-import { contactDialog, mediaPreviewDialog, overlayDialog, projectDialog, widgetDialog } from "./composables/useDialogs";
+import {
+  contactDialog,
+  mediaPreviewDialog,
+  overlayDialog,
+  projectDialog,
+  streamElementsOverlayPickerDialog,
+  widgetDialog
+} from "./composables/useDialogs";
 import { activeView } from "./composables/useAppView";
 import { resolveInitialRoute, startRouteSync } from "./composables/useRouteSync";
 import { loadAppState } from "./composables/useAppState";
@@ -29,6 +37,7 @@ const widgetDialogRef = ref<InstanceType<typeof WidgetSettingsDialog> | null>(nu
 const overlayDialogRef = ref<InstanceType<typeof OverlaySettingsDialog> | null>(null);
 const contactDialogRef = ref<InstanceType<typeof ContactDialog> | null>(null);
 const mediaPreviewDialogRef = ref<InstanceType<typeof MediaPreviewDialog> | null>(null);
+const streamElementsOverlayPickerDialogRef = ref<InstanceType<typeof StreamElementsOverlayPickerDialog> | null>(null);
 
 onMounted(() => {
   projectDialog.value = projectDialogRef.value;
@@ -36,6 +45,7 @@ onMounted(() => {
   overlayDialog.value = overlayDialogRef.value;
   contactDialog.value = contactDialogRef.value;
   mediaPreviewDialog.value = mediaPreviewDialogRef.value;
+  streamElementsOverlayPickerDialog.value = streamElementsOverlayPickerDialogRef.value;
   void projectsStore.fetchProjects();
   void libraryStore.fetchAll().then(resolveInitialRoute);
   // Chargée une fois pour toute l'app (session/chaîne de démo) : les
@@ -63,4 +73,5 @@ onMounted(() => {
   <OverlaySettingsDialog ref="overlayDialogRef" />
   <ContactDialog ref="contactDialogRef" />
   <MediaPreviewDialog ref="mediaPreviewDialogRef" />
+  <StreamElementsOverlayPickerDialog ref="streamElementsOverlayPickerDialogRef" />
 </template>

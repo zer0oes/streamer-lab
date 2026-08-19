@@ -131,7 +131,7 @@ function close(): void {
         <h2 id="overlay-event-simulator-title">Déclencher un événement</h2>
       </div>
       <button type="button" class="icon-button" aria-label="Fermer" @click="close">
-        <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+        <span class="material-symbols-sharp" aria-hidden="true">close_small</span>
       </button>
     </header>
 
@@ -147,9 +147,9 @@ function close(): void {
             :open="eventType.key === 'message'"
           >
             <summary class="event-type-item__summary">
-              <span class="material-symbols-rounded" aria-hidden="true">{{ eventType.icon }}</span>
+              <span class="material-symbols-sharp" aria-hidden="true">{{ eventType.icon }}</span>
               <span>{{ eventType.label }}</span>
-              <span class="material-symbols-rounded event-type-item__chevron" aria-hidden="true">expand_more</span>
+              <span class="material-symbols-sharp event-type-item__chevron" aria-hidden="true">expand_more</span>
             </summary>
             <div class="event-type-item__body">
               <label class="field">
@@ -202,6 +202,6 @@ function close(): void {
     title="Simuler un événement"
     @click="isOpen = !isOpen"
   >
-    <span class="material-symbols-rounded" aria-hidden="true">alarm_on</span>
+    <span class="material-symbols-sharp" aria-hidden="true">alarm_on</span>
   </button>
 </template>

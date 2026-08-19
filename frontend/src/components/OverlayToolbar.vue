@@ -143,7 +143,7 @@ function onZoomStep(direction: number): void {
       title="Déplacer"
       @pointerdown="startToolbarDrag"
     >
-      <span class="material-symbols-rounded" aria-hidden="true">drag_indicator</span>
+      <span class="material-symbols-sharp" aria-hidden="true">drag_indicator</span>
     </button>
 
     <div class="overlay-toolbar__group" role="radiogroup" aria-label="Outil">
@@ -156,7 +156,7 @@ function onZoomStep(direction: number): void {
         aria-label="Sélection"
         @click="store.setTool('select')"
       >
-        <span class="material-symbols-rounded" aria-hidden="true">arrow_selector_tool</span>
+        <span class="material-symbols-sharp" aria-hidden="true">arrow_selector_tool</span>
       </button>
       <button
         type="button"
@@ -167,7 +167,7 @@ function onZoomStep(direction: number): void {
         aria-label="Texte"
         @click="pickTool('text')"
       >
-        <span class="material-symbols-rounded" aria-hidden="true">title</span>
+        <span class="material-symbols-sharp" aria-hidden="true">title</span>
       </button>
       <button
         type="button"
@@ -178,28 +178,28 @@ function onZoomStep(direction: number): void {
         aria-label="Pipette de style (texte)"
         @click="pickTool('eyedropper')"
       >
-        <span class="material-symbols-rounded" aria-hidden="true">colorize</span>
+        <span class="material-symbols-sharp" aria-hidden="true">colorize</span>
       </button>
 
       <div class="overlay-toolbar__add" :ref="addMenu.containerEl">
         <button type="button" class="overlay-toolbar__button" aria-label="Ajouter un élément" title="Ajouter un élément" @click.stop="addMenu.toggle">
-          <span class="material-symbols-rounded" aria-hidden="true">add</span>
+          <span class="material-symbols-sharp" aria-hidden="true">add</span>
           <span>Ajouter</span>
-          <span class="material-symbols-rounded overlay-toolbar__add-chevron" aria-hidden="true">expand_more</span>
+          <span class="material-symbols-sharp overlay-toolbar__add-chevron" aria-hidden="true">expand_more</span>
         </button>
         <div class="overlay-toolbar__add-panel" role="menu" :hidden="!addMenu.open.value">
           <button type="button" class="overlay-toolbar__add-item" role="menuitem" @click="openItemPicker">
-            <span class="material-symbols-rounded" aria-hidden="true">widgets</span><span>Widget / Alerte</span>
+            <span class="material-symbols-sharp" aria-hidden="true">widgets</span><span>Widget / Alerte</span>
           </button>
           <button type="button" class="overlay-toolbar__add-item" role="menuitem" @click="createAndPlace('widget')">
-            <span class="material-symbols-rounded" aria-hidden="true">add_circle</span><span>Nouveau widget</span>
+            <span class="material-symbols-sharp" aria-hidden="true">add_circle</span><span>Nouveau widget</span>
           </button>
           <button type="button" class="overlay-toolbar__add-item" role="menuitem" @click="createAndPlace('alert')">
-            <span class="material-symbols-rounded" aria-hidden="true">add_circle</span><span>Nouvelle alerte</span>
+            <span class="material-symbols-sharp" aria-hidden="true">add_circle</span><span>Nouvelle alerte</span>
           </button>
           <div class="overlay-toolbar__add-divider" role="separator"></div>
           <button v-for="item in primitiveTools" :key="item.tool" type="button" class="overlay-toolbar__add-item" role="menuitem" @click="pickTool(item.tool)">
-            <span class="material-symbols-rounded" aria-hidden="true">{{ item.icon }}</span>
+            <span class="material-symbols-sharp" aria-hidden="true">{{ item.icon }}</span>
             <span>{{ item.label }}</span>
           </button>
         </div>
@@ -225,35 +225,35 @@ function onZoomStep(direction: number): void {
         :aria-label="isUngroupMode ? 'Dégrouper' : 'Grouper la sélection'"
         @click="onGroupClick"
       >
-        <span class="material-symbols-rounded" aria-hidden="true">{{ isUngroupMode ? "call_split" : "select_all" }}</span>
+        <span class="material-symbols-sharp" aria-hidden="true">{{ isUngroupMode ? "call_split" : "select_all" }}</span>
       </button>
       <button type="button" class="icon-button" title="Dupliquer" aria-label="Dupliquer" @click="store.duplicateSelected">
-        <span class="material-symbols-rounded" aria-hidden="true">content_copy</span>
+        <span class="material-symbols-sharp" aria-hidden="true">content_copy</span>
       </button>
       <button type="button" class="icon-button" title="Supprimer" aria-label="Supprimer" @click="store.deleteSelected">
-        <span class="material-symbols-rounded" aria-hidden="true">delete</span>
+        <span class="material-symbols-sharp" aria-hidden="true">delete</span>
       </button>
 
       <div class="overlay-toolbar__divider"></div>
 
       <div class="overlay-toolbar__group" role="group" aria-label="Alignement">
         <button type="button" class="icon-button" title="Aligner à gauche" aria-label="Aligner à gauche" @click="align('left')">
-          <span class="material-symbols-rounded" aria-hidden="true">align_horizontal_left</span>
+          <span class="material-symbols-sharp" aria-hidden="true">align_horizontal_left</span>
         </button>
         <button type="button" class="icon-button" title="Centrer horizontalement" aria-label="Centrer horizontalement" @click="align('hcenter')">
-          <span class="material-symbols-rounded" aria-hidden="true">align_horizontal_center</span>
+          <span class="material-symbols-sharp" aria-hidden="true">align_horizontal_center</span>
         </button>
         <button type="button" class="icon-button" title="Aligner à droite" aria-label="Aligner à droite" @click="align('right')">
-          <span class="material-symbols-rounded" aria-hidden="true">align_horizontal_right</span>
+          <span class="material-symbols-sharp" aria-hidden="true">align_horizontal_right</span>
         </button>
         <button type="button" class="icon-button" title="Aligner en haut" aria-label="Aligner en haut" @click="align('top')">
-          <span class="material-symbols-rounded" aria-hidden="true">align_vertical_top</span>
+          <span class="material-symbols-sharp" aria-hidden="true">align_vertical_top</span>
         </button>
         <button type="button" class="icon-button" title="Centrer verticalement" aria-label="Centrer verticalement" @click="align('vcenter')">
-          <span class="material-symbols-rounded" aria-hidden="true">align_vertical_center</span>
+          <span class="material-symbols-sharp" aria-hidden="true">align_vertical_center</span>
         </button>
         <button type="button" class="icon-button" title="Aligner en bas" aria-label="Aligner en bas" @click="align('bottom')">
-          <span class="material-symbols-rounded" aria-hidden="true">align_vertical_bottom</span>
+          <span class="material-symbols-sharp" aria-hidden="true">align_vertical_bottom</span>
         </button>
         <button
           type="button"
@@ -262,7 +262,7 @@ function onZoomStep(direction: number): void {
           aria-label="Centrer horizontalement et verticalement"
           @click="store.centerSelectionInCanvas"
         >
-          <span class="material-symbols-rounded" aria-hidden="true">filter_center_focus</span>
+          <span class="material-symbols-sharp" aria-hidden="true">filter_center_focus</span>
         </button>
       </div>
 
@@ -271,10 +271,10 @@ function onZoomStep(direction: number): void {
 
         <div class="overlay-toolbar__group" role="group" aria-label="Distribution">
           <button type="button" class="icon-button" title="Distribuer horizontalement" aria-label="Distribuer horizontalement" @click="distribute('horizontal')">
-            <span class="material-symbols-rounded" aria-hidden="true">horizontal_distribute</span>
+            <span class="material-symbols-sharp" aria-hidden="true">horizontal_distribute</span>
           </button>
           <button type="button" class="icon-button" title="Distribuer verticalement" aria-label="Distribuer verticalement" @click="distribute('vertical')">
-            <span class="material-symbols-rounded" aria-hidden="true">vertical_distribute</span>
+            <span class="material-symbols-sharp" aria-hidden="true">vertical_distribute</span>
           </button>
         </div>
       </template>
@@ -284,14 +284,14 @@ function onZoomStep(direction: number): void {
 
     <button
       type="button"
-      class="overlay-toolbar__button"
+      class="overlay-toolbar__button overlay-toolbar__button--guides"
       :class="{ 'is-active': store.guidesVisible }"
       :aria-pressed="store.guidesVisible"
       title="Règles et repères"
       aria-label="Règles et repères"
       @click="store.setGuidesVisible(!store.guidesVisible)"
     >
-      <span class="material-symbols-rounded" aria-hidden="true">straighten</span>
+      <span class="material-symbols-sharp" aria-hidden="true">straighten</span>
       <span>Repères</span>
     </button>
 
@@ -299,23 +299,23 @@ function onZoomStep(direction: number): void {
 
     <div class="overlay-toolbar__zoom" role="group" aria-label="Zoom">
       <button type="button" class="icon-button" title="Zoom arrière" aria-label="Zoom arrière" @click="onZoomStep(-1)">
-        <span class="material-symbols-rounded" aria-hidden="true">remove</span>
+        <span class="material-symbols-sharp" aria-hidden="true">remove</span>
       </button>
       <button type="button" class="overlay-toolbar__zoom-label" title="Ajuster à la fenêtre" @click="store.setZoomMode('fit')">
         {{ zoomPercent === null ? "Ajuster" : `${zoomPercent}%` }}
       </button>
       <button type="button" class="icon-button" title="Zoom avant" aria-label="Zoom avant" @click="onZoomStep(1)">
-        <span class="material-symbols-rounded" aria-hidden="true">add</span>
+        <span class="material-symbols-sharp" aria-hidden="true">add</span>
       </button>
     </div>
 
     <div class="overlay-toolbar__divider"></div>
 
     <button type="button" class="icon-button" :disabled="!store.canUndo" title="Annuler (Ctrl+Z)" aria-label="Annuler" @click="store.undo">
-      <span class="material-symbols-rounded" aria-hidden="true">undo</span>
+      <span class="material-symbols-sharp" aria-hidden="true">undo</span>
     </button>
     <button type="button" class="icon-button" :disabled="!store.canRedo" title="Rétablir (Ctrl+Y)" aria-label="Rétablir" @click="store.redo">
-      <span class="material-symbols-rounded" aria-hidden="true">redo</span>
+      <span class="material-symbols-sharp" aria-hidden="true">redo</span>
     </button>
   </div>
 

@@ -211,11 +211,11 @@ defineExpose({ beginTextEdit });
       title="Contenu intégré"
       sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
     ></iframe>
-    <span v-else-if="item.type === 'icon'" class="material-symbols-rounded overlay-item__icon-glyph" aria-hidden="true" :style="iconGlyphStyle">{{ iconProps.name }}</span>
+    <span v-else-if="item.type === 'icon'" class="material-symbols-sharp overlay-item__icon-glyph" aria-hidden="true" :style="iconGlyphStyle">{{ iconProps.name }}</span>
     <div v-else-if="item.type === 'shape'" class="overlay-item__shape" :style="shapeStyle"></div>
     <div v-else-if="item.type === 'group'" class="overlay-item__group-frame"></div>
     <div v-else-if="item.type === 'placeholder'" class="overlay-item__placeholder-frame">
-      <span class="material-symbols-rounded" aria-hidden="true">widgets</span>
+      <span class="material-symbols-sharp" aria-hidden="true">widgets</span>
       <span class="overlay-item__placeholder-hint">{{ label }}</span>
     </div>
 

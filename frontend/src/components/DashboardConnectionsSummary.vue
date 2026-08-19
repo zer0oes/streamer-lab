@@ -22,11 +22,11 @@ const streamlabsConnected = computed(() => Boolean(accountStore.integrationFor("
       </span>
       <span class="dashboard-view__connections-copy">
         <strong>Compte Twitch</strong>
-        <span>{{ twitchConnected ? accountStore.user?.displayName : "Non connecté" }}</span>
+        <span>{{ twitchConnected ? `Connecté en tant que ${accountStore.user?.displayName}` : "Connectez-vous" }}</span>
       </span>
       <span class="dashboard-view__connections-dot" :class="{ 'is-connected': twitchConnected }" aria-hidden="true"></span>
       <button type="button" class="icon-button dashboard-view__connections-disconnect" aria-label="Gérer mon compte" @click="toggleAccountPanel(true)">
-        <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+        <span class="material-symbols-sharp" aria-hidden="true">{{ twitchConnected ? "link_off" : "link" }}</span>
       </button>
     </li>
 
@@ -36,11 +36,11 @@ const streamlabsConnected = computed(() => Boolean(accountStore.integrationFor("
       </span>
       <span class="dashboard-view__connections-copy">
         <strong>StreamElements</strong>
-        <span>{{ streamelementsConnected ? "Connecté" : "Non connecté" }}</span>
+        <span>{{ streamelementsConnected ? "Connecté" : "Connectez-vous" }}</span>
       </span>
       <span class="dashboard-view__connections-dot" :class="{ 'is-connected': streamelementsConnected }" aria-hidden="true"></span>
       <button type="button" class="icon-button dashboard-view__connections-disconnect" aria-label="Gérer StreamElements" @click="toggleAccountPanel(true)">
-        <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+        <span class="material-symbols-sharp" aria-hidden="true">{{ streamelementsConnected ? "link_off" : "link" }}</span>
       </button>
     </li>
 
@@ -50,11 +50,11 @@ const streamlabsConnected = computed(() => Boolean(accountStore.integrationFor("
       </span>
       <span class="dashboard-view__connections-copy">
         <strong>Streamlabs</strong>
-        <span>{{ streamlabsConnected ? "Connecté" : "Non connecté" }}</span>
+        <span>{{ streamlabsConnected ? "Connecté" : "Connectez-vous" }}</span>
       </span>
       <span class="dashboard-view__connections-dot" :class="{ 'is-connected': streamlabsConnected }" aria-hidden="true"></span>
       <button type="button" class="icon-button dashboard-view__connections-disconnect" aria-label="Gérer Streamlabs" @click="toggleAccountPanel(true)">
-        <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+        <span class="material-symbols-sharp" aria-hidden="true">{{ streamlabsConnected ? "link_off" : "link" }}</span>
       </button>
     </li>
   </ul>

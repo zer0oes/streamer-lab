@@ -28,7 +28,7 @@ defineExpose({ open });
 <template>
   <dialog ref="dialogEl" class="media-preview-dialog" aria-label="Aperçu du média" @mousedown="onMousedown" @click="onClick">
     <button type="button" class="icon-button media-preview-dialog__close" aria-label="Fermer" @click="close">
-      <span class="material-symbols-rounded" aria-hidden="true">close_small</span>
+      <span class="material-symbols-sharp" aria-hidden="true">close_small</span>
     </button>
     <div class="media-preview-dialog__body">
       <video v-if="item?.type === 'video'" :src="item.url" controls autoplay playsinline></video>
