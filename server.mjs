@@ -909,7 +909,7 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method !== "GET" && request.method !== "HEAD") return sendJson(response, 405, { error: "Methode non autorisee" });
-    return serveStatic(request, response, url.pathname);
+    return await serveStatic(request, response, url.pathname);
   } catch (error) {
     console.error(error);
     return sendJson(response, 500, { error: error.message });
@@ -1285,11 +1285,41 @@ function isClientRoute(requestPath) {
   return CLIENT_ROUTE_PREFIXES.some((prefix) => requestPath.startsWith(prefix));
 }
 
-function serveStatic(request, response, requestPath) {
-  const relative = requestPath === "/" || isClientRoute(requestPath) ? "index.html" : decodeURIComponent(requestPath.slice(1));
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function serveStatic(request, response, requestPath) {
+  const isEntry = requestPath === "/" || isClientRoute(requestPath);
+  const relative = isEntry ? "index.html" : decodeURIComponent(requestPath.slice(1));
   const normalized = normalize(relative).replace(/^([.][.][/\\])+/, "");
   const path = resolve(PUBLIC_ROOT, normalized);
   if (!path.startsWith(resolve(PUBLIC_ROOT))) return sendJson(response, 403, { error: "Chemin interdit" });
+
+  if (isEntry) {
+    // dist/index.html peut manquer transitoirement juste apres `npm run dev`
+    // (concurrently demarre "vite build --watch" et "node server.mjs --open"
+    // en parallele - son tout premier passage peut retrouver le fichier en
+    // cours de reecriture) : quelques tentatives espacees avant d'abandonner,
+    // plutot qu'un 404 immediat sur ce qui est presque toujours une
+    // compilation encore en cours. N'ajoute aucun delai une fois le fichier
+    // present (boucle sautee des le premier essai).
+    for (let attempt = 0; attempt < 10 && !existsSync(path); attempt++) {
+      await wait(150);
+    }
+    if (!existsSync(path)) {
+      response.writeHead(503, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Retry-After": "1" });
+      response.end(
+        '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="1">' +
+          "<title>Compilation…</title></head>" +
+          '<body style="font:14px system-ui;color:#ccc;background:#111;display:grid;place-items:center;height:100vh;margin:0">' +
+          "<p>Compilation en cours, rechargement automatique…</p></body></html>"
+      );
+      return;
+    }
+    return streamFile(request, response, path);
+  }
+
   if (!existsSync(path)) return sendJson(response, 404, { error: "Introuvable" });
   return streamFile(request, response, path);
 }
