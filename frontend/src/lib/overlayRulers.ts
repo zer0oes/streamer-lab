@@ -1,18 +1,12 @@
-// Port verbatim de drawOverlayRuler/pickRulerStep (public/app.js) : les
-// rubans gradués affichés sous le bouton "Repères" de la barre d'outils
-// overlay. OVERLAY_RULER_SIZE doit rester synchro avec $ruler-size
-// (styles/layouts/_overlay-canvas.scss).
+// Port verbatim de drawOverlayRuler (public/app.js) : les rubans gradués
+// affichés sous le bouton "Repères" de la barre d'outils overlay.
+// OVERLAY_RULER_SIZE doit rester synchro avec $ruler-size
+// (styles/layouts/_overlay-canvas.scss). pickRulerStep vit dans
+// overlayGeometry.ts (déjà présente et testée là avant ce port — pas de
+// second exemplaire ici).
+import { pickRulerStep } from "./overlayGeometry";
+
 export const OVERLAY_RULER_SIZE = 20;
-
-const NICE_STEPS = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
-
-// Choisit un intervalle "rond" tel que son équivalent à l'écran (step *
-// scale) reste lisible (>= 50px) — sans ça, les graduations se
-// chevaucheraient au zoom réduit ou se retrouveraient trop clairsemées au
-// zoom élevé.
-export function pickRulerStep(scale: number): number {
-  return NICE_STEPS.find((step) => step * scale >= 50) ?? NICE_STEPS[NICE_STEPS.length - 1];
-}
 
 export function drawOverlayRuler(canvasEl: HTMLCanvasElement | null, logicalLength: number, scale: number, step: number, isHorizontal: boolean): void {
   if (!canvasEl) return;

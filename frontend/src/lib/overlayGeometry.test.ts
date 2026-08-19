@@ -7,6 +7,7 @@ import {
   overlayGuidesWithCenter,
   pickRulerStep,
   snapEdge,
+  snapGuideToCenter,
   snapMovePosition,
   stepOverlayZoom
 } from "./overlayGeometry";
@@ -122,6 +123,30 @@ describe("snapMovePosition", () => {
 
   it("leaves the position untouched when guides are hidden", () => {
     expect(snapMovePosition(98, 200, [100], 1, false)).toBe(98);
+  });
+});
+
+describe("snapGuideToCenter", () => {
+  const canvas = { width: 1920, height: 1080 };
+
+  it("snaps a horizontal guide to the vertical center (canvas height / 2) within threshold", () => {
+    expect(snapGuideToCenter(536, "horizontal", canvas, 1, true)).toBe(540);
+  });
+
+  it("snaps a vertical guide to the horizontal center (canvas width / 2) within threshold", () => {
+    expect(snapGuideToCenter(956, "vertical", canvas, 1, true)).toBe(960);
+  });
+
+  it("leaves the value untouched when beyond the threshold", () => {
+    expect(snapGuideToCenter(600, "horizontal", canvas, 1, true)).toBe(600);
+  });
+
+  it("leaves the value untouched when guides are hidden", () => {
+    expect(snapGuideToCenter(536, "horizontal", canvas, 1, false)).toBe(536);
+  });
+
+  it("scales the threshold down as zoom increases", () => {
+    expect(snapGuideToCenter(536, "horizontal", canvas, 3, true)).toBe(536);
   });
 });
 

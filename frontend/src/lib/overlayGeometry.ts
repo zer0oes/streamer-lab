@@ -106,6 +106,15 @@ export function snapMovePosition(pos: number, size: number, guides: number[] | u
   return Math.round(bestPos);
 }
 
+// Accroche la position d'un REPÈRE (pas un item) au centre du canevas sur
+// son axe — même seuil/logique que snapEdge (réutilisé directement, avec le
+// centre comme unique cible), pour un même ressenti d'accroche que celui
+// des items sur les repères.
+export function snapGuideToCenter(value: number, axis: "horizontal" | "vertical", canvas: OverlayCanvasSize, scale: number, guidesVisible: boolean): number {
+  const center = axis === "horizontal" ? canvas.height / 2 : canvas.width / 2;
+  return snapEdge(value, [center], scale, guidesVisible);
+}
+
 export function pickRulerStep(scale: number): number {
   const niceSteps = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
   return niceSteps.find((step) => step * scale >= 50) ?? niceSteps[niceSteps.length - 1];
