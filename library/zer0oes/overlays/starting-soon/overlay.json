@@ -95,16 +95,36 @@
         "loop": true,
         "muted": true
       }
+    },
+    {
+      "id": "item-mt03udhk-p1ml6",
+      "type": "group",
+      "x": 51,
+      "y": 86,
+      "w": 709,
+      "h": 941,
+      "z": 2,
+      "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
+      "props": {
+        "children": [
+          "item-msdffy9u-c1rpy",
+          "item-msdfh4lm-cqjb8"
+        ]
+      }
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1786923197382,
+  "updatedAt": 1787144754822,
   "guides": {
     "horizontal": [
-      966
+      966,
+      540
     ],
     "vertical": [
-      956
+      960
     ]
   },
   "sourcePlatform": "streamelements",
