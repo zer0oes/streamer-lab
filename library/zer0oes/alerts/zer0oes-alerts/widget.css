@@ -1,14 +1,17 @@
 :root {
-  --font: "Poppins";
-  --font-weight: 900;
-  --line1-size: 34px;
-  --name-size: 58px;
-  --text-size: 15px;
-  --text-color: #ffffff;
-  --max-width: 640px;
+  --title-font: "Bungee";
+  --number-font: "Anton";
+  --w: 260px;
   --anim: 600ms;
+  --text-size: 13px;
 
-  --accent-rgb: 255, 77, 141;
+  --card-bg: #ffffff;
+  --card-border: #e3dff0;
+  --panel-bg: #161225;
+  --text-color: #161225;
+
+  --accent-rgb: 255, 27, 223;
+  --second-rgb: 139, 92, 246;
 }
 
 html,
@@ -30,171 +33,555 @@ body {
   pointer-events: none;
 }
 
-.alert {
+/* =========================
+   Carte — toutes les tailles sont en em, dérivées de la largeur (--w),
+   pour que le réglage "Largeur de la carte" mette tout à l'échelle.
+========================= */
+.card {
   box-sizing: border-box;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  max-width: min(88vw, var(--max-width));
+  position: relative;
+  width: var(--w);
+  padding: 1.3em 1.3em 1.1em;
+  font-size: calc(var(--w) / 26);
+  font-family: "Space Grotesk", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: var(--text-color);
 
-  font-family: var(--font), system-ui, -apple-system, Segoe UI, Roboto, Arial;
-  text-align: left;
-
-  opacity: 0;
-  transform: translateX(-26px);
-}
-
-.alert.is-visible {
-  animation: alertIn var(--anim) cubic-bezier(0.2, 0.9, 0.2, 1) both;
-}
-
-.alert.is-leaving {
-  animation: alertOut var(--anim) cubic-bezier(0.4, 0, 0.8, 0.2) both;
-}
-
-.alert-icon-wrap {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  margin-top: 4px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 1.4em;
+  box-shadow:
+    0 0.4em 1.6em rgba(0, 0, 0, 0.45),
+    0 0 2.4em rgba(var(--accent-rgb), 0.18);
 
   opacity: 0;
-  transform: scale(0.5) rotate(-12deg);
+  clip-path: var(--in-clip);
 }
 
-.alert.is-visible .alert-icon-wrap {
-  animation: iconIn 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+/* =========================
+   Directions (data-dir / data-out posés en JS) : zone rognée et léger
+   glissement au départ de l'entrée (data-dir) et à la fin de la sortie
+   (data-out). Chaque direction nomme le sens du mouvement : "up" = la
+   carte se dévoile / s'efface vers le haut.
+========================= */
+.card,
+.card[data-dir="up"] {
+  --in-clip: inset(100% 0 0 0 round 1.4em);
+  --in-shift: 0, 0.8em;
 }
 
-.alert-icon {
-  font-size: 36px;
+.card[data-dir="down"] {
+  --in-clip: inset(0 0 100% 0 round 1.4em);
+  --in-shift: 0, -0.8em;
+}
+
+.card[data-dir="right"] {
+  --in-clip: inset(0 100% 0 0 round 1.4em);
+  --in-shift: -0.8em, 0;
+}
+
+.card[data-dir="left"] {
+  --in-clip: inset(0 0 0 100% round 1.4em);
+  --in-shift: 0.8em, 0;
+}
+
+.card,
+.card[data-out="up"] {
+  --out-clip: inset(0 0 100% 0 round 1.4em);
+  --out-shift: 0, -0.6em;
+  --bar-anim: barUp;
+}
+
+.card[data-out="down"] {
+  --out-clip: inset(100% 0 0 0 round 1.4em);
+  --out-shift: 0, 0.6em;
+  --bar-anim: barDown;
+}
+
+.card[data-out="right"] {
+  --out-clip: inset(0 0 0 100% round 1.4em);
+  --out-shift: 0.6em, 0;
+  --bar-anim: barRight;
+}
+
+.card[data-out="left"] {
+  --out-clip: inset(0 100% 0 0 round 1.4em);
+  --out-shift: -0.6em, 0;
+  --bar-anim: barLeft;
+}
+
+.card.is-visible {
+  animation: cardIn var(--anim) cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.card.is-leaving {
+  animation: cardOut var(--anim) cubic-bezier(0.6, 0, 0.8, 0.3) both;
+}
+
+/* Barre accent → secondaire qui balaie la carte à la sortie, dans le sens
+   de sortie (horizontale pour haut/bas, verticale pour gauche/droite) */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgb(var(--second-rgb)), rgb(var(--accent-rgb)));
+  opacity: 0;
+}
+
+.card[data-out="up"]::after,
+.card:not([data-out])::after {
+  top: auto;
+  height: 0.5em;
+}
+
+.card[data-out="down"]::after {
+  bottom: auto;
+  height: 0.5em;
+}
+
+.card[data-out="right"]::after {
+  right: auto;
+  width: 0.5em;
+  background: linear-gradient(180deg, rgb(var(--second-rgb)), rgb(var(--accent-rgb)));
+}
+
+.card[data-out="left"]::after {
+  left: auto;
+  width: 0.5em;
+  background: linear-gradient(180deg, rgb(var(--second-rgb)), rgb(var(--accent-rgb)));
+}
+
+.card.is-leaving::after {
+  animation: var(--bar-anim) var(--anim) cubic-bezier(0.6, 0, 0.8, 0.3) both;
+}
+
+/* =========================
+   Bloc titre (double trait décalé)
+========================= */
+.card-panel {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  aspect-ratio: 1 / 0.86;
+  padding: 0.9em;
+  box-sizing: border-box;
+  background: var(--panel-bg);
+  border-radius: 0.8em;
+  overflow: hidden;
+}
+
+.title {
+  position: relative;
+  z-index: 1;
+  font-family: var(--title-font), "Space Grotesk", sans-serif;
+  font-weight: 400;
+  line-height: 0.92;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.title-layer {
+  color: transparent;
+  -webkit-text-stroke: var(--stroke, 2px) rgb(var(--accent-rgb));
+}
+
+.title-layer > div {
+  display: block;
+}
+
+/* Le calque arrière reprend le texte avec la couleur secondaire, décalé */
+.title-layer--back {
+  position: absolute;
+  inset: 0;
+  -webkit-text-stroke-color: rgb(var(--second-rgb));
+  transform: translate(var(--off, 4px), var(--off, 4px));
+}
+
+.card.is-visible .title-layer--front {
+  animation: titleGlitch 900ms steps(1, end) 120ms both;
+}
+
+.card.is-visible .title-layer--back {
+  animation:
+    titleGlitch 900ms steps(1, end) 60ms both,
+    backSettle 1100ms cubic-bezier(0.2, 0.9, 0.2, 1) 60ms both;
+}
+
+.card.no-glitch.is-visible .title-layer--front,
+.card.no-glitch.is-visible .title-layer--back {
+  animation: titleFade 500ms ease 120ms both;
+}
+
+/* Animation continue pendant l'affichage (désactivable : .no-idle), qui
+   prend le relais de l'entrée : le trait secondaire dérive autour de
+   l'accent, et de brefs sursauts "glitch" reviennent de temps en temps,
+   désynchronisés entre les deux calques. Ces animations viennent après
+   celles d'entrée dans la liste : elles les écrasent une fois démarrées,
+   leurs images "au repos" reprenant l'état final de l'entrée. */
+.card.is-visible:not(.no-idle) .title-layer--front {
+  animation:
+    titleGlitch 900ms steps(1, end) 120ms both,
+    idleGlitch 4.2s steps(1, end) 1.6s infinite;
+}
+
+.card.is-visible:not(.no-idle) .title-layer--back {
+  animation:
+    titleGlitch 900ms steps(1, end) 60ms both,
+    backSettle 1100ms cubic-bezier(0.2, 0.9, 0.2, 1) 60ms both,
+    backDrift 3.6s ease-in-out 1.16s infinite,
+    idleGlitch 4.2s steps(1, end) 3.1s infinite;
+}
+
+.card.no-glitch.is-visible:not(.no-idle) .title-layer--front {
+  animation: titleFade 500ms ease 120ms both;
+}
+
+.card.no-glitch.is-visible:not(.no-idle) .title-layer--back {
+  animation:
+    titleFade 500ms ease 120ms both,
+    backDrift 3.6s ease-in-out 620ms infinite;
+}
+
+/* =========================
+   Ligne chiffres : icône · nombre · unité
+========================= */
+/* Nombre + unité : glissent de gauche à droite, dévoilés par un masque
+   (clip-path, marges verticales négatives pour ne pas rogner "MOIS" qui
+   dépasse en hauteur à cause de son scaleY). */
+.card.is-visible .card-stats {
+  animation: slideFromLeft 650ms cubic-bezier(0.2, 0.9, 0.2, 1) 450ms both;
+}
+
+.card-stats {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.35em;
+  margin-top: 1em;
+  min-height: 4.2em;
+}
+
+/* Filigrane : grande icône inclinée, calée en haut à droite du bloc titre et
+   rognée par son overflow:hidden. Derrière le titre (z-index), en transparence. */
+.card-panel .card-icon {
+  position: absolute;
+  top: -0.18em;
+  right: -0.12em;
+  z-index: 0;
+  font-size: 11em;
   line-height: 1;
-  color: #ffffff;
+  color: rgb(var(--accent-rgb));
+  opacity: 0.16;
   font-variation-settings: "FILL" 1, "wght" 300, "GRAD" 0, "opsz" 24;
-  text-shadow:
-    0 0 4px rgba(var(--accent-rgb), 0.9),
-    0 0 12px rgba(var(--accent-rgb), 0.6),
-    0 0 22px rgba(var(--accent-rgb), 0.3);
+  transform: rotate(-18deg);
+  pointer-events: none;
 }
 
-.alert-body {
-  min-width: 0;
+.card.is-visible .card-icon {
+  animation: iconIn 700ms cubic-bezier(0.2, 0.9, 0.2, 1) 250ms both;
 }
 
-.alert-line1,
-.alert-line2 {
-  font-weight: var(--font-weight);
-  font-size: var(--line1-size);
-  line-height: 1.08;
-  letter-spacing: -0.01em;
-  text-transform: uppercase;
-  color: rgb(var(--accent-rgb));
-  text-shadow: 0 0 22px rgba(var(--accent-rgb), 0.4);
-  overflow-wrap: anywhere;
-}
-
-.alert-line2 {
-  margin-top: 4px;
-}
-
-.alert-name {
-  margin-top: 14px;
-  font-weight: var(--font-weight);
-  font-size: var(--name-size);
-  line-height: 1.02;
-  letter-spacing: -0.01em;
-  text-transform: uppercase;
+.card-number {
+  font-family: var(--number-font), "Oswald", sans-serif;
+  font-size: 4.4em;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
   color: var(--text-color);
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
-  overflow-wrap: anywhere;
-
-  opacity: 0;
-  transform: translateX(-18px);
 }
 
-.alert.is-visible .alert-name {
-  animation: nameIn calc(var(--anim) + 80ms) cubic-bezier(0.2, 0.9, 0.2, 1) 90ms both;
-}
-
-.scramble-char {
-  display: inline-block;
-}
-
-.scramble-char.is-scrambling {
-  color: rgb(var(--accent-rgb));
-  text-shadow: 0 0 10px rgba(var(--accent-rgb), 0.7);
-}
-
-.alert-message {
-  margin-top: 16px;
-  max-width: 100%;
-  font-size: var(--text-size);
-  font-weight: 500;
-  font-style: italic;
-  color: var(--text-color);
-  opacity: 0.78;
-  overflow-wrap: anywhere;
-}
-
-.alert-message:empty {
+.card-number:empty {
   display: none;
 }
 
-@keyframes alertIn {
+/* "MOIS" : arrive large puis se condense en hauteur, comme la référence */
+.card-unit {
+  font-family: "Oswald", sans-serif;
+  font-weight: 300;
+  font-size: 3.2em;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--text-color);
+  transform-origin: left bottom;
+  transform: scale(0.62, 1.22);
+  /* margin-right négatif calculé en JS (fitUnit) pour compenser le scaleX */
+  margin-bottom: 0.06em;
+}
+
+
+.card-divider {
+  height: 2px;
+  margin: 0.9em 0 0.8em;
+  background: var(--card-border);
+  transform-origin: left center;
+}
+
+.card.is-visible .card-divider {
+  animation: dividerIn 500ms cubic-bezier(0.2, 0.9, 0.2, 1) 350ms both;
+}
+
+/* .card-name sert de masque, le texte (#alertName) glisse de haut en bas dedans */
+.card-name {
+  font-weight: 400;
+  font-size: 1.5em;
+  line-height: 1.3;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* Les pseudos sont en gras, le texte de liaison ("→") en graisse normale.
+   Retour à la ligne autorisé : "gifteur → destinataire" peut être long. */
+.card-name-text {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.card-name-text strong {
+  font-weight: 700;
+}
+
+.card.is-visible .card-name-text {
+  animation: slideFromTop 550ms cubic-bezier(0.2, 0.9, 0.2, 1) 650ms both;
+}
+
+.card-message {
+  margin-top: 0.4em;
+  font-size: var(--text-size);
+  font-weight: 500;
+  font-style: italic;
+  text-align: center;
+  opacity: 0.72;
+  overflow-wrap: anywhere;
+}
+
+.card-message:empty {
+  display: none;
+}
+
+.card.is-visible .card-message {
+  animation: fadeUp 450ms cubic-bezier(0.2, 0.9, 0.2, 1) 600ms both;
+}
+
+/* =========================
+   Keyframes
+========================= */
+@keyframes cardIn {
   from {
-    opacity: 0;
-    transform: translateX(-26px);
+    opacity: 1;
+    clip-path: var(--in-clip);
+    transform: translate(var(--in-shift));
   }
 
   to {
     opacity: 1;
+    clip-path: inset(0 0 0 0 round 1.4em);
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes cardOut {
+  from {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 1.4em);
+    transform: translate(0, 0);
+  }
+
+  to {
+    opacity: 1;
+    clip-path: var(--out-clip);
+    transform: translate(var(--out-shift));
+  }
+}
+
+@keyframes barUp {
+  from { opacity: 1; bottom: 0; }
+  to { opacity: 1; bottom: 100%; }
+}
+
+@keyframes barDown {
+  from { opacity: 1; top: 0; }
+  to { opacity: 1; top: 100%; }
+}
+
+@keyframes barRight {
+  from { opacity: 1; left: 0; }
+  to { opacity: 1; left: 100%; }
+}
+
+@keyframes barLeft {
+  from { opacity: 1; right: 0; }
+  to { opacity: 1; right: 100%; }
+}
+
+/* Tracé "incomplet" : tranches horizontales qui apparaissent/disparaissent
+   avec un léger décalage, avant de se stabiliser. */
+@keyframes titleGlitch {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+
+  10% {
+    opacity: 1;
+    clip-path: inset(0 40% 55% 0);
+    translate: -3px 0;
+  }
+
+  22% {
+    clip-path: inset(30% 0 20% 25%);
+    translate: 4px 0;
+  }
+
+  34% {
+    clip-path: inset(0 15% 45% 0);
+    translate: -2px 0;
+  }
+
+  46% {
+    clip-path: inset(50% 0 0 10%);
+    translate: 2px 0;
+  }
+
+  58% {
+    clip-path: inset(0 0 12% 0);
+    translate: -1px 0;
+  }
+
+  72% {
+    clip-path: inset(8% 0 0 0);
+    translate: 1px 0;
+  }
+
+  100% {
+    opacity: 1;
+    clip-path: inset(-20% -20% -20% -20%);
+    translate: 0 0;
+  }
+}
+
+@keyframes backSettle {
+  from {
+    transform: translate(calc(var(--off, 4px) * -2.5), calc(var(--off, 4px) * 1.5));
+  }
+
+  to {
+    transform: translate(var(--off, 4px), var(--off, 4px));
+  }
+}
+
+@keyframes backDrift {
+  0%,
+  100% {
+    transform: translate(var(--off, 4px), var(--off, 4px));
+  }
+
+  30% {
+    transform: translate(calc(var(--off, 4px) * -0.6), calc(var(--off, 4px) * 1.3));
+  }
+
+  65% {
+    transform: translate(calc(var(--off, 4px) * 1.5), calc(var(--off, 4px) * -0.4));
+  }
+}
+
+/* Au repos 85 % du temps, puis un bref sursaut de tranches décalées */
+@keyframes idleGlitch {
+  0%,
+  86%,
+  92%,
+  100% {
+    clip-path: inset(-20% -20% -20% -20%);
+    translate: 0 0;
+  }
+
+  87% {
+    clip-path: inset(10% -20% 45% -20%);
+    translate: -4px 0;
+  }
+
+  89% {
+    clip-path: inset(55% -20% 5% -20%);
+    translate: 3px 0;
+  }
+
+  90.5% {
+    clip-path: inset(-20% -20% 30% -20%);
+    translate: -2px 0;
+  }
+}
+
+@keyframes titleFade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dividerIn {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes slideFromLeft {
+  from {
+    clip-path: inset(-2em 100% -2em 0);
+    transform: translateX(-1.6em);
+  }
+
+  to {
+    clip-path: inset(-2em 0 -2em 0);
     transform: translateX(0);
   }
 }
 
-@keyframes alertOut {
+@keyframes slideFromTop {
   from {
-    opacity: 1;
-    transform: translateX(0);
+    transform: translateY(-110%);
   }
 
   to {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.97);
+    transform: translateY(0);
   }
 }
 
-@keyframes nameIn {
+@keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateX(-18px);
+    transform: translateY(0.4em);
   }
 
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
 @keyframes iconIn {
   from {
     opacity: 0;
-    transform: scale(0.5) rotate(-12deg);
+    transform: translate(0.6em, -0.4em) rotate(-4deg) scale(0.85);
   }
 
   to {
-    opacity: 1;
-    transform: scale(1) rotate(0deg);
+    opacity: 0.16;
+    transform: rotate(-18deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .alert,
-  .alert-name,
-  .alert-icon-wrap {
+  .card,
+  .card *,
+  .card::after {
     animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

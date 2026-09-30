@@ -292,7 +292,6 @@ function onZoomStep(direction: number): void {
       @click="store.setGuidesVisible(!store.guidesVisible)"
     >
       <span class="material-symbols-sharp" aria-hidden="true">straighten</span>
-      <span>Repères</span>
     </button>
 
     <div class="overlay-toolbar__divider"></div>

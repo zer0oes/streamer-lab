@@ -1,0 +1,2 @@
+Streamer Lab : http://localhost:4173
+Section Medias (StreamElements OAuth2) desactivee. Renseignez SE_OAUTH_CLIENT_ID/SECRET dans .env pour l'activer.

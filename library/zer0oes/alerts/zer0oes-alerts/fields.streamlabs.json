@@ -2,66 +2,67 @@
   "widgetName": {
     "type": "hidden",
     "value": "zer0oes Alerts",
-    "group": "Texte & police"
+    "group": "Carte & police"
   },
-  "font_family": {
+  "title_font": {
     "type": "fontpicker",
-    "label": "Police",
-    "value": "Poppins",
-    "group": "Texte & police"
+    "label": "Police du bloc titre",
+    "value": "Bungee",
+    "group": "Carte & police"
   },
-  "font_weight": {
-    "type": "dropdown",
-    "label": "Graisse",
-    "value": "900",
-    "options": {
-      "700": "Bold (700)",
-      "800": "ExtraBold (800)",
-      "900": "Black (900)"
-    },
-    "group": "Texte & police"
+  "number_font": {
+    "type": "fontpicker",
+    "label": "Police des chiffres",
+    "value": "Anton",
+    "group": "Carte & police"
   },
-  "line1_size": {
+  "card_width": {
     "type": "number",
-    "label": "Taille du titre (px)",
-    "value": 34,
-    "min": 14,
-    "max": 80,
-    "step": 1,
-    "group": "Texte & police"
-  },
-  "name_size": {
-    "type": "number",
-    "label": "Taille du pseudo géant (px)",
-    "value": 58,
-    "min": 18,
-    "max": 140,
-    "step": 1,
-    "group": "Texte & police"
+    "label": "Largeur de la carte (px)",
+    "value": 260,
+    "min": 140,
+    "max": 800,
+    "step": 10,
+    "group": "Carte & police"
   },
   "text_size": {
     "type": "number",
     "label": "Taille du message (px)",
-    "value": 15,
+    "value": 13,
     "min": 8,
     "max": 32,
     "step": 1,
-    "group": "Texte & police"
+    "group": "Carte & police"
+  },
+  "card_bg": {
+    "type": "colorpicker",
+    "label": "Fond de la carte",
+    "value": "#FFFFFF",
+    "group": "Couleurs"
+  },
+  "card_border": {
+    "type": "colorpicker",
+    "label": "Bordure & séparateur",
+    "value": "#E3DFF0",
+    "group": "Couleurs"
+  },
+  "panel_bg": {
+    "type": "colorpicker",
+    "label": "Fond du bloc titre",
+    "value": "#161225",
+    "group": "Couleurs"
   },
   "text_color": {
     "type": "colorpicker",
-    "label": "Couleur du message",
-    "value": "#FFFFFF",
-    "group": "Texte & police"
+    "label": "Couleur du texte",
+    "value": "#161225",
+    "group": "Couleurs"
   },
-  "max_width": {
-    "type": "number",
-    "label": "Largeur max en px (0 = illimitée)",
-    "value": 640,
-    "min": 0,
-    "max": 1400,
-    "step": 10,
-    "group": "Texte & police"
+  "second_color": {
+    "type": "colorpicker",
+    "label": "Second trait du titre",
+    "value": "#8B5CF6",
+    "group": "Couleurs"
   },
   "follow_color": {
     "type": "colorpicker",
@@ -72,19 +73,31 @@
   "sub_color": {
     "type": "colorpicker",
     "label": "Sub",
+    "value": "#FF1BDF",
+    "group": "Couleurs par type"
+  },
+  "gift_color": {
+    "type": "colorpicker",
+    "label": "Sub offert (gift)",
+    "value": "#78BEFF",
+    "group": "Couleurs par type"
+  },
+  "community_color": {
+    "type": "colorpicker",
+    "label": "Community gift",
     "value": "#2ABDFF",
     "group": "Couleurs par type"
   },
   "cheer_color": {
     "type": "colorpicker",
     "label": "Cheer (bits)",
-    "value": "#FF1BDF",
+    "value": "#2ABDFF",
     "group": "Couleurs par type"
   },
   "tip_color": {
     "type": "colorpicker",
     "label": "Tip (dons)",
-    "value": "#5900FF",
+    "value": "#00FE9F",
     "group": "Couleurs par type"
   },
   "raid_color": {
@@ -96,79 +109,127 @@
   "host_color": {
     "type": "colorpicker",
     "label": "Host",
-    "value": "#00FE9F",
+    "value": "#2ABDFF",
     "group": "Couleurs par type"
   },
-  "follow_line1": {
+  "follow_title": {
     "type": "textfield",
-    "label": "Follow : titre",
-    "value": "Nouveau follow",
+    "label": "Follow : titre (| = retour à la ligne)",
+    "value": "Fol_|low",
     "group": "Textes par type"
   },
-  "follow_line2": {
+  "follow_unit": {
     "type": "textfield",
-    "label": "Follow : sous-titre",
+    "label": "Follow : unité (pas de nombre)",
     "value": "Bienvenue",
     "group": "Textes par type"
   },
-  "sub_line1": {
+  "sub_title": {
     "type": "textfield",
-    "label": "Sub : titre",
-    "value": "Nouvel abonné",
+    "label": "Nouveau sub : titre (| = retour à la ligne)",
+    "value": "New_|Sub",
     "group": "Textes par type"
   },
-  "sub_line2": {
+  "resub_title": {
     "type": "textfield",
-    "label": "Sub : sous-titre",
-    "value": "Merci",
+    "label": "Resub : titre (| = retour à la ligne)",
+    "value": "Re_|Sub",
     "group": "Textes par type"
   },
-  "cheer_line1": {
+  "sub_unit": {
     "type": "textfield",
-    "label": "Cheer : titre",
-    "value": "Nouveau cheer",
+    "label": "Sub / Resub : unité (mois cumulés)",
+    "value": "Mois",
     "group": "Textes par type"
   },
-  "cheer_line2": {
+  "gift_title": {
     "type": "textfield",
-    "label": "Cheer : sous-titre ({amount})",
-    "value": "{amount} bits de",
+    "label": "Sub offert : titre (| = retour à la ligne)",
+    "value": "Gi_|ft",
     "group": "Textes par type"
   },
-  "tip_line1": {
+  "gift_unit_one": {
     "type": "textfield",
-    "label": "Tip : titre",
-    "value": "Nouveau don",
+    "label": "Sub offert : unité (1 sub)",
+    "value": "Sub offert",
     "group": "Textes par type"
   },
-  "tip_line2": {
+  "gift_unit": {
     "type": "textfield",
-    "label": "Tip : sous-titre ({amount})",
-    "value": "{amount} € de",
+    "label": "Sub offert : unité (plusieurs subs)",
+    "value": "Subs offerts",
     "group": "Textes par type"
   },
-  "raid_line1": {
+  "gift_name": {
     "type": "textfield",
-    "label": "Raid : titre",
-    "value": "Raid",
+    "label": "Sub offert : ligne du pseudo ({gifter}, {recipient})",
+    "value": "{gifter} → {recipient}",
     "group": "Textes par type"
   },
-  "raid_line2": {
+  "community_title": {
     "type": "textfield",
-    "label": "Raid : sous-titre ({amount})",
-    "value": "{amount} viewers de",
+    "label": "Community gift : titre (| = retour à la ligne)",
+    "value": "Comm_|Gift",
     "group": "Textes par type"
   },
-  "host_line1": {
+  "community_unit_one": {
     "type": "textfield",
-    "label": "Host : titre",
-    "value": "Host",
+    "label": "Community gift : unité (1 sub)",
+    "value": "Sub offert",
     "group": "Textes par type"
   },
-  "host_line2": {
+  "community_unit": {
     "type": "textfield",
-    "label": "Host : sous-titre",
-    "value": "Bienvenue à",
+    "label": "Community gift : unité (plusieurs subs)",
+    "value": "Subs offerts",
+    "group": "Textes par type"
+  },
+  "cheer_title": {
+    "type": "textfield",
+    "label": "Cheer : titre (| = retour à la ligne)",
+    "value": "Che_|er",
+    "group": "Textes par type"
+  },
+  "cheer_unit": {
+    "type": "textfield",
+    "label": "Cheer : unité",
+    "value": "Bits",
+    "group": "Textes par type"
+  },
+  "tip_title": {
+    "type": "textfield",
+    "label": "Tip : titre (| = retour à la ligne)",
+    "value": "Mer_|ci",
+    "group": "Textes par type"
+  },
+  "tip_unit": {
+    "type": "textfield",
+    "label": "Tip : unité",
+    "value": "€",
+    "group": "Textes par type"
+  },
+  "raid_title": {
+    "type": "textfield",
+    "label": "Raid : titre (| = retour à la ligne)",
+    "value": "Ra_|id",
+    "group": "Textes par type"
+  },
+  "raid_unit": {
+    "type": "textfield",
+    "label": "Raid : unité",
+    "value": "Viewers",
+    "group": "Textes par type"
+  },
+  "host_title": {
+    "type": "textfield",
+    "label": "Host : titre (| = retour à la ligne)",
+    "value": "Ho_|st",
+    "group": "Textes par type"
+  },
+  "host_unit": {
+    "type": "textfield",
+    "label": "Host : unité",
+    "value": "Viewers",
     "group": "Textes par type"
   },
   "show_message": {
@@ -183,7 +244,17 @@
   },
   "glitch_enabled": {
     "type": "dropdown",
-    "label": "Effet de décodage \"bug\" à l'apparition",
+    "label": "Effet \"bug\" sur le titre à l'apparition",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Comportement"
+  },
+  "title_idle": {
+    "type": "dropdown",
+    "label": "Titre animé pendant l'affichage",
     "value": "yes",
     "options": {
       "yes": "Oui",
@@ -209,6 +280,32 @@
     "step": 50,
     "group": "Comportement"
   },
+  "anim_direction": {
+    "type": "dropdown",
+    "label": "Direction d'entrée",
+    "value": "up",
+    "options": {
+      "up": "De bas en haut",
+      "down": "De haut en bas",
+      "right": "De gauche à droite",
+      "left": "De droite à gauche"
+    },
+    "group": "Comportement"
+  },
+  "exit_direction": {
+    "type": "dropdown",
+    "label": "Direction de sortie",
+    "value": "same",
+    "options": {
+      "same": "Même sens que l'entrée",
+      "back": "Sens inverse (repart d'où elle vient)",
+      "up": "Vers le haut",
+      "down": "Vers le bas",
+      "right": "Vers la droite",
+      "left": "Vers la gauche"
+    },
+    "group": "Comportement"
+  },
   "sound_enabled": {
     "type": "dropdown",
     "label": "Activer le son",
@@ -232,7 +329,7 @@
     "min": 0,
     "max": 100,
     "step": 1,
-    "steps": 1,
-    "group": "Son"
+    "group": "Son",
+    "steps": 1
   }
 }

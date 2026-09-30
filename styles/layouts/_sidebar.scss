@@ -49,7 +49,14 @@
     // below) at the bottom of the collapsed rail. margin-top:auto pins the
     // footer to the bottom now that .controls__body's flex:1 filler (which
     // does this in the expanded state) is gone.
+    // .controls__footer est un flex column sans align-items : par défaut ses
+    // enfants s'étirent (stretch) sur toute sa largeur. Ça convient au bouton
+    // "Nous contacter" en Size=Full (déplié), mais en rail replié ça
+    // l'étirerait sur les 72px du rail au lieu de rester carré autour de son
+    // icône — d'où ce align-self:center, symétrique au padding uniforme de
+    // .sidebar-nav-item juste en dessous.
     .controls__footer { margin-top: auto; }
+    .controls__footer-contact { align-self: center; }
     .controls__toolbar { padding: var(--space-20); }
 
     .controls__body,
@@ -114,7 +121,7 @@
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--topbar-height));
-  width: clamp(290px, 24vw, 348px);
+  width: var(--sidebar-width);
   transition: width var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
 
   // Figma (cadre "Top", panneau ouvert) : la rangée Dashboard et les 3
@@ -189,13 +196,17 @@
 
   // Extra `.sidebar-nav-item` compound (not just `&`) to out-specificity that
   // block's own rules (declared later in this file, same 1-class weight).
+  // Figma (composant "Contact", Size=Full) : neutre par défaut (fond
+  // --panel-alt, icône/texte --icon-default) — pas violet en permanence,
+  // seul le survol (hérité de .sidebar-nav-item) l'accentue.
   &__footer-contact.sidebar-nav-item {
     justify-content: center;
     padding: var(--space-6) var(--space-12);
-    color: var(--accent-bright);
+    color: var(--icon-default);
+    background: var(--panel-alt);
     font-size: var(--text-11);
 
-    .material-symbols-sharp { font-size: 16px; }
+    .material-symbols-sharp { color: inherit; font-size: 16px; }
   }
 }
 
@@ -408,6 +419,57 @@
   &__body { padding: var(--space-13) var(--space-12) 3px; }
   &__control-row { display: flex; align-items: center; gap: var(--space-9); }
   &__control-output { min-width: 28px; color: var(--accent-bright); font-size: var(--text-10); text-align: right; }
+}
+
+// Figma ("CALQUES - opened", composant Reglages) : variante utilisée pour les
+// groupes de champs d'un item widget/alerte posé sur un overlay. Diffère du
+// .field-group de base (panneau Champs de l'éditeur widget/alerte autonome)
+// sur deux points précis à cette maquette : pas de liseré accent permanent
+// une fois ouvert (seul un survol du groupe REPLIÉ le prend, avec un fond
+// légèrement teinté) ; et un chevron en pastille (comme les boutons
+// .icon-button 24px du reste du panneau) plutôt que le triangle natif de
+// <summary>, qui pivote à l'ouverture au lieu de changer de glyphe.
+.field-group--overlay {
+  background: var(--panel-alt);
+
+  &[open] { border-color: var(--line); }
+
+  &:not([open]):hover {
+    border-color: var(--accent-bright);
+    background: color-mix(in srgb, var(--panel-alt) 92%, var(--accent-bright) 8%);
+  }
+
+  .field-group__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    list-style: none;
+
+    &::-webkit-details-marker { display: none; }
+    &:hover { background: none; }
+  }
+
+  .field-group__summary-toggle {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-4);
+    background: var(--panel-alt);
+    color: var(--icon-default);
+    transition: transform var(--duration-fast);
+
+    .material-symbols-sharp { font-size: 16px; }
+  }
+
+  &[open] .field-group__summary-toggle { transform: rotate(180deg); }
+
+  // Figma : icône de chaque ligne de champ en blanc une fois le groupe
+  // ouvert — pas --muted (gris, le défaut de .field__icon partout ailleurs).
+  .field__icon { color: var(--text); }
 }
 
 .checkbox-field {

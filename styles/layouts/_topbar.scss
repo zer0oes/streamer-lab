@@ -205,4 +205,17 @@
   }
 }
 
-.account-fab.is-live .material-symbols-sharp { color: var(--green); }
+// Figma (composant "Account") : déconnecté = icône barrée (account_circle_off,
+// déjà géré côté template) en --muted, blanche au survol comme les autres
+// icon-button ; connecté = icône pleine en vert, qui reste verte au survol
+// au lieu de blanchir comme le reste (seuls les deux états "Logged out"
+// changent de couleur dans le composant Figma).
+.account-fab {
+  color: var(--muted);
+
+  &.is-live {
+    color: var(--green);
+
+    &:hover { color: var(--green); }
+  }
+}

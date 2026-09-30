@@ -13,6 +13,7 @@ import { reactive, ref } from "vue";
 import { useToast } from "../composables/useToast";
 import { dispatchToOverlayItems } from "../composables/useOverlayPreviewBridge";
 import { randomChatBadges, randomChatMessage, randomEventAmount, randomEventName, chatRoleBadges } from "../lib/eventSimulatorData";
+import { applySubscriberFields, subscriberAmountLabel, subscriberNameLabel } from "../lib/subscriberEvent";
 
 const isOpen = defineModel<boolean>("open", { default: false });
 
@@ -22,12 +23,14 @@ interface EventFormState {
   name: string;
   broadcaster: boolean;
   message: string;
-  amount: string;
+  // string | number : v-model sur un <input type="number"> renvoie un nombre
+  amount: string | number;
   subType: string;
+  sender: string;
 }
 
 function blankForm(): EventFormState {
-  return { name: "", broadcaster: false, message: "", amount: "", subType: "tier1" };
+  return { name: "", broadcaster: false, message: "", amount: "", subType: "tier1", sender: "" };
 }
 
 const forms = reactive<Record<string, EventFormState>>({
@@ -89,20 +92,14 @@ function sendPreset(listener: string): void {
   const eventType = eventTypes.find((entry) => entry.key === listener);
 
   if (eventType?.hasAmount) {
-    const raw = form.amount.trim();
+    const raw = String(form.amount ?? "").trim();
     const amount = raw === "" ? randomEventAmount(listener) : Math.max(0, Number(raw) || 0);
     form.amount = String(amount);
     event.amount = amount;
     if (listener === "raid-latest") event.viewers = amount;
   }
   if (eventType?.hasMessage) event.message = form.message;
-  if (eventType?.hasSubType) {
-    const subType = form.subType;
-    event.subType = subType;
-    event.tier = subType === "prime" ? "prime" : "1000";
-    event.gifted = subType === "gift" || subType === "communitygift";
-    event.bulkGifted = subType === "communitygift";
-  }
+  if (eventType?.hasSubType) applySubscriberFields(event, name, form);
 
   dispatchToOverlayItems("onEventReceived", { listener, event });
   showToast(`Événement envoyé : ${listener}`);
@@ -153,7 +150,7 @@ function close(): void {
             </summary>
             <div class="event-type-item__body">
               <label class="field">
-                <span class="field__label">Pseudo</span>
+                <span class="field__label">{{ eventType.hasSubType ? subscriberNameLabel(forms[eventType.key].subType) : "Pseudo" }}</span>
                 <input v-model="forms[eventType.key].name" placeholder="Aléatoire si vide" autocomplete="off" />
               </label>
               <label v-if="eventType.key === 'message'" class="field checkbox-field">
@@ -168,6 +165,20 @@ function close(): void {
                   <option value="gift">Sub-Gift</option>
                   <option value="communitygift">Community Gift</option>
                 </select>
+              </label>
+              <label v-if="eventType.hasSubType && forms[eventType.key].subType === 'gift'" class="field">
+                <span class="field__label">Offert par</span>
+                <input v-model="forms[eventType.key].sender" placeholder="Aléatoire si vide" autocomplete="off" />
+              </label>
+              <label v-if="eventType.hasSubType && subscriberAmountLabel(forms[eventType.key].subType)" class="field">
+                <span class="field__label">{{ subscriberAmountLabel(forms[eventType.key].subType) }}</span>
+                <input
+                  v-model="forms[eventType.key].amount"
+                  type="number"
+                  min="1"
+                  step="1"
+                  :placeholder="forms[eventType.key].subType === 'communitygift' ? 'Aléatoire si vide' : '1 si vide'"
+                />
               </label>
               <label v-if="eventType.hasAmount" class="field">
                 <span class="field__label">{{ eventType.amountLabel }}</span>

@@ -54,18 +54,23 @@ const slots = computed<Slot[]>(() => {
   return result;
 });
 
-function updateField(key: string, value: unknown): void {
+function updateField(key: string, value: unknown, commit: boolean): void {
   const current = (props.item.props?.fieldData as Record<string, unknown> | undefined) || {};
   store.patchItem(props.item.id, { props: { ...props.item.props, fieldData: { ...current, [key]: value } } });
-  store.commit();
+  if (commit) store.commit();
 }
 </script>
 
 <template>
   <form v-if="bundle" id="fields-form" class="fields-form" @submit.prevent>
     <template v-for="(slot, index) in slots" :key="slot.group ?? `field-${index}`">
-      <details v-if="slot.group" class="field-group" open>
-        <summary class="field-group__summary">{{ slot.group }}</summary>
+      <details v-if="slot.group" class="field-group field-group--overlay" open>
+        <summary class="field-group__summary">
+          <span class="field-group__summary-label">{{ slot.group }}</span>
+          <span class="field-group__summary-toggle" aria-hidden="true">
+            <span class="material-symbols-sharp">keyboard_arrow_down</span>
+          </span>
+        </summary>
         <div class="field-group__body">
           <OverlayItemFieldRow v-for="{ key, definition } in slot.fields" :key="key" :field-key="key" :definition="definition" :value="fieldData[key]" @update="updateField" />
         </div>

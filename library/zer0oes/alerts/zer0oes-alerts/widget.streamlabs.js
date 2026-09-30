@@ -71,6 +71,8 @@ function num(v){
 const iconMap = {
   follow: "favorite",
   sub: "star_shine",
+  gift: "redeem",
+  community: "featured_seasonal_and_gifts",
   cheer: "diamond_shine",
   tip: "money_bag",
   raid: "bolt",
@@ -82,18 +84,25 @@ let queue = [];
 let isShowing = false;
 let hideTimer = null;
 let advanceTimer = null;
+let countFrame = null;
 
 // ------------------------------------
-// Google Fonts
+// Google Fonts (police du bloc titre + police des chiffres)
 // ------------------------------------
-function setGoogleFont(family){
+function setGoogleFonts(titleFamily, numberFamily){
   const link = document.getElementById("googleFontLink");
   if (!link) return;
 
-  const name = String(family || "Poppins").trim();
-  const urlName = name.replace(/\s+/g, "+");
-  link.href = `https://fonts.googleapis.com/css2?family=${urlName}:wght@600;700;800;900&display=swap`;
-  document.documentElement.style.setProperty("--font", `"${name}"`);
+  const title = String(titleFamily || "Bungee").trim();
+  const number = String(numberFamily || "Anton").trim();
+  const families = [...new Set([title, number])]
+    .map(name => "family=" + name.replace(/\s+/g, "+"))
+    .join("&");
+  const href = `https://fonts.googleapis.com/css2?${families}&display=swap`;
+  if (link.getAttribute("href") !== href) link.href = href;
+
+  document.documentElement.style.setProperty("--title-font", `"${title}"`);
+  document.documentElement.style.setProperty("--number-font", `"${number}"`);
 }
 
 // ------------------------------------
@@ -132,6 +141,24 @@ function rgbTriplet(hexValue){
   return `${r}, ${g}, ${b}`;
 }
 
+const DIRECTIONS = ["up", "down", "right", "left"];
+function directionOr(v, fallback){
+  const s = String(v ?? "").toLowerCase();
+  return DIRECTIONS.includes(s) ? s : fallback;
+}
+
+const OPPOSITE_DIRECTION = { up: "down", down: "up", right: "left", left: "right" };
+// "same" = continue dans le sens de l'entrée, "back" = repart d'où elle vient
+function exitDirectionOr(v, fallback){
+  const s = String(v ?? "").toLowerCase();
+  return (s === "same" || s === "back" || DIRECTIONS.includes(s)) ? s : fallback;
+}
+function resolveExitDirection(enter, exit){
+  if (exit === "same") return enter;
+  if (exit === "back") return OPPOSITE_DIRECTION[enter] || enter;
+  return exit;
+}
+
 function isYesNo(v, fallback){
   const s = String(v ?? "").toLowerCase();
   return (s === "yes" || s === "no") ? s : fallback;
@@ -147,38 +174,54 @@ function normalizeFields(raw){
   raw = raw || {};
 
   return {
-    font_family: String(raw.font_family ?? "Poppins"),
-    font_weight: String(raw.font_weight ?? "900"),
-    line1_size: Math.max(12, num(raw.line1_size ?? 34)),
-    name_size: Math.max(16, num(raw.name_size ?? 58)),
-    text_size: Math.max(8, num(raw.text_size ?? 15)),
-    text_color: hexOr(raw.text_color, "#ffffff"),
-    max_width: Math.max(0, num(raw.max_width ?? 640)),
+    title_font: String(raw.title_font ?? "Bungee"),
+    number_font: String(raw.number_font ?? "Anton"),
+    card_width: clamp(num(raw.card_width ?? 260), 140, 800),
+    text_size: Math.max(8, num(raw.text_size ?? 13)),
+
+    card_bg: hexOr(raw.card_bg, "#ffffff"),
+    card_border: hexOr(raw.card_border, "#e3dff0"),
+    panel_bg: hexOr(raw.panel_bg, "#161225"),
+    text_color: hexOr(raw.text_color, "#161225"),
+    second_color: hexOr(raw.second_color, "#8b5cf6"),
 
     follow_color: hexOr(raw.follow_color, "#ff4d8d"),
-    sub_color: hexOr(raw.sub_color, "#2abdff"),
-    cheer_color: hexOr(raw.cheer_color, "#ff1bdf"),
-    tip_color: hexOr(raw.tip_color, "#5900ff"),
+    sub_color: hexOr(raw.sub_color, "#ff1bdf"),
+    gift_color: hexOr(raw.gift_color, "#78beff"),
+    community_color: hexOr(raw.community_color, "#2abdff"),
+    cheer_color: hexOr(raw.cheer_color, "#2abdff"),
+    tip_color: hexOr(raw.tip_color, "#00fe9f"),
     raid_color: hexOr(raw.raid_color, "#ffb020"),
-    host_color: hexOr(raw.host_color, "#00fe9f"),
+    host_color: hexOr(raw.host_color, "#2abdff"),
 
-    follow_line1: String(raw.follow_line1 ?? "Nouveau follow"),
-    follow_line2: String(raw.follow_line2 ?? "Bienvenue"),
-    sub_line1: String(raw.sub_line1 ?? "Nouvel abonné"),
-    sub_line2: String(raw.sub_line2 ?? "Merci"),
-    cheer_line1: String(raw.cheer_line1 ?? "Nouveau cheer"),
-    cheer_line2: String(raw.cheer_line2 ?? "{amount} bits de"),
-    tip_line1: String(raw.tip_line1 ?? "Nouveau don"),
-    tip_line2: String(raw.tip_line2 ?? "{amount} € de"),
-    raid_line1: String(raw.raid_line1 ?? "Raid"),
-    raid_line2: String(raw.raid_line2 ?? "{amount} viewers de"),
-    host_line1: String(raw.host_line1 ?? "Host"),
-    host_line2: String(raw.host_line2 ?? "Bienvenue à"),
+    follow_title: String(raw.follow_title ?? "Fol_|low"),
+    follow_unit: String(raw.follow_unit ?? "Bienvenue"),
+    sub_title: String(raw.sub_title ?? "New_|Sub"),
+    resub_title: String(raw.resub_title ?? "Re_|Sub"),
+    sub_unit: String(raw.sub_unit ?? "Mois"),
+    gift_title: String(raw.gift_title ?? "Gi_|ft"),
+    gift_unit_one: String(raw.gift_unit_one ?? "Sub offert"),
+    gift_unit: String(raw.gift_unit ?? "Subs offerts"),
+    gift_name: String(raw.gift_name ?? "{gifter} → {recipient}"),
+    community_title: String(raw.community_title ?? "Comm_|Gift"),
+    community_unit_one: String(raw.community_unit_one ?? "Sub offert"),
+    community_unit: String(raw.community_unit ?? "Subs offerts"),
+    cheer_title: String(raw.cheer_title ?? "Che_|er"),
+    cheer_unit: String(raw.cheer_unit ?? "Bits"),
+    tip_title: String(raw.tip_title ?? "Mer_|ci"),
+    tip_unit: String(raw.tip_unit ?? "€"),
+    raid_title: String(raw.raid_title ?? "Ra_|id"),
+    raid_unit: String(raw.raid_unit ?? "Viewers"),
+    host_title: String(raw.host_title ?? "Ho_|st"),
+    host_unit: String(raw.host_unit ?? "Viewers"),
 
     show_message: isYesNo(raw.show_message, "yes"),
     glitch_enabled: isYesNo(raw.glitch_enabled, "yes"),
+    title_idle: isYesNo(raw.title_idle, "yes"),
     display_duration: Math.max(1000, num(raw.display_duration ?? 6000)),
     animation_duration: clamp(num(raw.animation_duration ?? 600), 0, 2000),
+    anim_direction: directionOr(raw.anim_direction, "up"),
+    exit_direction: exitDirectionOr(raw.exit_direction, "same"),
 
     sound_enabled: isYesNo(raw.sound_enabled, "no"),
     sound_url: String(raw.sound_url ?? ""),
@@ -197,62 +240,55 @@ function getSetting(key, fallback){
 
 function applyStyleSettings(){
   const root = document.documentElement.style;
-  setGoogleFont(getSetting("font_family", "Poppins"));
-  root.setProperty("--font-weight", String(getSetting("font_weight", "900")));
-  root.setProperty("--line1-size", getSetting("line1_size", 34) + "px");
-  root.setProperty("--name-size", getSetting("name_size", 58) + "px");
-  root.setProperty("--text-size", getSetting("text_size", 15) + "px");
-  root.setProperty("--text-color", getSetting("text_color", "#ffffff"));
-
-  const width = getSetting("max_width", 640);
-  root.setProperty("--max-width", width > 0 ? width + "px" : "88vw");
+  setGoogleFonts(getSetting("title_font", "Bungee"), getSetting("number_font", "Anton"));
+  root.setProperty("--w", getSetting("card_width", 260) + "px");
+  root.setProperty("--text-size", getSetting("text_size", 13) + "px");
+  root.setProperty("--card-bg", getSetting("card_bg", "#ffffff"));
+  root.setProperty("--card-border", getSetting("card_border", "#e3dff0"));
+  root.setProperty("--panel-bg", getSetting("panel_bg", "#161225"));
+  root.setProperty("--text-color", getSetting("text_color", "#161225"));
+  root.setProperty("--second-rgb", rgbTriplet(getSetting("second_color", "#8b5cf6")));
   root.setProperty("--anim", getSetting("animation_duration", 600) + "ms");
+
+  const alertEl = document.getElementById("alert");
+  if (alertEl){
+    const enter = getSetting("anim_direction", "up");
+    alertEl.dataset.dir = enter;
+    alertEl.dataset.out = resolveExitDirection(enter, getSetting("exit_direction", "same"));
+  }
+
+  if (isShowing) fitCard();
 }
 
 function accentFor(type){
   const map = {
     follow: getSetting("follow_color", "#ff4d8d"),
-    sub: getSetting("sub_color", "#2abdff"),
-    cheer: getSetting("cheer_color", "#ff1bdf"),
-    tip: getSetting("tip_color", "#5900ff"),
+    sub: getSetting("sub_color", "#ff1bdf"),
+    gift: getSetting("gift_color", "#78beff"),
+    community: getSetting("community_color", "#2abdff"),
+    cheer: getSetting("cheer_color", "#2abdff"),
+    tip: getSetting("tip_color", "#00fe9f"),
     raid: getSetting("raid_color", "#ffb020"),
-    host: getSetting("host_color", "#00fe9f")
+    host: getSetting("host_color", "#2abdff")
   };
   return map[type] || "#ffffff";
 }
 
-function line1For(type){
-  const map = {
-    follow: getSetting("follow_line1", "Nouveau follow"),
-    sub: getSetting("sub_line1", "Nouvel abonné"),
-    cheer: getSetting("cheer_line1", "Nouveau cheer"),
-    tip: getSetting("tip_line1", "Nouveau don"),
-    raid: getSetting("raid_line1", "Raid"),
-    host: getSetting("host_line1", "Host")
-  };
-  return map[type] || "";
+function titleFor(type, amount){
+  if (type === "sub") return amount > 1 ? getSetting("resub_title", "Re_|Sub") : getSetting("sub_title", "New_|Sub");
+  return getSetting(type + "_title", "");
 }
 
-function line2For(type){
-  const map = {
-    follow: getSetting("follow_line2", "Bienvenue"),
-    sub: getSetting("sub_line2", "Merci"),
-    cheer: getSetting("cheer_line2", "{amount} bits de"),
-    tip: getSetting("tip_line2", "{amount} € de"),
-    raid: getSetting("raid_line2", "{amount} viewers de"),
-    host: getSetting("host_line2", "Bienvenue à")
-  };
-  return map[type] || "";
+function unitFor(type, amount){
+  if (type === "gift") return amount > 1 ? getSetting("gift_unit", "Subs offerts") : getSetting("gift_unit_one", "Sub offert");
+  if (type === "community") return amount > 1 ? getSetting("community_unit", "Subs offerts") : getSetting("community_unit_one", "Sub offert");
+  return getSetting(type + "_unit", "");
 }
 
 function formatAmount(n){
   const value = Number(n) || 0;
   if (Number.isInteger(value)) return value.toLocaleString("fr-FR");
   return value.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function formatTemplate(template, amount){
-  return String(template ?? "").replaceAll("{amount}", formatAmount(amount));
 }
 
 // ------------------------------------
@@ -267,9 +303,33 @@ function detectType(listener, ev){
   if (key.includes("cheer") || key.includes("bits") || key.includes("bit")) return "cheer";
   if (key.includes("raid")) return "raid";
   if (key.includes("host")) return "host";
-  if (key.includes("sub")) return "sub";
+  if (key.includes("sub")){
+    if (!isGiftEvent(ev)) return "sub";
+    return isBulkGift(ev) ? "community" : "gift";
+  }
 
   return null;
+}
+
+// Sub offert : StreamElements (gifted / bulkGifted) ou Streamlabs
+// (gifter, sub_type "subgift" / "communitygift"…).
+function isGiftEvent(ev){
+  const data = ev?.data || {};
+  const subType = String(ev?.sub_type ?? ev?.subType ?? data.sub_type ?? "").toLowerCase();
+  return Boolean(ev?.gifted || ev?.bulkGifted || data.gifted || data.bulkGifted || ev?.gifter || data.gifter || subType.includes("gift"));
+}
+
+function isBulkGift(ev){
+  const data = ev?.data || {};
+  const subType = String(ev?.sub_type ?? ev?.subType ?? data.sub_type ?? "").toLowerCase();
+  return Boolean(ev?.bulkGifted || data.bulkGifted || subType.includes("community"));
+}
+
+// Lors d'un gift communautaire, StreamElements envoie l'évènement groupé
+// (bulkGifted) PUIS un évènement par destinataire (isCommunityGift) : on
+// n'affiche que le groupé.
+function isCommunityGiftRecipient(ev){
+  return Boolean(ev?.isCommunityGift || ev?.data?.isCommunityGift);
 }
 
 function extractPayload(type, ev){
@@ -279,6 +339,22 @@ function extractPayload(type, ev){
 
   let amount = Number(ev?.amount ?? data.amount ?? 0) || 0;
   if (type === "raid" || type === "host") amount = Number(ev?.viewers ?? amount) || 0;
+  // Pour un sub, amount = nombre de mois cumulés (1 pour un nouveau sub)
+  if (type === "sub") amount = Math.max(1, Math.round(amount));
+
+  if (type === "gift" || type === "community"){
+    // name = destinataire (gift) ou gifteur (community), sender/gifter = la
+    // personne qui offre
+    const gifter = ev?.sender || data.sender || ev?.gifter || data.gifter || "";
+    const community = type === "community";
+    return {
+      name: gifter || name,
+      gifter: gifter || name,
+      amount: community ? Math.max(1, Math.round(amount)) : 1,
+      message: "",
+      recipient: !community && gifter && gifter !== name ? name : ""
+    };
+  }
 
   return { name, amount, message };
 }
@@ -312,7 +388,7 @@ function shouldProcess(listener, ev){
 }
 
 // ------------------------------------
-// File d'attente / affichage
+// Son
 // ------------------------------------
 function playSound(){
   if (getSetting("sound_enabled", "no") !== "yes") return;
@@ -328,128 +404,104 @@ function playSound(){
 }
 
 // ------------------------------------
-// Effet "bug" (décodage caractère par caractère)
+// Rendu de la carte
 // ------------------------------------
-const SCRAMBLE_CHARS = "!<>-_\\/[]{}=+*^?#01";
-const SCRAMBLE_FONTS = ["'Space Grotesk', sans-serif", "'Press Start 2P', monospace"];
-let scrambleGenCounter = 0;
-
-function randomScrambleChar(){
-  return SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+function setTitle(text){
+  const lines = String(text || "").split("|").map(s => s.trim()).filter(Boolean);
+  for (const layer of document.querySelectorAll("#alertTitle .title-layer")){
+    layer.replaceChildren(...lines.map(line => {
+      const div = document.createElement("div");
+      div.textContent = line;
+      return div;
+    }));
+  }
 }
-function randomScrambleFont(){
-  return SCRAMBLE_FONTS[Math.floor(Math.random() * SCRAMBLE_FONTS.length)];
+
+// Ajuste la taille du titre au bloc noir, puis l'épaisseur du trait et le
+// décalage du calque arrière proportionnellement à cette taille.
+function fitTitle(){
+  const title = document.getElementById("alertTitle");
+  const panel = title?.parentElement;
+  const front = title?.querySelector(".title-layer--front");
+  if (!title || !panel || !front) return;
+
+  const cs = getComputedStyle(panel);
+  const availW = panel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const availH = panel.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  if (availW <= 0 || availH <= 0) return;
+
+  const probe = 100;
+  title.style.fontSize = probe + "px";
+  const w = front.scrollWidth || 1;
+  const h = front.scrollHeight || 1;
+  // Marge pour le trait et le décalage du calque arrière
+  const size = Math.max(8, Math.min((availW * 0.9) / w, (availH * 0.9) / h) * probe);
+
+  title.style.fontSize = size + "px";
+  title.style.setProperty("--stroke", Math.max(1.2, size * 0.045).toFixed(2) + "px");
+  title.style.setProperty("--off", Math.max(2, size * 0.055).toFixed(2) + "px");
 }
 
-function scrambleInto(el, finalText, duration){
+// "MOIS" est condensé via scaleX : on retire l'espace laissé vide à droite.
+function fitUnit(){
+  const unit = document.getElementById("alertUnit");
+  if (!unit) return;
+  unit.style.marginRight = "0px";
+  const width = unit.offsetWidth;
+  unit.style.marginRight = (-(1 - 0.62) * width).toFixed(2) + "px";
+}
+
+function fitCard(){
+  fitTitle();
+  fitUnit();
+}
+
+// Remplit el avec template, les {variables} devenant des pseudos en gras et
+// le texte autour (ex. " → ") en graisse normale. textContent partout : les
+// pseudos viennent du chat, jamais d'innerHTML.
+function renderTemplate(el, template, vars){
+  const parts = String(template || "").split(/(\{\w+\})/);
+  el.replaceChildren(...parts.filter(Boolean).map(part => {
+    const match = part.match(/^\{(\w+)\}$/);
+    if (match && match[1] in vars){
+      const strong = document.createElement("strong");
+      strong.textContent = vars[match[1]];
+      return strong;
+    }
+    return document.createTextNode(part);
+  }));
+}
+
+function countUp(el, target, duration, delay){
+  cancelAnimationFrame(countFrame);
   if (!el) return;
-  const gen = ++scrambleGenCounter;
-  el._scrambleGen = gen;
+
+  const isInt = Number.isInteger(target);
+  const format = (v) => isInt
+    ? Math.round(v).toLocaleString("fr-FR")
+    : v.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduceMotion){
-    el.textContent = finalText;
+  if (reduceMotion || target <= 0){
+    el.textContent = formatAmount(target);
     return;
   }
 
-  const nodes = [];
-  const scramblable = [];
-
-  for (const ch of finalText){
-    if (ch === " "){
-      nodes.push(document.createTextNode(" "));
-      continue;
-    }
-    const span = document.createElement("span");
-    span.className = "scramble-char is-scrambling";
-    span.textContent = randomScrambleChar();
-    span.style.fontFamily = randomScrambleFont();
-    nodes.push(span);
-    scramblable.push({ span, ch });
-  }
-
-  el.replaceChildren(...nodes);
-
-  const total = Math.max(1, scramblable.length);
-  const start = performance.now();
-  const lockTimes = scramblable.map((_, i) => (i / total) * duration * 0.65 + Math.random() * duration * 0.35);
-  const flickerInterval = 70;
-  let lastFlicker = -Infinity;
+  el.textContent = format(0);
+  const start = performance.now() + delay;
 
   function tick(now){
-    if (el._scrambleGen !== gen) return;
-    const elapsed = now - start;
-    let allLocked = true;
-    const shouldFlicker = now - lastFlicker >= flickerInterval;
-    if (shouldFlicker) lastFlicker = now;
-
-    scramblable.forEach(({ span, ch }, i) => {
-      if (elapsed >= lockTimes[i]){
-        if (!span.dataset.locked){
-          span.textContent = ch;
-          span.style.fontFamily = "";
-          span.classList.remove("is-scrambling");
-          span.dataset.locked = "1";
-        }
-        return;
-      }
-      allLocked = false;
-      if (shouldFlicker){
-        span.textContent = randomScrambleChar();
-        span.style.fontFamily = randomScrambleFont();
-      }
-    });
-
-    if (!allLocked) requestAnimationFrame(tick);
+    const t = clamp((now - start) / duration, 0, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = format(target * eased);
+    if (t < 1) countFrame = requestAnimationFrame(tick);
   }
-
-  requestAnimationFrame(tick);
+  countFrame = requestAnimationFrame(tick);
 }
 
-function setAlertText(el, text, duration){
-  if (!el) return;
-  if (getSetting("glitch_enabled", "yes") === "yes"){
-    scrambleInto(el, text, duration);
-  } else {
-    el._scrambleGen = ++scrambleGenCounter;
-    el.textContent = text;
-  }
-}
-
-function scrambleOut(el, duration){
-  if (!el) return;
-  const spans = [...el.querySelectorAll(".scramble-char")];
-  if (!spans.length) return;
-
-  const gen = ++scrambleGenCounter;
-  el._scrambleGen = gen;
-
-  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduceMotion) return;
-
-  const start = performance.now();
-  const flickerInterval = 70;
-  let lastFlicker = -Infinity;
-
-  function tick(now){
-    if (el._scrambleGen !== gen) return;
-    if (now - start >= duration) return;
-
-    if (now - lastFlicker >= flickerInterval){
-      lastFlicker = now;
-      for (const span of spans){
-        span.textContent = randomScrambleChar();
-        span.style.fontFamily = randomScrambleFont();
-        span.classList.add("is-scrambling");
-      }
-    }
-
-    requestAnimationFrame(tick);
-  }
-
-  requestAnimationFrame(tick);
-}
-
+// ------------------------------------
+// File d'attente / affichage
+// ------------------------------------
 function enqueueAlert(type, payload){
   queue.push({ type, payload });
   if (!isShowing) showNext();
@@ -469,28 +521,51 @@ function showNext(){
   const { type, payload } = next;
   document.documentElement.style.setProperty("--accent-rgb", rgbTriplet(accentFor(type)));
 
-  const line1El = document.getElementById("alertLine1");
-  const line2El = document.getElementById("alertLine2");
+  const alertEl = document.getElementById("alert");
+  const iconEl = document.getElementById("alertIcon");
+  const numberEl = document.getElementById("alertNumber");
+  const unitEl = document.getElementById("alertUnit");
   const nameEl = document.getElementById("alertName");
   const messageEl = document.getElementById("alertMessage");
-  const iconEl = document.getElementById("alertIcon");
-  const alertEl = document.getElementById("alert");
 
+  setTitle(titleFor(type, payload.amount));
   if (iconEl) iconEl.textContent = iconMap[type] || "celebration";
+  if (unitEl) unitEl.textContent = unitFor(type, payload.amount);
+  if (nameEl){
+    if (type === "gift" && payload.recipient){
+      renderTemplate(nameEl, getSetting("gift_name", "{gifter} → {recipient}"), { gifter: payload.gifter, recipient: payload.recipient });
+    } else {
+      renderTemplate(nameEl, "{name}", { name: payload.name });
+    }
+  }
 
-  setAlertText(line1El, line1For(type), 1100);
-  setAlertText(line2El, formatTemplate(line2For(type), payload.amount), 1250);
-  setAlertText(nameEl, payload.name, 1600);
+  const hasNumber = type !== "follow";
+  if (numberEl){
+    if (hasNumber) countUp(numberEl, payload.amount, 900, 450);
+    else {
+      cancelAnimationFrame(countFrame);
+      numberEl.textContent = "";
+    }
+  }
 
   const trimmedMessage = payload.message.trim();
   const showMessage = getSetting("show_message", "yes") === "yes" && trimmedMessage;
-  if (messageEl) messageEl.textContent = showMessage ? `« ${trimmedMessage} »` : "";
+  if (messageEl){
+    if (type === "gift" || type === "community") messageEl.textContent = "";
+    else messageEl.textContent = showMessage ? `« ${trimmedMessage} »` : "";
+  }
 
   if (alertEl){
+    alertEl.classList.toggle("no-glitch", getSetting("glitch_enabled", "yes") !== "yes");
+    alertEl.classList.toggle("no-idle", getSetting("title_idle", "yes") !== "yes");
     alertEl.classList.remove("is-visible", "is-leaving");
     void alertEl.offsetWidth;
+    fitCard();
     alertEl.classList.add("is-visible");
   }
+
+  // Les polices Google peuvent arriver après le premier rendu : on réajuste.
+  if (document.fonts?.ready) document.fonts.ready.then(() => { if (isShowing) fitCard(); });
 
   playSound();
 
@@ -500,10 +575,6 @@ function showNext(){
 function hideCurrent(){
   const alertEl = document.getElementById("alert");
   const animDuration = getSetting("animation_duration", 600);
-
-  scrambleOut(document.getElementById("alertLine1"), animDuration);
-  scrambleOut(document.getElementById("alertLine2"), animDuration);
-  scrambleOut(document.getElementById("alertName"), animDuration);
 
   if (alertEl){
     alertEl.classList.remove("is-visible");
@@ -523,6 +594,7 @@ function handleEvent(obj){
   const type = detectType(listener, ev);
   if (!type) return;
 
+  if ((type === "gift" || type === "community") && isCommunityGiftRecipient(ev)) return;
   if (!shouldProcess(listener, ev)) return;
 
   enqueueAlert(type, extractPayload(type, ev));

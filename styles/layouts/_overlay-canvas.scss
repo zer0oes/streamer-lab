@@ -5,13 +5,13 @@
 // down via CSS transform so stored x/y/w/h never need unit conversion).
 @use "../base/primitives";
 
-// Volontairement plus étroit que --side-panel-width (Mon compte, Champs d'un
-// widget/alerte, cf. base/_tokens.scss) : une liste de calques n'a pas
-// besoin d'autant de place que ces panneaux de formulaire, et sur un écran
-// de portable (~1366-1440px) chaque pixel repris ici profite directement au
-// canevas. Les noms de calque trop longs tronquent avec une ellipse
-// (cf. &__label plus bas) plutôt que de forcer une largeur plus généreuse.
-$overlay-layers-width: min(300px, 92vw);
+// Figma ("OVERLAY - Right panel opened") : le panneau Calques mesure 370px,
+// une valeur propre à ce panneau plutôt qu'alignée sur --sidebar-width — la
+// frame ne montre jamais les deux panneaux dépliés en même temps, donc rien
+// n'impose qu'ils partagent une largeur. Les noms de calque trop longs
+// tronquent avec une ellipse (cf. &__label plus bas) plutôt que de forcer une
+// largeur plus généreuse.
+$overlay-layers-width: min(370px, 92vw);
 // Repères (bouton "Repères" de la barre d'outils) : rubans + coin + calque de
 // lignes, masqués par défaut, affichés ensemble par la seule classe
 // .show-rulers (un bouton pilote les deux, pas de réglage séparé "afficher
@@ -27,6 +27,20 @@ $ruler-size: 20px;
 }
 
 .overlay-editor__heading { display: flex; flex-direction: column; gap: var(--space-4); }
+
+// "OVERLAY" (ici) et "CALQUES" (.overlay-layers__title, en face) doivent
+// rendre à l'identique — même style de repère de section, juste au-dessus
+// d'un contenu différent (nom de l'overlay / liste de calques). Un seul
+// bloc de règles partagé entre les deux plutôt que deux déclarations qui
+// pourraient dériver l'une de l'autre.
+.overlay-editor__eyebrow,
+.overlay-layers__title {
+  color: var(--accent-bright);
+  font-size: var(--text-12);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
 
 // .preview-column (AppShell.vue, layouts/_preview.scss) applique le même
 // padding sur ses 4 côtés à TOUTES les vues qu'elle héberge — correct pour
@@ -74,6 +88,10 @@ $ruler-size: 20px;
   // le bouton et le panneau démarrent visuellement à la même hauteur sous
   // la topbar.
   top: calc(var(--topbar-height) + 40px);
+  // 40px entre le bouton et le bord du panneau (pas juste --space-24) :
+  // demandé explicitement, écart plus généreux qu'un simple espacement de
+  // grille pour que le bouton se lise nettement comme "à côté du panneau",
+  // pas collé à son bord.
   right: calc(#{$overlay-layers-width} + 40px);
   transition: right var(--duration-base) ease;
 
@@ -393,16 +411,14 @@ $ruler-size: 20px;
     &.is-active { color: #fff; border-color: transparent; background: var(--accent-gradient); }
     &:disabled { opacity: .4; pointer-events: none; }
 
-    // Figma : "Repères" ne garde son libellé que dépliés/actif — replié sur
-    // son icône seule (comme les autres boutons outil) quand les repères
-    // sont masqués, au lieu de rester une pastille large en permanence.
-    &--guides:not(.is-active) {
+    // Figma : "Repères" est un bouton icône seule, sans libellé, que les
+    // repères soient actifs ou non (le fond dégradé .is-active suffit déjà à
+    // signaler l'état).
+    &--guides {
       justify-content: center;
       width: 32px;
       padding: 0;
       gap: 0;
-
-      span:last-child { display: none; }
     }
     // display:flex ci-dessus a la même spécificité que [hidden] (une classe
     // vs un attribut) : sans cette redéclaration, .overlay-toolbar__button
@@ -741,15 +757,10 @@ $ruler-size: 20px;
     border-left-color: transparent;
   }
 
-  // Figma (mis à jour) : même traitement que les autres titres de section
-  // majeurs de l'app (DASHBOARD, MA BIBLIOTHÈQUE...) — capitales, accent.
+  // Typo partagée avec .overlay-editor__eyebrow ("OVERLAY", en face) — voir
+  // ce bloc plus haut. Seul l'espacement en bas est propre à ce contexte-ci.
   &__title {
     margin: 0 0 var(--space-8);
-    color: var(--accent-bright);
-    font-size: var(--text-12);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
   }
 
   // flex: 1 1 auto + overflow-y: auto : la liste (pas le panneau, toujours
@@ -915,9 +926,22 @@ $ruler-size: 20px;
   &__fields {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: var(--space-12);
     max-height: 50vh;
     overflow-y: auto;
+  }
+
+  // Figma : "Position & taille", "Voir le code" et "Champs" sont chacune une
+  // boîte fermée par un liseré bas — pas un simple empilement continu. La
+  // dernière section (Champs) hérite du même liseré : dans le panneau
+  // Calques, c'est lui qui sépare visuellement le calque sélectionné des
+  // calques suivants dans la liste.
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding-bottom: var(--space-12);
+    border-bottom: 1px solid var(--line);
   }
 }
 

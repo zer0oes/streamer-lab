@@ -205,6 +205,7 @@ watch(frameEl, (el) => {
   <div ref="shellWrapperEl" class="preview-shell" :class="{ 'is-checker': store.isChecker }" :style="shellStyle">
     <div class="preview-shell__canvas" :style="canvasStyle">
       <iframe
+        :key="store.previewRevision"
         ref="frameEl"
         class="preview-shell__frame"
         title="Aperçu du Custom Widget"

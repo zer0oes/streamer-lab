@@ -83,7 +83,12 @@ export function createOverlayWidgetItem(
   };
 }
 
-export function overlayItemDefaultLabel(item: OverlayItem): string {
+// widgetName : résout un widgetId vers le nom d'affichage du widget/alerte
+// (store.widgetBundles[id]?.name côté appelant) — un calque widget/alerte
+// sans nom personnalisé doit se lire comme "Barre d'objectif", pas comme son
+// slug/ID technique "zer0oes-goal-bar". Optionnel (retombe sur l'ID) pour que
+// les appelants sans accès au store — et les tests — restent simples.
+export function overlayItemDefaultLabel(item: OverlayItem, widgetName: (widgetId: string) => string | undefined = () => undefined): string {
   switch (item.type) {
     case "text":
       return "Texte";
@@ -102,12 +107,12 @@ export function overlayItemDefaultLabel(item: OverlayItem): string {
     case "placeholder":
       return item.name || "Élément StreamElements";
     default:
-      return item.widgetId || "Widget";
+      return (item.widgetId && widgetName(item.widgetId)) || item.widgetId || "Widget";
   }
 }
 
-export function overlayItemLabel(item: OverlayItem): string {
-  return item.name || overlayItemDefaultLabel(item);
+export function overlayItemLabel(item: OverlayItem, widgetName?: (widgetId: string) => string | undefined): string {
+  return item.name || overlayItemDefaultLabel(item, widgetName);
 }
 
 const PLACEHOLDER_ICONS: Record<string, string> = { video: "videocam", group: "select_all", "alert-box": "campaign", native: "widgets" };

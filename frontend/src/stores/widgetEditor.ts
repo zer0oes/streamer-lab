@@ -39,6 +39,11 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
   // pour ne pas recharger l'iframe à chaque pixel de slider glissé.
   const fieldData = reactive<Record<string, unknown>>({});
   const previewFieldData = reactive<Record<string, unknown>>({});
+  // Incrémenté à chaque application de previewFieldData : sert de :key à
+  // l'iframe d'aperçu pour la recréer (et renvoyer onWidgetLoad avec les
+  // nouvelles valeurs) même quand srcdoc ne change pas, c'est-à-dire quand le
+  // widget lit ses réglages via fieldData plutôt que via des {{placeholders}}.
+  const previewRevision = ref(0);
 
   // editorFiles : buffer brut (textarea, surlignage) mis à jour à chaque
   // frappe ; previewSource : copie débouncée utilisée pour l'aperçu.
@@ -81,6 +86,7 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
   function syncPreviewFieldDataNow(): void {
     for (const key of Object.keys(previewFieldData)) delete previewFieldData[key];
     Object.assign(previewFieldData, fieldData);
+    previewRevision.value++;
   }
 
   async function open(id: string, requestedPlatform?: Platform): Promise<void> {
@@ -208,6 +214,7 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
     loading,
     isChecker,
     srcdoc,
+    previewRevision,
     addConsoleLine,
     clearConsole,
     open,

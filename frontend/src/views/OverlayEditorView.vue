@@ -49,6 +49,7 @@ onBeforeUnmount(() => {
   <div id="overlay-editor-view" class="overlay-editor" :class="{ 'is-layers-collapsed': overlayLayersCollapsed }">
     <div class="overlay-editor__toolbar">
       <div class="overlay-editor__heading">
+        <span class="overlay-editor__eyebrow">Overlay</span>
         <h2>{{ store.overlay?.name }}</h2>
         <span class="hint">{{ store.canvas.width }} × {{ store.canvas.height }}</span>
       </div>

@@ -11,6 +11,10 @@ const store = useOverlayEditorStore();
 const renamingId = ref<string | null>(null);
 const renameValue = ref("");
 
+function labelFor(item: OverlayItem): string {
+  return overlayItemLabel(item, (widgetId) => store.widgetBundles[widgetId]?.name);
+}
+
 // Ordre d'affichage : z décroissant (le calque du dessus en premier dans la
 // liste), comme un panneau de calques classique — mais les enfants d'un
 // groupe restent indentés SOUS leur groupe plutôt que mêlés au reste par leur
@@ -32,11 +36,11 @@ function selectItem(id: string, event: MouseEvent): void {
 
 function startRename(item: OverlayItem): void {
   renamingId.value = item.id;
-  renameValue.value = overlayItemLabel(item);
+  renameValue.value = labelFor(item);
 }
 
 function commitRename(id: string): void {
-  if (renamingId.value === id) store.renameItem(id, renameValue.value.trim() || overlayItemLabel(store.getItem(id)!));
+  if (renamingId.value === id) store.renameItem(id, renameValue.value.trim() || labelFor(store.getItem(id)!));
   renamingId.value = null;
 }
 
@@ -99,8 +103,11 @@ function onDropOnGroupChild(group: OverlayItem, targetId: string): void {
             @dragover.prevent
             @drop="onDropOnTopLevel(item.id)"
           >
+            <button type="button" class="icon-button" :class="{ 'overlay-layers__lock--active': item.hidden }" title="Afficher/masquer" @click.stop="store.toggleItemHidden(item.id)">
+              <span class="material-symbols-sharp" aria-hidden="true">{{ item.hidden ? "visibility_off" : "visibility" }}</span>
+            </button>
             <span class="material-symbols-sharp" aria-hidden="true">folder</span>
-            <span v-if="renamingId !== item.id" class="overlay-layers__label" @dblclick.stop="startRename(item)">{{ overlayItemLabel(item) }}</span>
+            <span v-if="renamingId !== item.id" class="overlay-layers__label" @dblclick.stop="startRename(item)">{{ labelFor(item) }}</span>
             <input
               v-else
               v-model="renameValue"
@@ -111,9 +118,6 @@ function onDropOnGroupChild(group: OverlayItem, targetId: string): void {
               @keydown.esc="renamingId = null"
               @blur="commitRename(item.id)"
             />
-            <button type="button" class="icon-button" :class="{ 'overlay-layers__lock--active': item.hidden }" title="Afficher/masquer" @click.stop="store.toggleItemHidden(item.id)">
-              <span class="material-symbols-sharp" aria-hidden="true">{{ item.hidden ? "visibility_off" : "visibility" }}</span>
-            </button>
             <button type="button" class="icon-button" :class="{ 'overlay-layers__lock--active': item.locked }" title="Verrouiller/déverrouiller" @click.stop="store.toggleItemLocked(item.id)">
               <span class="material-symbols-sharp" aria-hidden="true">{{ item.locked ? "lock" : "lock_open" }}</span>
             </button>
@@ -133,7 +137,7 @@ function onDropOnGroupChild(group: OverlayItem, targetId: string): void {
                 @drop="onDropOnGroupChild(item, child.id)"
               >
                 <span class="material-symbols-sharp" aria-hidden="true">widgets</span>
-                <span class="overlay-layers__label">{{ overlayItemLabel(child) }}</span>
+                <span class="overlay-layers__label">{{ labelFor(child) }}</span>
               </div>
               <ItemInspector v-if="store.soleSelection?.id === child.id" />
             </template>
@@ -151,8 +155,11 @@ function onDropOnGroupChild(group: OverlayItem, targetId: string): void {
           @dragover.prevent
           @drop="onDropOnTopLevel(item.id)"
         >
+          <button type="button" class="icon-button" :class="{ 'overlay-layers__lock--active': item.hidden }" title="Afficher/masquer" @click.stop="store.toggleItemHidden(item.id)">
+            <span class="material-symbols-sharp" aria-hidden="true">{{ item.hidden ? "visibility_off" : "visibility" }}</span>
+          </button>
           <span class="material-symbols-sharp" aria-hidden="true">widgets</span>
-          <span v-if="renamingId !== item.id" class="overlay-layers__label" @dblclick.stop="startRename(item)">{{ overlayItemLabel(item) }}</span>
+          <span v-if="renamingId !== item.id" class="overlay-layers__label" @dblclick.stop="startRename(item)">{{ labelFor(item) }}</span>
           <input
             v-else
             v-model="renameValue"
@@ -163,9 +170,6 @@ function onDropOnGroupChild(group: OverlayItem, targetId: string): void {
             @keydown.esc="renamingId = null"
             @blur="commitRename(item.id)"
           />
-          <button type="button" class="icon-button" :class="{ 'overlay-layers__lock--active': item.hidden }" title="Afficher/masquer" @click.stop="store.toggleItemHidden(item.id)">
-            <span class="material-symbols-sharp" aria-hidden="true">{{ item.hidden ? "visibility_off" : "visibility" }}</span>
-          </button>
           <button type="button" class="icon-button" :class="{ 'overlay-layers__lock--active': item.locked }" title="Verrouiller/déverrouiller" @click.stop="store.toggleItemLocked(item.id)">
             <span class="material-symbols-sharp" aria-hidden="true">{{ item.locked ? "lock" : "lock_open" }}</span>
           </button>

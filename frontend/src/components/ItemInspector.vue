@@ -29,10 +29,10 @@ function updatePosition(key: "x" | "y" | "w" | "h", event: Event): void {
   store.commit();
 }
 
-function updateTextProp<K extends keyof TextProps>(key: K, value: TextProps[K]): void {
+function updateTextProp<K extends keyof TextProps>(key: K, value: TextProps[K], commit = true): void {
   if (!item.value) return;
   store.patchItem(item.value.id, { props: { ...(item.value.props as TextProps), [key]: value } });
-  store.commit();
+  if (commit) store.commit();
 }
 
 function updateProp(key: string, value: unknown): void {
@@ -45,12 +45,14 @@ function updateProp(key: string, value: unknown): void {
 <template>
   <div v-if="item" class="overlay-item-settings">
     <div class="overlay-item-settings__fields">
-      <span class="overlay-item-settings__section-title">Position &amp; taille</span>
-      <div class="overlay-item-position">
-        <label class="field"><span class="field__label">X</span><input type="number" :value="item.x" @change="updatePosition('x', $event)" /></label>
-        <label class="field"><span class="field__label">Y</span><input type="number" :value="item.y" @change="updatePosition('y', $event)" /></label>
-        <label class="field"><span class="field__label">Largeur</span><input type="number" min="8" :value="item.w" @change="updatePosition('w', $event)" /></label>
-        <label class="field"><span class="field__label">Hauteur</span><input type="number" min="8" :value="item.h" @change="updatePosition('h', $event)" /></label>
+      <div class="overlay-item-settings__section">
+        <span class="overlay-item-settings__section-title">Position &amp; taille</span>
+        <div class="overlay-item-position">
+          <label class="field"><span class="field__label">X</span><input type="number" :value="item.x" @change="updatePosition('x', $event)" /></label>
+          <label class="field"><span class="field__label">Y</span><input type="number" :value="item.y" @change="updatePosition('y', $event)" /></label>
+          <label class="field"><span class="field__label">Largeur</span><input type="number" min="8" :value="item.w" @change="updatePosition('w', $event)" /></label>
+          <label class="field"><span class="field__label">Hauteur</span><input type="number" min="8" :value="item.h" @change="updatePosition('h', $event)" /></label>
+        </div>
       </div>
 
       <template v-if="item.type === 'text'">
@@ -64,7 +66,12 @@ function updateProp(key: string, value: unknown): void {
         </label>
         <label class="field">
           <span class="field__label">Couleur</span>
-          <input type="color" :value="textItemProps.color" @change="updateTextProp('color', ($event.target as HTMLInputElement).value)" />
+          <input
+            type="color"
+            :value="textItemProps.color"
+            @input="updateTextProp('color', ($event.target as HTMLInputElement).value, false)"
+            @change="updateTextProp('color', ($event.target as HTMLInputElement).value)"
+          />
         </label>
         <label class="field">
           <span class="field__label">Alignement</span>
@@ -92,12 +99,16 @@ function updateProp(key: string, value: unknown): void {
       </template>
 
       <template v-else-if="item.type === 'widget' || item.type === 'alert'">
-        <button type="button" class="button button--quiet button--wide overlay-item-settings__code-button" @click="openCode">
-          <span class="material-symbols-sharp" aria-hidden="true">code</span>
-          Voir le code
-        </button>
-        <span class="overlay-item-settings__section-title">Champs</span>
-        <OverlayItemFieldsForm :item="item" />
+        <div class="overlay-item-settings__section">
+          <button type="button" class="button button--quiet button--wide overlay-item-settings__code-button" @click="openCode">
+            <span class="material-symbols-sharp" aria-hidden="true">code</span>
+            Voir le code
+          </button>
+        </div>
+        <div class="overlay-item-settings__section">
+          <span class="overlay-item-settings__section-title">Champs</span>
+          <OverlayItemFieldsForm :item="item" />
+        </div>
       </template>
     </div>
   </div>

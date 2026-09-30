@@ -66,8 +66,14 @@ describe("overlayItemDefaultLabel / overlayItemLabel", () => {
     expect(overlayItemDefaultLabel(item({ type: "group", props: { children: ["a", "b", "c"] } }))).toBe("Groupe (3)");
   });
 
-  it("falls back to the widget id for widget/alert items", () => {
+  it("falls back to the widget id for widget/alert items when no name resolver is given", () => {
     expect(overlayItemDefaultLabel(item({ type: "widget", widgetId: "goal-bar" }))).toBe("goal-bar");
+  });
+
+  it("prefers the resolved widget display name over the raw widget id", () => {
+    expect(overlayItemDefaultLabel(item({ type: "widget", widgetId: "goal-bar" }), (id) => (id === "goal-bar" ? "Barre d'objectif" : undefined))).toBe(
+      "Barre d'objectif"
+    );
   });
 
   it("prefers a custom name over the default label", () => {

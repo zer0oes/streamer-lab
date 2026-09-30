@@ -14,20 +14,24 @@ const props = defineProps<{
   value: unknown;
 }>();
 
-const emit = defineEmits<{ (e: "update", key: string, value: unknown): void }>();
+// commit=false (déclenché par "input", à chaque frappe/pixel de slider/glisser
+// dans le sélecteur de couleur) : aperçu live seulement, pas d'historique ni
+// de sauvegarde. commit=true ("change", relâchement/fermeture) : valeur
+// définitive, empilée dans l'historique et programmée pour la sauvegarde.
+const emit = defineEmits<{ (e: "update", key: string, value: unknown, commit: boolean): void }>();
 
 function onButtonClick(): void {
   dispatchToOverlayItems("onEventReceived", { listener: "widget-button", event: { field: props.fieldKey, value: props.definition.value } });
 }
 
 function onCheckboxChange(event: Event): void {
-  emit("update", props.fieldKey, (event.target as HTMLInputElement).checked);
+  emit("update", props.fieldKey, (event.target as HTMLInputElement).checked, true);
 }
 
-function onInputChange(event: Event): void {
+function onInputChange(event: Event, commit: boolean): void {
   const raw = (event.target as HTMLInputElement | HTMLSelectElement).value;
   const value = ["number", "slider"].includes(props.definition.type) ? Number(raw) : raw;
-  emit("update", props.fieldKey, value);
+  emit("update", props.fieldKey, value, commit);
 }
 </script>
 
@@ -52,11 +56,12 @@ function onInputChange(event: Event): void {
         :max="definition.max"
         :step="definition.step ?? definition.steps"
         :value="value"
-        @change="onInputChange"
+        @input="onInputChange($event, false)"
+        @change="onInputChange($event, true)"
       />
       <output class="field-group__control-output">{{ value }}</output>
     </div>
-    <select v-else-if="definition.type === 'dropdown'" :value="value" @change="onInputChange">
+    <select v-else-if="definition.type === 'dropdown'" :value="value" @change="onInputChange($event, true)">
       <option v-for="[optValue, label] in Object.entries(definition.options || {})" :key="optValue" :value="optValue">{{ label }}</option>
     </select>
     <input
@@ -66,7 +71,8 @@ function onInputChange(event: Event): void {
       :max="definition.max"
       :step="definition.step ?? definition.steps"
       :value="value"
-      @change="onInputChange"
+      @input="onInputChange($event, false)"
+      @change="onInputChange($event, true)"
     />
   </label>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, toRaw } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from "vue";
 import { useOverlayEditorStore } from "../stores/overlayEditor";
 import { overlayItemDefaultLabel, resolveOverlayItemFieldData } from "../lib/overlayItems";
 import { buildWidgetSrcdoc } from "../lib/widgetSrcdoc";
@@ -18,7 +18,7 @@ const textEl = ref<HTMLElement | null>(null);
 
 onMounted(() => void loadAppState());
 
-const label = computed(() => overlayItemDefaultLabel(props.item));
+const label = computed(() => overlayItemDefaultLabel(props.item, (widgetId) => store.widgetBundles[widgetId]?.name));
 
 const style = computed(() => ({
   left: `${props.item.x}px`,
@@ -84,9 +84,34 @@ const widgetFieldData = computed<Record<string, unknown>>(() => {
   return resolveOverlayItemFieldData(b.fields, props.item.props?.fieldData as Record<string, unknown> | undefined);
 });
 
+// widgetSrcdoc reconstruit et recharge l'iframe en entier (voir plus bas) :
+// bien plus coûteux qu'une simple mise à jour de style. On lit donc une copie
+// débouncée du champ modifié (previewFieldData) plutôt que widgetFieldData
+// directement, pour ne pas recharger l'iframe à chaque pixel de slider glissé
+// ou frappe dans un champ texte — même principe que
+// useWidgetEditorStore.previewFieldData / FIELD_APPLY_DEBOUNCE_MS.
+const WIDGET_FIELD_DEBOUNCE_MS = 120;
+const previewFieldData = ref<Record<string, unknown>>(widgetFieldData.value);
+let fieldDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+// :key de l'iframe : la recrée à chaque changement effectif de champ, pour
+// qu'elle reçoive un nouvel onWidgetLoad même quand widgetSrcdoc ne change
+// pas (widget qui lit ses réglages via fieldData, sans {{placeholders}}).
+const frameRevision = ref(0);
+
+watch(widgetFieldData, (next) => {
+  clearTimeout(fieldDebounceTimer);
+  fieldDebounceTimer = setTimeout(() => {
+    if (JSON.stringify(next) === JSON.stringify(previewFieldData.value)) return;
+    previewFieldData.value = next;
+    frameRevision.value++;
+  }, WIDGET_FIELD_DEBOUNCE_MS);
+});
+
+onBeforeUnmount(() => clearTimeout(fieldDebounceTimer));
+
 const widgetSrcdoc = computed(() => {
   if (!bundle.value) return "<!doctype html><body></body>";
-  return buildWidgetSrcdoc(bundle.value, widgetFieldData.value, { platform: PLATFORM_STREAM_ELEMENTS, transparent: true });
+  return buildWidgetSrcdoc(bundle.value, previewFieldData.value, { platform: PLATFORM_STREAM_ELEMENTS, transparent: true });
 });
 
 // Sans cet envoi au chargement de l'iframe, équivalent au frame.onload de
@@ -163,6 +188,7 @@ defineExpose({ beginTextEdit });
         <input
           type="color"
           :value="iconProps.color"
+          @input="(e) => store.patchItem(item.id, { props: { ...iconProps, color: (e.target as HTMLInputElement).value } })"
           @change="(e) => { store.patchItem(item.id, { props: { ...iconProps, color: (e.target as HTMLInputElement).value } }); store.commit(); }"
         />
       </span>
@@ -174,13 +200,14 @@ defineExpose({ beginTextEdit });
         <input
           type="color"
           :value="shapeProps.fill"
+          @input="(e) => store.patchItem(item.id, { props: { ...shapeProps, fill: (e.target as HTMLInputElement).value } })"
           @change="(e) => { store.patchItem(item.id, { props: { ...shapeProps, fill: (e.target as HTMLInputElement).value } }); store.commit(); }"
         />
       </span>
     </div>
 
     <template v-if="item.type === 'widget' || item.type === 'alert'">
-      <iframe class="overlay-item__frame" sandbox="allow-scripts" scrolling="no" :title="item.widgetId" :srcdoc="widgetSrcdoc" @load="onWidgetFrameLoad"></iframe>
+      <iframe :key="frameRevision" class="overlay-item__frame" sandbox="allow-scripts" scrolling="no" :title="item.widgetId" :srcdoc="widgetSrcdoc" @load="onWidgetFrameLoad"></iframe>
     </template>
     <div
       v-else-if="item.type === 'text'"

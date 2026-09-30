@@ -40,19 +40,43 @@
           "dateFormat": "JJ/MM/AAAA • HH:mm:ss"
         }
       }
+    },
+    {
+      "id": "item-mt1ajht5-8yexb",
+      "type": "widget",
+      "widgetId": "zer0oes-goal-bar",
+      "x": 1445,
+      "y": 987,
+      "w": 500,
+      "h": 100,
+      "z": 2,
+      "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
+      "props": {
+        "fieldData": {
+          "goal_type": "subs",
+          "goal_total": 50,
+          "title": "Sub pour voir la cam",
+          "border_color": "#34385f"
+        }
+      }
     }
   ],
   "guides": {
     "horizontal": [
-      42
+      42,
+      1063
     ],
     "vertical": [
       21,
-      1900
+      1900,
+      960
     ]
   },
   "sourcePlatform": null,
   "sourceOverlayId": null,
   "createdAt": 1786641205234,
-  "updatedAt": 1786727429238
+  "updatedAt": 1787216693336
 }

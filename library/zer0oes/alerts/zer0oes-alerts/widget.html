@@ -5,20 +5,30 @@
 />
 <link
   rel="stylesheet"
-  href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Press+Start+2P&display=swap"
+  href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Oswald:wght@300;500&display=swap"
 />
 
 <div class="stage" id="stage">
-  <div class="alert" id="alert">
-    <div class="alert-icon-wrap">
-      <span id="alertIcon" class="material-symbols-sharp alert-icon" aria-hidden="true"></span>
+  <div class="card" id="alert">
+    <div class="card-panel">
+      <!-- Icône du type en filigrane, inclinée, rognée par le bloc -->
+      <span id="alertIcon" class="material-symbols-sharp card-icon" aria-hidden="true"></span>
+      <div class="title" id="alertTitle">
+        <!-- Deux calques identiques, décalés : trait secondaire derrière, accent devant -->
+        <div class="title-layer title-layer--back" aria-hidden="true"></div>
+        <div class="title-layer title-layer--front"></div>
+      </div>
     </div>
-    <div class="alert-body">
-      <div class="alert-line1" id="alertLine1"></div>
-      <div class="alert-line2" id="alertLine2"></div>
-      <div class="alert-name" id="alertName"></div>
-      <div class="alert-message" id="alertMessage"></div>
+
+    <div class="card-stats">
+      <span class="card-number" id="alertNumber"></span>
+      <span class="card-unit" id="alertUnit"></span>
     </div>
+
+    <div class="card-divider"></div>
+
+    <div class="card-name"><span class="card-name-text" id="alertName"></span></div>
+    <div class="card-message" id="alertMessage"></div>
   </div>
 </div>
 
