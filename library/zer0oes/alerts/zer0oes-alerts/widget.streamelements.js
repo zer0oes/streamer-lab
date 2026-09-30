@@ -451,6 +451,9 @@ function showNext(){
   const next = queue.shift();
   if (!next){
     isShowing = false;
+    // Sortie terminée : on coupe les boucles du titre (infinite) qui
+    // tourneraient sinon sur une carte invisible.
+    document.getElementById("alert")?.classList.remove("is-leaving");
     return;
   }
   isShowing = true;

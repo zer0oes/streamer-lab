@@ -197,34 +197,34 @@ body {
   transform: translate(var(--off, 4px), var(--off, 4px));
 }
 
-.card.is-visible .title-layer--front {
+.card:is(.is-visible, .is-leaving) .title-layer--front {
   animation: titleGlitch 900ms steps(1, end) 120ms both;
 }
 
-.card.is-visible .title-layer--back {
+.card:is(.is-visible, .is-leaving) .title-layer--back {
   animation:
     titleGlitch 900ms steps(1, end) 60ms both,
     backSettle 1100ms cubic-bezier(0.2, 0.9, 0.2, 1) 60ms both;
 }
 
-.card.no-glitch.is-visible .title-layer--front,
-.card.no-glitch.is-visible .title-layer--back {
+.card.no-glitch:is(.is-visible, .is-leaving) .title-layer--front,
+.card.no-glitch:is(.is-visible, .is-leaving) .title-layer--back {
   animation: titleFade 500ms ease 120ms both;
 }
 
-/* Animation continue pendant l'affichage (désactivable : .no-idle), qui
+/* Animation continue pendant l'affichage ET la sortie (désactivable : .no-idle), qui
    prend le relais de l'entrée : le trait secondaire dérive autour de
    l'accent, et de brefs sursauts "glitch" reviennent de temps en temps,
    désynchronisés entre les deux calques. Ces animations viennent après
    celles d'entrée dans la liste : elles les écrasent une fois démarrées,
    leurs images "au repos" reprenant l'état final de l'entrée. */
-.card.is-visible:not(.no-idle) .title-layer--front {
+.card:is(.is-visible, .is-leaving):not(.no-idle) .title-layer--front {
   animation:
     titleGlitch 900ms steps(1, end) 120ms both,
     idleGlitch 4.2s steps(1, end) 1.6s infinite;
 }
 
-.card.is-visible:not(.no-idle) .title-layer--back {
+.card:is(.is-visible, .is-leaving):not(.no-idle) .title-layer--back {
   animation:
     titleGlitch 900ms steps(1, end) 60ms both,
     backSettle 1100ms cubic-bezier(0.2, 0.9, 0.2, 1) 60ms both,
@@ -232,11 +232,11 @@ body {
     idleGlitch 4.2s steps(1, end) 3.1s infinite;
 }
 
-.card.no-glitch.is-visible:not(.no-idle) .title-layer--front {
+.card.no-glitch:is(.is-visible, .is-leaving):not(.no-idle) .title-layer--front {
   animation: titleFade 500ms ease 120ms both;
 }
 
-.card.no-glitch.is-visible:not(.no-idle) .title-layer--back {
+.card.no-glitch:is(.is-visible, .is-leaving):not(.no-idle) .title-layer--back {
   animation:
     titleFade 500ms ease 120ms both,
     backDrift 3.6s ease-in-out 620ms infinite;
