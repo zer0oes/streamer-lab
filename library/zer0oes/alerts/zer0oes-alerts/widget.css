@@ -1,7 +1,7 @@
 :root {
   --title-font: "Bungee";
   --number-font: "Anton";
-  --w: 260px;
+  --w: 240px;
   --anim: 600ms;
   --text-size: 13px;
 
@@ -162,7 +162,7 @@ body {
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  aspect-ratio: 1 / 0.86;
+  aspect-ratio: 1 / 0.76;
   padding: 0.9em;
   box-sizing: border-box;
   background: var(--panel-bg);

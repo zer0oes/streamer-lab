@@ -2,7 +2,7 @@
   "id": "music-player",
   "name": "zer0oes - Music player",
   "description": "Affichage de la musique en cours de lecture sur Spotify",
-  "icon": "star",
+  "icon": "music_note",
   "width": 500,
   "height": 100,
   "order": 60,

@@ -14,9 +14,13 @@ import {
   createOverlayWidgetItem,
   centerOverlayItem,
   distributeItems,
+  selectionUnits,
+  withGroupChildrenMoves,
   type AlignEdge
 } from "../lib/overlayItems";
 import type { WidgetBundle } from "../lib/widgetSrcdoc";
+import { configuredFieldOverrides, fieldStorageKey, normalizeFieldDefinitions } from "../lib/fieldData";
+import { PLATFORM_STREAM_ELEMENTS, PLATFORM_STREAMLABS } from "../lib/platformEvents";
 
 export interface OverlayWidgetBundle extends WidgetBundle {
   fields: FieldDefinitions;
@@ -228,6 +232,16 @@ export const useOverlayEditorStore = defineStore("overlayEditor", () => {
     await loadWidgetBundle(widgetId);
     const size = widgetSizes[widgetId] || { width: 400, height: 200 };
     const item = createOverlayWidgetItem(overlay.value.items, widgetId, isAlert, size.width, size.height);
+    // Reprend les réglages définis dans l'éditeur du widget (aperçu
+    // StreamElements en priorité, comme le rendu du canevas, sinon Streamlabs)
+    const bundle = widgetBundles[widgetId];
+    if (bundle) {
+      const fieldData = configuredFieldOverrides(normalizeFieldDefinitions(bundle.fields), [
+        fieldStorageKey(widgetId, PLATFORM_STREAM_ELEMENTS),
+        fieldStorageKey(widgetId, PLATFORM_STREAMLABS)
+      ]);
+      if (Object.keys(fieldData).length > 0) item.props = { fieldData };
+    }
     setItems([...overlay.value.items, item]);
     selectOnly(item.id);
     commit();
@@ -277,22 +291,29 @@ export const useOverlayEditorStore = defineStore("overlayEditor", () => {
 
   // --- Alignement / distribution / centrage ---
 
+  // Un groupe sélectionné se déplace d'un bloc (enfants compris). Un seul
+  // bloc sélectionné s'aligne sur le canevas ; plusieurs, sur leur boîte
+  // englobante commune.
   function align(edge: AlignEdge): void {
-    if (selectedItems.value.length === 0) return;
-    patchItems(alignItemsTo(selectedItems.value, edge));
+    const units = selectionUnits(selectedItems.value);
+    if (units.length === 0) return;
+    const reference = units.length === 1 ? { x: 0, y: 0, w: canvas.value.width, h: canvas.value.height } : undefined;
+    patchItems(withGroupChildrenMoves(items.value, alignItemsTo(units, edge, reference)));
     commit();
   }
 
   function distribute(axis: "horizontal" | "vertical"): void {
-    if (selectedItems.value.length < 3) return;
-    patchItems(distributeItems(selectedItems.value, axis));
+    const units = selectionUnits(selectedItems.value);
+    if (units.length < 3) return;
+    patchItems(withGroupChildrenMoves(items.value, distributeItems(units, axis)));
     commit();
   }
 
   function centerSelectionInCanvas(): void {
-    if (selectedItems.value.length === 0) return;
-    const updates = new Map(selectedItems.value.map((item) => [item.id, centerOverlayItem(item, canvas.value)]));
-    patchItems(updates);
+    const units = selectionUnits(selectedItems.value);
+    if (units.length === 0) return;
+    const updates = new Map(units.map((item) => [item.id, centerOverlayItem(item, canvas.value)]));
+    patchItems(withGroupChildrenMoves(items.value, updates));
     commit();
   }
 

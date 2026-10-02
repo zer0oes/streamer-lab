@@ -14,6 +14,20 @@ export function fieldStorageKey(widgetId: string, platform: string): string {
   return `se-lab-fields-${widgetId}-${platform}`;
 }
 
+// Réglages faits dans l'éditeur du widget (localStorage), réduits aux seules
+// valeurs qui diffèrent des valeurs par défaut de fields.json : à l'ajout du
+// widget sur un overlay, ils deviennent les surcharges propres à cet item,
+// tandis que les champs jamais touchés continuent de suivre fields.json.
+// Le premier storageKey réellement présent gagne (ordre de préférence).
+export function configuredFieldOverrides(definitions: FieldDefinitions, storageKeys: string[]): Record<string, unknown> {
+  const storageKey = storageKeys.find((key) => localStorage.getItem(key) !== null);
+  if (!storageKey) return {};
+  const configured = loadFieldData(definitions, storageKey);
+  return Object.fromEntries(
+    Object.entries(configured).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(definitions[key]?.value))
+  );
+}
+
 export function loadFieldData(definitions: FieldDefinitions, storageKey: string): Record<string, unknown> {
   const defaults = Object.fromEntries(Object.entries(definitions).map(([key, field]) => [key, field.value]));
   try {

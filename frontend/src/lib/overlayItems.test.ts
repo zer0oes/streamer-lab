@@ -12,7 +12,9 @@ import {
   overlayItemLabel,
   overlayLayerIcon,
   overlayPreviewItemIcon,
-  resolveOverlayItemFieldData
+  resolveOverlayItemFieldData,
+  selectionUnits,
+  withGroupChildrenMoves
 } from "./overlayItems";
 import type { OverlayItem } from "./overlayTypes";
 import type { FieldDefinitions } from "../api/widgetDetail";
@@ -153,6 +155,45 @@ describe("alignItemsTo", () => {
     const updates = alignItemsTo(items, "bottom");
     expect(updates.get("a")).toEqual({ y: 0 });
     expect(updates.get("b")).toEqual({ y: 30 });
+  });
+
+  it("aligns to an explicit reference box (e.g. the canvas) instead of the selection", () => {
+    const canvasBox = { x: 0, y: 0, w: 1920, h: 1080 };
+    expect(alignItemsTo([items[1]], "right", canvasBox)).toEqual(new Map([["b", { x: 1900 }]]));
+    expect(alignItemsTo([items[1]], "vcenter", canvasBox)).toEqual(new Map([["b", { y: 530 }]]));
+  });
+});
+
+describe("selectionUnits", () => {
+  it("drops children whose group is also selected", () => {
+    const group = item({ id: "g", type: "group", props: { children: ["a", "b"] } });
+    const units = selectionUnits([group, item({ id: "a" }), item({ id: "c" })]);
+    expect(units.map((unit) => unit.id)).toEqual(["g", "c"]);
+  });
+});
+
+describe("withGroupChildrenMoves", () => {
+  const all = [
+    item({ id: "g", type: "group", x: 100, y: 100, w: 300, h: 100, props: { children: ["a", "b"] } }),
+    item({ id: "a", x: 100, y: 100, w: 100, h: 100 }),
+    item({ id: "b", x: 300, y: 120, w: 100, h: 50 }),
+    item({ id: "c", x: 900, y: 900 })
+  ];
+
+  it("moves a group's children by the same offset as the group", () => {
+    const result = withGroupChildrenMoves(all, new Map([["g", { x: 0 }]]));
+    expect(result).toEqual(new Map([["g", { x: 0 }], ["a", { x: 0 }], ["b", { x: 200 }]]));
+  });
+
+  it("handles both axes and leaves non-group updates untouched", () => {
+    const result = withGroupChildrenMoves(all, new Map([["g", { x: 110, y: 90 }], ["c", { y: 0 }]]));
+    expect(result.get("a")).toEqual({ x: 110, y: 90 });
+    expect(result.get("b")).toEqual({ x: 310, y: 110 });
+    expect(result.get("c")).toEqual({ y: 0 });
+  });
+
+  it("does not touch children when the group does not move", () => {
+    expect(withGroupChildrenMoves(all, new Map([["g", { x: 100 }]])).size).toBe(1);
   });
 });
 

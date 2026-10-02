@@ -12,6 +12,7 @@
     "dev:vue": "npm --prefix frontend run dev",
     "typecheck": "npm --prefix frontend run typecheck",
     "clean": "node scripts/clean.mjs",
+    "spotify:token": "node scripts/spotify-token.mjs",
     "reinstall": "npm run clean && npm install",
     "test": "node --test && npm run test:frontend",
     "test:frontend": "npm --prefix frontend run test"

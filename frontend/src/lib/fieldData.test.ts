@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { fieldStorageKey, loadFieldData, normalizeFieldDefinitions } from "./fieldData";
+import { configuredFieldOverrides, fieldStorageKey, loadFieldData, normalizeFieldDefinitions } from "./fieldData";
 import type { FieldDefinitions } from "../api/widgetDetail";
 
 beforeEach(() => {
@@ -63,5 +63,34 @@ describe("loadFieldData", () => {
   it("retombe sur les défauts si le JSON persisté est invalide", () => {
     localStorage.setItem("key", "{invalide");
     expect(loadFieldData(definitions, "key")).toEqual({ title: "Défaut", goal: 100, theme: "dark" });
+  });
+});
+
+describe("configuredFieldOverrides", () => {
+  const definitions: FieldDefinitions = {
+    title: { type: "text", value: "Défaut" },
+    goal: { type: "number", value: 100, min: 0, max: 1000 },
+    theme: { type: "dropdown", value: "dark", options: { dark: "Sombre", light: "Clair" } }
+  };
+
+  it("ne renvoie rien si le widget n'a jamais été réglé", () => {
+    expect(configuredFieldOverrides(definitions, ["se", "sl"])).toEqual({});
+  });
+
+  it("ne garde que les valeurs différentes des défauts", () => {
+    localStorage.setItem("se", JSON.stringify({ title: "Défaut", goal: 250, theme: "light" }));
+    expect(configuredFieldOverrides(definitions, ["se", "sl"])).toEqual({ goal: 250, theme: "light" });
+  });
+
+  it("utilise la première clé présente, dans l'ordre de préférence", () => {
+    localStorage.setItem("sl", JSON.stringify({ title: "Streamlabs" }));
+    expect(configuredFieldOverrides(definitions, ["se", "sl"])).toEqual({ title: "Streamlabs" });
+    localStorage.setItem("se", JSON.stringify({ title: "StreamElements" }));
+    expect(configuredFieldOverrides(definitions, ["se", "sl"])).toEqual({ title: "StreamElements" });
+  });
+
+  it("écarte les valeurs invalides comme loadFieldData", () => {
+    localStorage.setItem("se", JSON.stringify({ goal: 99999, theme: "neon" }));
+    expect(configuredFieldOverrides(definitions, ["se"])).toEqual({ goal: 1000 });
   });
 });

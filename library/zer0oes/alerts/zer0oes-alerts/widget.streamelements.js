@@ -113,7 +113,7 @@ function normalizeFields(raw){
   return {
     title_font: String(raw.title_font ?? "Bungee"),
     number_font: String(raw.number_font ?? "Anton"),
-    card_width: clamp(num(raw.card_width ?? 260), 140, 800),
+    card_width: clamp(num(raw.card_width ?? 240), 140, 800),
     text_size: Math.max(8, num(raw.text_size ?? 13)),
 
     card_bg: hexOr(raw.card_bg, "#ffffff"),
@@ -178,7 +178,7 @@ function getSetting(key, fallback){
 function applyStyleSettings(){
   const root = document.documentElement.style;
   setGoogleFonts(getSetting("title_font", "Bungee"), getSetting("number_font", "Anton"));
-  root.setProperty("--w", getSetting("card_width", 260) + "px");
+  root.setProperty("--w", getSetting("card_width", 240) + "px");
   root.setProperty("--text-size", getSetting("text_size", 13) + "px");
   root.setProperty("--card-bg", getSetting("card_bg", "#ffffff"));
   root.setProperty("--card-border", getSetting("card_border", "#e3dff0"));

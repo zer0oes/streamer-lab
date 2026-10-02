@@ -14,7 +14,7 @@ import { useDropdownToggle } from "../composables/useDropdownToggle";
 import { stepOverlayZoom } from "../lib/overlayGeometry";
 import { widgetDialog, pendingOverlayWidgetPlacement } from "../composables/useDialogs";
 import OverlayItemPickerDialog from "./OverlayItemPickerDialog.vue";
-import type { AlignEdge } from "../lib/overlayItems";
+import { selectionUnits, type AlignEdge } from "../lib/overlayItems";
 import type { LibraryEntry } from "../api/types";
 
 const store = useOverlayEditorStore();
@@ -82,6 +82,8 @@ const projectId = computed(() => store.overlay?.projectId || "");
 const selectionCount = computed(() => store.selectedIds.size);
 const isUngroupMode = computed(() => store.soleSelection?.type === "group");
 const groupButtonVisible = computed(() => isUngroupMode.value || selectionCount.value >= 2);
+// Un groupe compte pour un seul bloc à distribuer, enfants compris
+const canDistribute = computed(() => selectionUnits(store.selectedItems).length >= 3);
 
 const zoomPercent = computed(() => (store.zoomMode === "fit" ? null : Math.round((store.zoomMode as number) * 100)));
 
@@ -266,7 +268,7 @@ function onZoomStep(direction: number): void {
         </button>
       </div>
 
-      <template v-if="selectionCount >= 3">
+      <template v-if="canDistribute">
         <div class="overlay-toolbar__divider"></div>
 
         <div class="overlay-toolbar__group" role="group" aria-label="Distribution">

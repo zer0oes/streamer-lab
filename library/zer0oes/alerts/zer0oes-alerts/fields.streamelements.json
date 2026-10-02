@@ -19,7 +19,7 @@
   "card_width": {
     "type": "number",
     "label": "Largeur de la carte (px)",
-    "value": 260,
+    "value": 240,
     "min": 140,
     "max": 800,
     "step": 10,

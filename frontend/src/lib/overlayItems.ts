@@ -178,14 +178,53 @@ export function createOverlayGroup(items: OverlayItem[], memberIds: string[]): O
   return { id: generateOverlayItemId(), type: "group", ...box, z, props: { children: memberIds } };
 }
 
+function groupChildIds(item: OverlayItem): string[] {
+  return item.type === "group" ? ((item.props?.children as string[] | undefined) || []) : [];
+}
+
+// Éléments à aligner/distribuer comme des blocs : un groupe sélectionné
+// compte pour un seul bloc, et ses enfants également sélectionnés en sont
+// retirés (sinon ils seraient déplacés deux fois, une fois avec le groupe).
+export function selectionUnits(selected: OverlayItem[]): OverlayItem[] {
+  const childrenOfSelectedGroups = new Set(selected.flatMap(groupChildIds));
+  return selected.filter((item) => !childrenOfSelectedGroups.has(item.id));
+}
+
+// Propage aux enfants le déplacement de chaque groupe présent dans `updates`
+// (même décalage x/y, comme au glisser d'un groupe sur le canevas).
+export function withGroupChildrenMoves(
+  items: OverlayItem[],
+  updates: Map<string, { x?: number; y?: number }>
+): Map<string, { x?: number; y?: number }> {
+  const result = new Map(updates);
+  for (const [id, update] of updates) {
+    const group = items.find((item) => item.id === id);
+    if (!group || group.type !== "group") continue;
+    const dx = update.x === undefined ? 0 : update.x - group.x;
+    const dy = update.y === undefined ? 0 : update.y - group.y;
+    if (dx === 0 && dy === 0) continue;
+    for (const childId of groupChildIds(group)) {
+      const child = items.find((item) => item.id === childId);
+      if (!child) continue;
+      const childUpdate: { x?: number; y?: number } = { ...result.get(childId) };
+      if (dx !== 0) childUpdate.x = child.x + dx;
+      if (dy !== 0) childUpdate.y = child.y + dy;
+      result.set(childId, childUpdate);
+    }
+  }
+  return result;
+}
+
 export function centerOverlayItem(item: OverlayItem, canvas: OverlayCanvasSize): { x: number; y: number } {
   return { x: Math.round((canvas.width - item.w) / 2), y: Math.round((canvas.height - item.h) / 2) };
 }
 
 export type AlignEdge = "left" | "hcenter" | "right" | "top" | "vcenter" | "bottom";
 
-export function alignItemsTo(items: OverlayItem[], edge: AlignEdge): Map<string, { x?: number; y?: number }> {
-  const box = boundingBoxOf(items);
+// `reference` : boîte sur laquelle aligner (ex. le canevas quand un seul
+// élément est sélectionné) ; par défaut, la boîte englobante de la sélection.
+export function alignItemsTo(items: OverlayItem[], edge: AlignEdge, reference?: BoundingBox): Map<string, { x?: number; y?: number }> {
+  const box = reference || boundingBoxOf(items);
   const updates = new Map<string, { x?: number; y?: number }>();
   for (const item of items) {
     if (edge === "left") updates.set(item.id, { x: box.x });

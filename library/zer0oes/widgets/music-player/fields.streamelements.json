@@ -1,20 +1,203 @@
-[
-  {
-    "name": "message",
-    "type": "textfield",
-    "label": "Message",
-    "value": "Nouveau widget"
+{
+  "widgetName": {
+    "type": "hidden",
+    "value": "zer0oes Music Player",
+    "group": "Spotify"
   },
-  {
-    "name": "textColor",
+  "spotify_client_id": {
+    "type": "text",
+    "label": "Client ID (developer.spotify.com)",
+    "value": "",
+    "group": "Spotify"
+  },
+  "spotify_client_secret": {
+    "type": "text",
+    "label": "Client Secret",
+    "value": "",
+    "group": "Spotify"
+  },
+  "spotify_refresh_token": {
+    "type": "text",
+    "label": "Refresh token (npm run spotify:token)",
+    "value": "",
+    "group": "Spotify"
+  },
+  "poll_interval": {
+    "type": "number",
+    "label": "Rafraîchissement (secondes)",
+    "value": 5,
+    "min": 2,
+    "max": 60,
+    "step": 1,
+    "group": "Spotify"
+  },
+  "hide_when_paused": {
+    "type": "dropdown",
+    "label": "Quand rien ne joue",
+    "value": "hide",
+    "options": {
+      "hide": "Masquer le lecteur",
+      "show": "Afficher en pause"
+    },
+    "group": "Spotify"
+  },
+  "demo_mode": {
+    "type": "dropdown",
+    "label": "Mode démo",
+    "value": "auto",
+    "options": {
+      "auto": "Si identifiants absents",
+      "always": "Toujours (test)",
+      "never": "Jamais"
+    },
+    "group": "Spotify"
+  },
+  "show_cover": {
+    "type": "dropdown",
+    "label": "Pochette",
+    "value": "yes",
+    "options": {
+      "yes": "Afficher",
+      "no": "Masquer"
+    },
+    "group": "Contenu"
+  },
+  "show_progress": {
+    "type": "dropdown",
+    "label": "Barre de progression",
+    "value": "yes",
+    "options": {
+      "yes": "Afficher",
+      "no": "Masquer"
+    },
+    "group": "Contenu"
+  },
+  "font_family": {
+    "type": "dropdown",
+    "label": "Police",
+    "value": "Poppins",
+    "options": {
+      "Poppins": "Poppins",
+      "Inter": "Inter",
+      "Montserrat": "Montserrat",
+      "Roboto": "Roboto"
+    },
+    "group": "Apparence"
+  },
+  "font_weight": {
+    "type": "dropdown",
+    "label": "Graisse du titre",
+    "value": "600",
+    "options": {
+      "400": "Regular (400)",
+      "500": "Medium (500)",
+      "600": "SemiBold (600)",
+      "700": "Bold (700)",
+      "800": "ExtraBold (800)"
+    },
+    "group": "Apparence"
+  },
+  "text_size": {
+    "type": "number",
+    "label": "Taille du titre (px)",
+    "value": 14,
+    "min": 8,
+    "max": 40,
+    "step": 1,
+    "group": "Apparence"
+  },
+  "width": {
+    "type": "number",
+    "label": "Largeur (0 = responsive)",
+    "value": 400,
+    "min": 0,
+    "max": 1920,
+    "step": 10,
+    "group": "Apparence"
+  },
+  "height": {
+    "type": "number",
+    "label": "Hauteur (px)",
+    "value": 46,
+    "min": 24,
+    "max": 120,
+    "step": 2,
+    "group": "Apparence"
+  },
+  "corner_radius": {
+    "type": "number",
+    "label": "Arrondi (px, -1 = pilule)",
+    "value": -1,
+    "min": -1,
+    "max": 120,
+    "step": 1,
+    "group": "Apparence"
+  },
+  "text_color": {
     "type": "colorpicker",
     "label": "Couleur du texte",
-    "value": "#FFFFFF"
+    "value": "#FFFFFF",
+    "group": "Apparence"
   },
-  {
-    "name": "fontSize",
+  "accent_color": {
+    "type": "colorpicker",
+    "label": "Couleur de la progression",
+    "value": "#571BC3",
+    "group": "Apparence"
+  },
+  "border_color": {
+    "type": "colorpicker",
+    "label": "Couleur du contour",
+    "value": "#FFFFFF",
+    "group": "Apparence"
+  },
+  "border_width": {
     "type": "number",
-    "label": "Taille du texte (px)",
-    "value": "28"
+    "label": "Épaisseur du contour (px)",
+    "value": 1,
+    "min": 0,
+    "max": 10,
+    "step": 1,
+    "group": "Apparence"
+  },
+  "border_opacity": {
+    "type": "number",
+    "label": "Opacité du contour (0 = invisible)",
+    "value": 1,
+    "min": 0,
+    "max": 1,
+    "step": 0.05,
+    "group": "Apparence"
+  },
+  "background_type": {
+    "type": "dropdown",
+    "label": "Type de fond",
+    "value": "gradient",
+    "options": {
+      "solid": "Uni",
+      "gradient": "Dégradé"
+    },
+    "group": "Apparence"
+  },
+  "background_color1": {
+    "type": "colorpicker",
+    "label": "Fond : couleur 1",
+    "value": "#161225",
+    "group": "Apparence"
+  },
+  "background_color2": {
+    "type": "colorpicker",
+    "label": "Fond : couleur 2 (si dégradé)",
+    "value": "#231A3D",
+    "group": "Apparence"
+  },
+  "background_opacity": {
+    "type": "number",
+    "label": "Opacité du fond",
+    "value": 1,
+    "min": 0,
+    "max": 1,
+    "step": 0.05,
+    "group": "Apparence"
   }
-]
+}

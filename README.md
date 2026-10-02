@@ -77,7 +77,7 @@ En plus du mode simulation, un éditeur visuel permet de composer un overlay com
 Un overlay est composé d’éléments positionnés librement sur un canevas : widget ou alerte de la bibliothèque, texte, image, vidéo, embed (URL uniquement — les `data:` URI sont refusées), icône, forme ou groupe. Le canevas propose des formats prédéfinis 16:9 et 9:16, ou des dimensions personnalisées (100 à 7680 px).
 
 - **Calques** : réordonner, renommer, masquer et verrouiller depuis le panneau dédié ; les enfants d'un groupe s'affichent indentés sous lui.
-- **Barre d’outils** : outil sélection, menu « Ajouter » (widget/alerte existant de la bibliothèque, ou nouveau texte/image/icône/forme/vidéo/embed depuis un lien), groupement, duplication, suppression, centrage, alignement (6 directions) et répartition horizontale/verticale.
+- **Barre d’outils** : outil sélection, menu « Ajouter » (widget/alerte existant de la bibliothèque, ou nouveau texte/image/icône/forme/vidéo/embed depuis un lien), groupement, duplication, suppression, centrage, alignement (6 directions) et répartition horizontale/verticale. Un groupe se comporte comme un seul bloc (ses enfants suivent) ; un élément ou groupe sélectionné seul s’aligne sur le canevas, plusieurs s’alignent entre eux.
 - **Zoom** avec boutons `+`/`−` et pourcentage cliquable pour ajuster à la fenêtre.
 - Le déplacement et le redimensionnement (poignées aux 4 coins, y compris un redimensionnement proportionnel pour un groupe entier) s'accrochent au centre horizontal/vertical du canevas.
 - **Annuler/rétablir** : `Ctrl/Cmd + Z`, `Ctrl/Cmd + Maj + Z` ou `Ctrl/Cmd + Y` ; `Ctrl/Cmd + D` duplique la sélection ; `Suppr`/`Retour arrière` supprime la sélection ; `Échap` la vide. Ces raccourcis sont inactifs pendant l'édition d'un champ texte.
@@ -143,6 +143,18 @@ Ils sont modifiables avec `SE_TOPICS`. Le jeton doit disposer des scopes corresp
 Le statut passe à `connected` dès que la plateforme simulée sélectionnée en haut de la page est **Streamlabs**. Les deux connexions (StreamElements et Streamlabs) peuvent tourner en parallèle indépendamment ; l’indicateur affiche toujours le statut de la plateforme actuellement sélectionnée dans l’outil. Les événements réels reçus (follow, subscription, donation, host, bits) sont convertis vers la forme interne du laboratoire puis retraduits au format natif de la plateforme simulée avant d’être envoyés au widget.
 
 > Le Socket API Streamlabs utilise le protocole socket.io v2 ; ne pas mettre à jour la dépendance `socket.io-client` vers une version majeure supérieure sans vérifier la compatibilité.
+
+## Widget Music player (Spotify)
+
+Le widget `library/zer0oes/widgets/music-player/` affiche le morceau en cours de lecture via la Web API Spotify, interrogée directement depuis le widget. Il a besoin de trois champs : **Client ID**, **Client Secret** et **Refresh token**.
+
+1. Créer une app sur [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) (API : Web API) avec la Redirect URI `http://127.0.0.1:8888/callback`.
+2. Lancer `npm run spotify:token -- <client_id> <client_secret>`, autoriser l’accès dans le navigateur, puis copier le refresh token affiché dans le terminal.
+3. Renseigner les trois valeurs dans les champs du widget (localement puis sur StreamElements/Streamlabs).
+
+Sans identifiants, le widget tourne en mode démo dans l’éditeur (laboratoire ou éditeur StreamElements) et reste masqué en live. Les erreurs d’authentification ne s’affichent que dans l’éditeur.
+
+> Les identifiants sont visibles par quiconque a accès aux champs du widget : ne pas partager l’overlay ni ses exports.
 
 ## Compatibilité et limites
 

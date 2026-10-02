@@ -15,10 +15,10 @@
       "type": "widget",
       "widgetId": "zer0oes-goal-bar",
       "x": 710,
-      "y": 936,
+      "y": 940,
       "w": 500,
       "h": 100,
-      "z": 2,
+      "z": 5,
       "hidden": false,
       "locked": false,
       "name": "",
@@ -30,7 +30,9 @@
           "title": "Sub et je mets la cam !",
           "border_color": "#34385f",
           "border_opacity": 0.8,
-          "background_opacity": 0.7
+          "background_opacity": 0.7,
+          "width": 450,
+          "height": 36
         }
       }
     },
@@ -42,9 +44,9 @@
       "y": 906,
       "w": 709,
       "h": 121,
-      "z": 3,
+      "z": 2,
       "hidden": false,
-      "locked": false,
+      "locked": true,
       "name": "",
       "collapsed": false,
       "props": {
@@ -61,7 +63,7 @@
       "y": 86,
       "w": 420,
       "h": 750,
-      "z": 4,
+      "z": 3,
       "hidden": false,
       "locked": false,
       "name": "",
@@ -86,7 +88,7 @@
       "h": 1080,
       "z": 1,
       "hidden": false,
-      "locked": false,
+      "locked": true,
       "name": "Starting soon",
       "collapsed": false,
       "props": {
@@ -95,10 +97,37 @@
         "loop": true,
         "muted": true
       }
+    },
+    {
+      "id": "item-mur4w72h-c7ndq",
+      "type": "widget",
+      "widgetId": "music-player",
+      "x": 710,
+      "y": 885,
+      "w": 500,
+      "h": 100,
+      "z": 4,
+      "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
+      "props": {
+        "fieldData": {
+          "height": 36,
+          "width": 450,
+          "border_color": "#34385f",
+          "background_opacity": 0.75,
+          "spotify_client_id": "a136f08305c84aa89fa0f1a74854da78",
+          "spotify_client_secret": "d64f2f9cc52443e0b0c75e2e47d656eb",
+          "spotify_refresh_token": "AQAmcHdhK5bNi1aKnGiBVprbuB58b0nymHqUqQWUegY3zmAQlqB8Ewo5UECjLLt405qtbzoLG_UMiRje68l8FtGZ6MrYB8jZnxvcsGsD0qw2V4sLcRWNhllukkkC8pVAEu8",
+          "text_size": 14,
+          "font_weight": "500"
+        }
+      }
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1787226409245,
+  "updatedAt": 1790957323801,
   "guides": {
     "horizontal": [
       966,

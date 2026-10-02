@@ -73,6 +73,23 @@
       "props": {
         "sourceType": "native"
       }
+    },
+    {
+      "id": "item-mur5lt8p-g9m21",
+      "type": "widget",
+      "widgetId": "music-player",
+      "x": 711,
+      "y": 865,
+      "w": 500,
+      "h": 100,
+      "z": 6,
+      "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
+      "props": {
+        "fieldData": {}
+      }
     }
   ],
   "guides": {
@@ -82,5 +99,5 @@
   "sourcePlatform": "streamelements",
   "sourceOverlayId": "694bf005810ac3635499c107",
   "createdAt": 1786640635425,
-  "updatedAt": 1786640635429
+  "updatedAt": 1790957087646
 }

@@ -1,12 +1,240 @@
-.widget-message {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  margin: 0;
-  color: {{textColor}};
-  font-family: "Inter", sans-serif;
-  font-size: {{fontSize}}px;
-  font-weight: 600;
-  text-align: center;
+:root {
+	--w: 400px;
+	--h: 46px;
+	--radius: 23px;
+	--reveal: 6px;
+	--border-color: #ffffff;
+	--border-width: 1px;
+	--bg: linear-gradient(135deg, #161225, #231a3d);
+	--accent: #571bc3;
+	--text: rgba(255, 255, 255, 1);
+	--text-muted: rgba(255, 255, 255, .65);
+	--font: "Poppins";
+	--textWeight: 500;
+	--textSize: 14px;
+}
+
+html,
+body {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	background: transparent;
+	overflow: hidden;
+}
+
+body {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+@keyframes playerEnter {
+	from { opacity: 0; transform: translateY(12px) scale(.96); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes playerExit {
+	from { opacity: 1; transform: translateY(0) scale(1); }
+	to { opacity: 0; transform: translateY(12px) scale(.96); }
+}
+
+@keyframes playerSwap {
+	0% { opacity: 0; transform: translateY(6px); }
+	100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes playerCoverSwap {
+	0% { opacity: 0; transform: scale(.85) rotate(-6deg); }
+	60% { opacity: 1; transform: scale(1.05) rotate(2deg); }
+	100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes playerMarquee {
+	0%, 15% { transform: translateX(0); }
+	85%, 100% { transform: translateX(var(--scroll)); }
+}
+
+/* Même construction que la goal bar : pilule au-dessus, croissant de progression qui dépasse dessous */
+.player {
+	position: relative;
+	width: var(--w);
+	height: calc(var(--h) + var(--reveal));
+	/* Compense le croissant qui dépasse dessous : c'est la pilule qui doit être au centre */
+	margin-top: var(--reveal);
+	flex: 0 0 auto;
+	box-sizing: border-box;
+	font-family: var(--font), system-ui, -apple-system, Segoe UI, Roboto, Arial;
+	line-height: 1.15;
+	color: var(--text);
+	animation: playerEnter 520ms cubic-bezier(.2, .9, .2, 1) both;
+}
+
+.player-info {
+	position: absolute;
+	left: 0;
+	top: 0;
+	z-index: 2;
+	width: 100%;
+	height: var(--h);
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 5px 18px 5px 5px;
+	border-radius: var(--radius);
+	border: var(--border-width) solid var(--border-color);
+	background: var(--bg);
+	backdrop-filter: blur(3px);
+	overflow: hidden;
+}
+
+.player.is-hidden {
+	animation: playerExit 420ms cubic-bezier(.4, 0, .8, .2) forwards;
+}
+
+/* Pas d'animation de sortie au tout premier rendu */
+.player.is-hidden.is-initial {
+	animation: none;
+	opacity: 0;
+}
+
+.player-cover {
+	position: relative;
+	flex: 0 0 auto;
+	height: 100%;
+	aspect-ratio: 1;
+	border-radius: calc(var(--radius) - 5px);
+	overflow: hidden;
+	background: rgba(255, 255, 255, .08);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.player-cover.is-swapping {
+	animation: playerCoverSwap 560ms cubic-bezier(.34, 1.56, .64, 1);
+}
+
+.player-cover-img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	opacity: 0;
+	transition: opacity 300ms ease;
+}
+
+.player-cover-img.is-loaded {
+	opacity: 1;
+}
+
+.player-cover-fallback {
+	color: var(--text-muted);
+	font-size: 20px;
+	font-variation-settings: "FILL" 1, "wght" 200, "GRAD" 0, "opsz" 24;
+}
+
+.player.no-cover .player-cover {
+	display: none;
+}
+
+.player.no-cover .player-info {
+	padding-left: 18px;
+}
+
+.player-body {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 1px;
+}
+
+.player-body.is-swapping .player-line {
+	animation: playerSwap 420ms cubic-bezier(.2, .9, .2, 1) both;
+}
+
+.player-line {
+	overflow: hidden;
+	white-space: nowrap;
+	font-size: var(--textSize);
+}
+
+.player-scroll {
+	display: inline-block;
+	padding-right: 0;
+}
+
+.player-scroll.is-overflowing {
+	animation: playerMarquee var(--scroll-duration, 8s) ease-in-out infinite alternate;
+}
+
+.player-title {
+	font-weight: var(--textWeight);
+}
+
+.player-sep {
+	margin: 0 .45em;
+	color: var(--text-muted);
+}
+
+.player-artist {
+	font-weight: 400;
+	color: var(--text-muted);
+}
+
+.player-sep.is-empty,
+.player-artist.is-empty {
+	display: none;
+}
+
+/* Fenêtre qui révèle le croissant (pleine largeur, découpé en JS) de gauche à droite */
+.player-progress {
+	position: absolute;
+	left: 0;
+	top: calc(var(--h) - 18px);
+	z-index: 1;
+	width: 0%;
+	height: 24px;
+	overflow: hidden;
+	box-sizing: border-box;
+	transition: width 500ms linear;
+}
+
+.player-progress.no-transition {
+	transition: none;
+}
+
+.player.no-progress .player-progress {
+	display: none;
+}
+
+.player-fill {
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 24px;
+	background: var(--accent);
+	transition: background 400ms ease;
+}
+
+.player-error {
+	display: none;
+	position: absolute;
+	inset: 0;
+	align-items: center;
+	justify-content: center;
+	padding: 0 24px;
+	background: rgba(20, 10, 30, .92);
+	color: #ffb4c8;
+	font-size: 12px;
+	text-align: center;
+}
+
+.player.has-error .player-error {
+	display: flex;
 }
