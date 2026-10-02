@@ -57,6 +57,7 @@ import {
   duplicateOverlay
 } from "./lib/overlays.mjs";
 import { createSecretsStore, mergeOverlaySecrets, splitOverlaySecrets } from "./lib/secrets.mjs";
+import { createSpotifyAuth, spotifyRedirectUri } from "./lib/spotify-auth.mjs";
 import {
   RESERVED_PROJECT_IDS,
   listProjects,
@@ -101,6 +102,7 @@ const editableWidgetFiles = new Set([
 if (existsSync(ENV_PATH)) Object.assign(process.env, parseEnv(readFileSync(ENV_PATH, "utf8")));
 
 const port = Number(process.env.PORT) || 4173;
+const spotifyAuth = createSpotifyAuth({ redirectUri: spotifyRedirectUri(port) });
 
 const config = {
   channelId: process.env.SE_CHANNEL_ID?.trim() ?? "",
@@ -497,6 +499,36 @@ const server = createServer(async (request, response) => {
       sseClients.add(response);
       request.on("close", () => sseClients.delete(response));
       return;
+    }
+
+    // --- Connexion Spotify des widgets musique (cf. lib/spotify-auth.mjs) ---
+
+    if (request.method === "GET" && url.pathname === "/api/spotify/redirect-uri") {
+      return sendJson(response, 200, { redirectUri: spotifyRedirectUri(port) });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/spotify/authorize") {
+      const body = await readRequestJson(request);
+      try {
+        return sendJson(response, 200, spotifyAuth.start(body || {}));
+      } catch (error) {
+        return sendJson(response, 400, { error: error.message });
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/spotify/callback") {
+      const result = await spotifyAuth.callback({
+        state: url.searchParams.get("state"),
+        code: url.searchParams.get("code"),
+        error: url.searchParams.get("error")
+      });
+      const message = result.message.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+      response.writeHead(result.ok ? 200 : 400, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      return response.end(`<!doctype html><meta charset="utf-8"><title>Spotify</title><body style="font-family:system-ui;padding:40px;background:#111;color:#eee"><p>${message}</p>${result.ok ? "<script>setTimeout(() => window.close(), 1500)</script>" : ""}</body>`);
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/spotify/result") {
+      return sendJson(response, 200, spotifyAuth.takeResult(url.searchParams.get("state")));
     }
 
     // --- Comptes & integrations ---

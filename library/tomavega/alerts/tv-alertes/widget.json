@@ -1,0 +1,11 @@
+{
+  "id": "tv-alertes",
+  "name": "TV - Alertes",
+  "description": "",
+  "icon": "celebration",
+  "width": 320,
+  "height": 180,
+  "order": 50,
+  "createdAt": 1790980660142,
+  "updatedAt": 1790980660142
+}

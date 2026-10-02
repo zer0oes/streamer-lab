@@ -1,0 +1,69 @@
+{
+  "widgetName": {
+    "type": "hidden",
+    "value": "TV - Music",
+    "group": "Musique"
+  },
+  "music_title": {
+    "type": "textfield",
+    "label": "Titre",
+    "value": "LE SON",
+    "group": "Musique"
+  },
+  "when_idle": {
+    "type": "dropdown",
+    "label": "Quand rien ne joue",
+    "value": "heading",
+    "options": {
+      "heading": "Garder le titre seul",
+      "hide": "Masquer le panneau"
+    },
+    "group": "Musique"
+  },
+  "spotify_client_id": {
+    "type": "textfield",
+    "label": "1. Client ID (étapes dans l'aperçu)",
+    "value": "",
+    "group": "Spotify"
+  },
+  "spotify_client_secret": {
+    "type": "textfield",
+    "label": "2. Client Secret",
+    "value": "",
+    "group": "Spotify"
+  },
+  "spotify_client_id_link": {
+    "type": "textfield",
+    "label": "3. Lien à ouvrir dans le navigateur",
+    "value": "https://accounts.spotify.com/authorize?response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A8888%2Fcallback&scope=user-read-currently-playing%20user-read-playback-state&client_id=",
+    "group": "Spotify"
+  },
+  "spotify_auth_return": {
+    "type": "textfield",
+    "label": "4. Adresse de la page après autorisation",
+    "value": "",
+    "group": "Spotify"
+  },
+  "spotify_refresh_token": {
+    "type": "textfield",
+    "label": "5. Refresh token (affiché dans l'aperçu)",
+    "value": "",
+    "group": "Spotify"
+  },
+  "poll_interval": {
+    "type": "number",
+    "label": "Rafraîchissement (secondes)",
+    "value": 5,
+    "min": 2,
+    "max": 60,
+    "step": 1,
+    "group": "Spotify",
+    "steps": 1
+  },
+  "test_track": {
+    "type": "button",
+    "label": "Morceau d'essai",
+    "value": "Afficher un morceau d'essai",
+    "group": "Essai"
+  }
+}

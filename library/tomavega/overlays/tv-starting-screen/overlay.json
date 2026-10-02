@@ -9,7 +9,85 @@
     "width": 1920,
     "height": 1080
   },
-  "items": [],
+  "items": [
+    {
+      "id": "item-murfdyvo-fond",
+      "type": "image",
+      "x": 0,
+      "y": 0,
+      "w": 1920,
+      "h": 1080,
+      "z": 1,
+      "hidden": false,
+      "locked": false,
+      "name": "Fond",
+      "collapsed": false,
+      "props": {
+        "src": "/library-media/tomavega-starting-screen-fond.jpg",
+        "fit": "cover"
+      }
+    },
+    {
+      "id": "item-murfdyvo-logo",
+      "type": "widget",
+      "widgetId": "tv-starting-screen",
+      "x": 0,
+      "y": 0,
+      "w": 1920,
+      "h": 1080,
+      "z": 2,
+      "hidden": false,
+      "locked": true,
+      "name": "TV - Starting screen",
+      "collapsed": false,
+      "props": {
+        "fieldData": {
+          "handle_tiktok": "TomaVega",
+          "handle_youtube": "TomaVega",
+          "handle_twitch": "TomaVega",
+          "handle_soundcloud": "TomaVega"
+        }
+      }
+    },
+    {
+      "id": "item-murfdyvo-tchat",
+      "type": "widget",
+      "widgetId": "tv-chat",
+      "x": 1366,
+      "y": 170,
+      "w": 420,
+      "h": 691,
+      "z": 3,
+      "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
+      "props": {
+        "fieldData": {
+          "chat_title": "LE TCHAT"
+        }
+      }
+    },
+    {
+      "id": "item-murgq7vp-musique",
+      "type": "widget",
+      "widgetId": "tv-music",
+      "x": 1365,
+      "y": 896,
+      "w": 420,
+      "h": 300,
+      "z": 4,
+      "hidden": false,
+      "locked": false,
+      "name": "TV - Music",
+      "collapsed": false,
+      "props": {
+        "fieldData": {
+          "spotify_auth_return": ""
+        }
+      }
+    }
+  ],
   "guides": {
     "horizontal": [],
     "vertical": []
@@ -17,5 +95,5 @@
   "sourcePlatform": null,
   "sourceOverlayId": null,
   "createdAt": 1790972901450,
-  "updatedAt": 1790972901450
+  "updatedAt": 1790981746053
 }

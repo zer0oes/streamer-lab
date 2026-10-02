@@ -1,0 +1,12 @@
+{
+  "id": "tv-alerts",
+  "name": "TV - Alerts",
+  "description": "AlertBox TomaVega (StreamElements et Streamlabs) : alertes électriques de la page d'animation, un code par type",
+  "icon": "bolt",
+  "kind": "alertbox",
+  "order": 40,
+  "createdAt": 1790979634569,
+  "updatedAt": 1790979634569,
+  "width": 700,
+  "height": 340
+}

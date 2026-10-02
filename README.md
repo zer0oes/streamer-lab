@@ -160,11 +160,24 @@ Le statut passe à `connected` dès que la plateforme simulée sélectionnée en
 
 ## Widget Music player (Spotify)
 
-Le widget `library/zer0oes/widgets/music-player/` affiche le morceau en cours de lecture via la Web API Spotify, interrogée directement depuis le widget. Il a besoin de trois champs : **Client ID**, **Client Secret** et **Refresh token**.
+Les widgets `library/zer0oes/widgets/music-player/` et `library/tomavega/widgets/tv-music/` affichent le morceau en cours de lecture via la Web API Spotify, interrogée directement depuis le widget. Ils ont besoin de trois champs : **Client ID**, **Client Secret** et **Refresh token**. Aucune commande n’est nécessaire.
 
-1. Créer une app sur [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) (API : Web API) avec la Redirect URI `http://127.0.0.1:8888/callback`.
-2. Lancer `npm run spotify:token -- <client_id> <client_secret>`, autoriser l’accès dans le navigateur, puis copier le refresh token affiché dans le terminal.
-3. Renseigner les trois valeurs dans les champs du widget (localement puis sur StreamElements/Streamlabs).
+**Directement sur StreamElements ou Streamlabs (sans le labo)** : tant que la connexion n’est pas terminée, l’aperçu du widget affiche l’étape suivante. Les champs sont numérotés :
+
+1. Créer une app sur developer.spotify.com (Web API) avec la Redirect URI `http://127.0.0.1:8888/callback`, puis coller son Client ID et son Client Secret (champs 1 et 2).
+2. Le widget écrit alors le lien d’autorisation complet dans le champ 3 (`SE_API.setField`) : le copier dans le navigateur et accepter. La page d’arrivée ne se charge pas (normal) : copier son adresse dans le champ 4. Le code expire au bout de 10 minutes et ne sert qu’une fois.
+3. Le widget échange lui-même ce code et remplit le refresh token (champ 5), en le gardant aussi dans `SE_API.store` pour le live. Enregistrer le widget.
+
+L’aperçu de l’éditeur StreamElements n’étant pas cliquable, rien n’est à copier depuis l’aperçu : il indique seulement l’étape en cours. Sur Streamlabs (pas de `setField`) : ajouter son Client ID à la fin du lien du champ 3, et le refresh token est affiché dans l’aperçu, à recopier au champ 5. Streamlabs ne distinguant pas l’éditeur du live, le guide y reste visible tant que les champs ne sont pas complets.
+
+**Dans le labo**, un bouton fait tout automatiquement :
+
+1. Créer une app sur [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) (API : Web API) avec la Redirect URI affichée sous le bouton « Connecter Spotify » (`http://127.0.0.1:<port du labo>/api/spotify/callback`, bouton « Copier »).
+2. Coller le Client ID et le Client Secret de l’app dans les champs du widget.
+3. Cliquer sur **Connecter Spotify** et accepter dans l’onglet qui s’ouvre : le refresh token se remplit tout seul.
+4. Reporter les trois valeurs dans les champs du widget sur StreamElements/Streamlabs.
+
+Alternative en ligne de commande : `npm run spotify:token -- <client_id> <client_secret>` (Redirect URI `http://127.0.0.1:8888/callback`).
 
 Sans identifiants, le widget tourne en mode démo dans l’éditeur (laboratoire ou éditeur StreamElements) et reste masqué en live. Les erreurs d’authentification ne s’affichent que dans l’éditeur.
 

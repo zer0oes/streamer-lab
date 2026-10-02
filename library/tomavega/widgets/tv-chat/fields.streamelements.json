@@ -1,0 +1,89 @@
+{
+  "widgetName": {
+    "type": "hidden",
+    "value": "TV - Chat",
+    "group": "Tchat"
+  },
+  "chat_title": {
+    "type": "text",
+    "label": "Titre",
+    "value": "LE SALON",
+    "group": "Tchat"
+  },
+  "chat_subtitle": {
+    "type": "text",
+    "label": "Sous-titre",
+    "value": "TOMAVEGA / COMMUNITY",
+    "group": "Tchat"
+  },
+  "role_broadcaster": {
+    "type": "text",
+    "label": "Étiquette : Streamer (vide = aucune)",
+    "value": "Streamer",
+    "group": "Rôles"
+  },
+  "role_moderator": {
+    "type": "text",
+    "label": "Étiquette : Modérateur (vide = aucune)",
+    "value": "Modérateur",
+    "group": "Rôles"
+  },
+  "role_vip": {
+    "type": "text",
+    "label": "Étiquette : VIP (vide = aucune)",
+    "value": "VIP",
+    "group": "Rôles"
+  },
+  "role_artist": {
+    "type": "text",
+    "label": "Étiquette : Artiste (vide = aucune)",
+    "value": "Artiste",
+    "group": "Rôles"
+  },
+  "role_subscriber": {
+    "type": "text",
+    "label": "Étiquette : Sub (vide = aucune)",
+    "value": "Sub",
+    "group": "Rôles"
+  },
+  "max_messages": {
+    "type": "number",
+    "label": "Messages affichés au maximum",
+    "value": 20,
+    "min": 1,
+    "max": 30,
+    "step": 1,
+    "group": "Messages"
+  },
+  "hide_after": {
+    "type": "number",
+    "label": "Masquer un message après (s, 0 = jamais)",
+    "value": 0,
+    "min": 0,
+    "max": 600,
+    "step": 1,
+    "group": "Messages"
+  },
+  "hide_commands": {
+    "type": "dropdown",
+    "label": "Masquer les commandes (!…)",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Messages"
+  },
+  "ignored_users": {
+    "type": "text",
+    "label": "Pseudos ignorés (séparés par des virgules)",
+    "value": "StreamElements, Nightbot",
+    "group": "Messages"
+  },
+  "test_message": {
+    "type": "button",
+    "label": "Message d'essai",
+    "value": "Envoyer un message d'essai",
+    "group": "Essai"
+  }
+}

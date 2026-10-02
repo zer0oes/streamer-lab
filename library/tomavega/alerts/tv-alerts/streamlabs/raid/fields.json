@@ -1,0 +1,82 @@
+{
+  "widgetName": {
+    "type": "hidden",
+    "value": "TV Alerts · Streamlabs · raid",
+    "group": "Alerte"
+  },
+  "event_text": {
+    "type": "textfield",
+    "label": "Libellé ([n] = nombre)",
+    "value": "Raid · [n] spectateurs",
+    "group": "Alerte"
+  },
+  "detail_text": {
+    "type": "textfield",
+    "label": "Texte sous le pseudo (vide = aucun)",
+    "value": "Bienvenue à toute votre communauté !",
+    "group": "Alerte"
+  },
+  "alert_color": {
+    "type": "colorpicker",
+    "label": "Couleur de l'alerte",
+    "value": "#64FF2D",
+    "group": "Alerte"
+  },
+  "alert_duration": {
+    "type": "slider",
+    "label": "Durée de l'alerte (s) — identique à la durée Streamlabs",
+    "value": 8,
+    "min": 1,
+    "max": 90,
+    "steps": 1,
+    "group": "Alerte"
+  },
+  "major": {
+    "type": "dropdown",
+    "label": "Grande alerte (pseudo plus grand, plus d'éclats)",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Style"
+  },
+  "card_width": {
+    "type": "slider",
+    "label": "Largeur de l'alerte (px)",
+    "value": 490,
+    "min": 240,
+    "max": 900,
+    "steps": 10,
+    "group": "Style"
+  },
+  "name_size": {
+    "type": "slider",
+    "label": "Taille du pseudo (px)",
+    "value": 46,
+    "min": 16,
+    "max": 90,
+    "steps": 1,
+    "group": "Style"
+  },
+  "wire_enabled": {
+    "type": "dropdown",
+    "label": "Câbles électriques",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Style"
+  },
+  "fragments_enabled": {
+    "type": "dropdown",
+    "label": "Éclats",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Style"
+  }
+}

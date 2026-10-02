@@ -1,0 +1,11 @@
+{
+  "id": "tv-chat",
+  "name": "TV - Chat",
+  "description": "Tchat « Le salon » au design TomaVega, branché sur les vrais messages",
+  "icon": "forum",
+  "order": 20,
+  "width": 420,
+  "height": 691,
+  "createdAt": 1790973512916,
+  "updatedAt": 1790976425085
+}

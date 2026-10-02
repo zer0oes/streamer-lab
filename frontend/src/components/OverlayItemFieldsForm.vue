@@ -9,6 +9,8 @@ import { computed } from "vue";
 import { useOverlayEditorStore } from "../stores/overlayEditor";
 import { resolveOverlayItemFieldData } from "../lib/overlayItems";
 import OverlayItemFieldRow from "./OverlayItemFieldRow.vue";
+import SpotifyConnect from "./SpotifyConnect.vue";
+import { SPOTIFY_CONNECT_FIELD, spotifyConnectProps } from "../lib/spotifyConnect";
 import type { OverlayItem } from "../lib/overlayTypes";
 import type { FieldDefinition } from "../api/widgetDetail";
 
@@ -54,6 +56,7 @@ const slots = computed<Slot[]>(() => {
   return result;
 });
 
+
 function updateField(key: string, value: unknown, commit: boolean): void {
   const current = (props.item.props?.fieldData as Record<string, unknown> | undefined) || {};
   store.patchItem(props.item.id, { props: { ...props.item.props, fieldData: { ...current, [key]: value } } });
@@ -76,7 +79,10 @@ function updateField(key: string, value: unknown, commit: boolean): void {
           </span>
         </summary>
         <div class="field-group__body">
-          <OverlayItemFieldRow v-for="{ key, definition } in slot.fields" :key="key" :field-key="key" :definition="definition" :value="fieldData[key]" @update="updateField" />
+          <template v-for="{ key, definition } in slot.fields" :key="key">
+            <OverlayItemFieldRow :field-key="key" :definition="definition" :value="fieldData[key]" @update="updateField" />
+            <SpotifyConnect v-if="key === SPOTIFY_CONNECT_FIELD" v-bind="spotifyConnectProps(fieldData)" @token="updateField(key, $event, true)" />
+          </template>
         </div>
       </details>
       <OverlayItemFieldRow v-else v-for="{ key, definition } in slot.fields" :key="key" :field-key="key" :definition="definition" :value="fieldData[key]" @update="updateField" />

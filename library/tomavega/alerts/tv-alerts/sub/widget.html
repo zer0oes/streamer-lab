@@ -1,0 +1,16 @@
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Clarity+City:wght@400;500;600;700&amp;family=Source+Code+Pro:wght@400;500;600&amp;display=swap">
+
+<div class="stage" id="stage">
+  <!-- Variables de l'alerte, remplacées par l'AlertBox StreamElements -->
+  <div class="alert-data" id="alertData" hidden>
+    <span data-var="name">{{name}}</span>
+    <div data-var="message">{{message}}</div>
+    <span data-var="duration">{{widgetDuration}}</span>
+  </div>
+
+  <div class="alert-card" id="alert" aria-live="polite">
+    <div class="alert-event" id="alertEvent"></div>
+    <div class="alert-person" id="alertPerson"></div>
+    <div class="alert-detail" id="alertDetail"></div>
+  </div>
+</div>

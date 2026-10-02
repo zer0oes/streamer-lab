@@ -2,9 +2,12 @@
 import { computed } from "vue";
 import { useWidgetEditorStore } from "../stores/widgetEditor";
 import FieldRow from "./FieldRow.vue";
+import SpotifyConnect from "./SpotifyConnect.vue";
+import { SPOTIFY_CONNECT_FIELD, spotifyConnectProps } from "../lib/spotifyConnect";
 import type { FieldDefinition } from "../api/widgetDetail";
 
 const store = useWidgetEditorStore();
+
 
 interface FieldSlot {
   key: string;
@@ -46,7 +49,10 @@ const slots = computed<Slot[]>(() => {
       <details v-if="slot.group" class="field-group" open>
         <summary class="field-group__summary">{{ slot.group }}</summary>
         <div class="field-group__body">
-          <FieldRow v-for="{ key, definition } in slot.fields" :key="key" :field-key="key" :definition="definition" />
+          <template v-for="{ key, definition } in slot.fields" :key="key">
+            <FieldRow :field-key="key" :definition="definition" />
+            <SpotifyConnect v-if="key === SPOTIFY_CONNECT_FIELD" v-bind="spotifyConnectProps(store.fieldData)" @token="store.updateField(key, $event)" />
+          </template>
         </div>
       </details>
       <FieldRow v-else v-for="{ key, definition } in slot.fields" :key="key" :field-key="key" :definition="definition" />

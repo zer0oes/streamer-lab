@@ -6,19 +6,31 @@
   },
   "spotify_client_id": {
     "type": "text",
-    "label": "Client ID (developer.spotify.com)",
+    "label": "1. Client ID (étapes dans l'aperçu)",
     "value": "",
     "group": "Spotify"
   },
   "spotify_client_secret": {
     "type": "text",
-    "label": "Client Secret",
+    "label": "2. Client Secret",
+    "value": "",
+    "group": "Spotify"
+  },
+  "spotify_client_id_link": {
+    "type": "text",
+    "label": "3. Lien à ouvrir dans le navigateur",
+    "value": "https://accounts.spotify.com/authorize?response_type=code&redirect_uri=http%3A%2F%2F127.0.0.1%3A8888%2Fcallback&scope=user-read-currently-playing%20user-read-playback-state&client_id=",
+    "group": "Spotify"
+  },
+  "spotify_auth_return": {
+    "type": "text",
+    "label": "4. Adresse de la page après autorisation",
     "value": "",
     "group": "Spotify"
   },
   "spotify_refresh_token": {
     "type": "text",
-    "label": "Refresh token (npm run spotify:token)",
+    "label": "5. Refresh token (rempli automatiquement)",
     "value": "",
     "group": "Spotify"
   },

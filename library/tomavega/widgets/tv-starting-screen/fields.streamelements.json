@@ -1,0 +1,82 @@
+{
+  "widgetName": {
+    "type": "hidden",
+    "value": "TV - Starting screen",
+    "group": "Texte"
+  },
+  "status_text": {
+    "type": "text",
+    "label": "Texte (vide = aucun)",
+    "value": "STREAM IS STARTING",
+    "group": "Texte"
+  },
+  "loop_seconds": {
+    "type": "number",
+    "label": "Durée avant sortie en glitch et retour (s, 0 = pas de boucle)",
+    "value": 52,
+    "min": 0,
+    "max": 600,
+    "step": 1,
+    "group": "Animation"
+  },
+  "ambient_lights": {
+    "type": "dropdown",
+    "label": "Halos de lumière d'ambiance",
+    "value": "yes",
+    "options": {
+      "yes": "Afficher",
+      "no": "Masquer"
+    },
+    "group": "Animation"
+  },
+  "energy_effects": {
+    "type": "dropdown",
+    "label": "Énergie en arrière-plan (éclairs, traits, flashs)",
+    "value": "yes",
+    "options": {
+      "yes": "Afficher",
+      "no": "Masquer"
+    },
+    "group": "Animation"
+  },
+  "preview_exit": {
+    "type": "button",
+    "label": "Aperçu de la sortie",
+    "value": "Lancer le glitch de sortie",
+    "group": "Animation"
+  },
+  "show_socials": {
+    "type": "dropdown",
+    "label": "Réseaux sociaux",
+    "value": "yes",
+    "options": {
+      "yes": "Afficher",
+      "no": "Masquer"
+    },
+    "group": "Réseaux sociaux"
+  },
+  "handle_tiktok": {
+    "type": "text",
+    "label": "TikTok : pseudo (vide = masqué)",
+    "value": "@TomaVega",
+    "group": "Réseaux sociaux"
+  },
+  "handle_youtube": {
+    "type": "text",
+    "label": "YouTube : pseudo (vide = masqué)",
+    "value": "@TomaVega",
+    "group": "Réseaux sociaux"
+  },
+  "handle_twitch": {
+    "type": "text",
+    "label": "Twitch : pseudo (vide = masqué)",
+    "value": "@TomaVega",
+    "group": "Réseaux sociaux"
+  },
+  "handle_soundcloud": {
+    "type": "text",
+    "label": "SoundCloud : pseudo (vide = masqué)",
+    "value": "@TomaVega",
+    "group": "Réseaux sociaux"
+  }
+}

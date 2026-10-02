@@ -1,0 +1,11 @@
+{
+  "id": "tv-music",
+  "name": "TV - Music",
+  "description": "Emplacement « LE SON » au design TomaVega : morceau en cours sur Spotify",
+  "icon": "music_note",
+  "order": 30,
+  "width": 420,
+  "height": 108,
+  "createdAt": 1790975764069,
+  "updatedAt": 1790976425085
+}

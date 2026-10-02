@@ -1,0 +1,11 @@
+{
+  "id": "tv-starting-screen",
+  "name": "TV - Starting screen",
+  "description": "Logo TomaVega animé, titre de scène et réseaux sociaux (converti depuis TomaVega-animation.html)",
+  "icon": "animation",
+  "order": 10,
+  "width": 1920,
+  "height": 1080,
+  "createdAt": 1790973512916,
+  "updatedAt": 1790973512916
+}

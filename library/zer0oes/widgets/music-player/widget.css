@@ -238,3 +238,11 @@ body {
 .player.has-error .player-error {
 	display: flex;
 }
+
+/* Connexion Spotify guidée : affichée dans l'aperçu de l'éditeur seulement */
+.spotify-setup{position:fixed;inset:0;z-index:50;overflow:auto;box-sizing:border-box;padding:8px 10px;background:rgba(10,12,18,.94);color:#e8ebf0;font:11px/1.35 Arial,sans-serif;user-select:text;pointer-events:auto}
+.spotify-setup p{margin:0 0 4px}
+.spotify-setup-title{font-weight:700;color:#1ed760;text-transform:uppercase;letter-spacing:.08em;font-size:10px}
+.spotify-setup-error{color:#ff8a8a}
+.spotify-setup-ok{color:#1ed760}
+.spotify-setup-copy{padding:3px 5px;border-radius:3px;background:rgba(255,255,255,.08);color:#9fe7ff;font:10px/1.3 monospace;word-break:break-all;user-select:all}

@@ -1,0 +1,27 @@
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Clarity+City:wght@400;500;600;700&amp;family=Source+Code+Pro:wght@400;500;600&amp;display=swap">
+
+<div class="stage" id="stage">
+  <!-- Variables de l'alerte, remplacées par l'Alert Box Streamlabs -->
+  <div class="alert-data" id="alertData" hidden>
+    <span data-var="name">{name}</span>
+  </div>
+
+  <!-- Custom Fields (Streamlabs les remplace dans le code, sans onWidgetLoad) -->
+  <div class="alert-data" id="alertFields" hidden>
+    <span data-field="event_text">{event_text}</span>
+    <span data-field="detail_text">{detail_text}</span>
+    <span data-field="alert_color">{alert_color}</span>
+    <span data-field="alert_duration">{alert_duration}</span>
+    <span data-field="major">{major}</span>
+    <span data-field="card_width">{card_width}</span>
+    <span data-field="name_size">{name_size}</span>
+    <span data-field="wire_enabled">{wire_enabled}</span>
+    <span data-field="fragments_enabled">{fragments_enabled}</span>
+  </div>
+
+  <div class="alert-card" id="alert" aria-live="polite">
+    <div class="alert-event" id="alertEvent"></div>
+    <div class="alert-person" id="alertPerson"></div>
+    <div class="alert-detail" id="alertDetail"></div>
+  </div>
+</div>

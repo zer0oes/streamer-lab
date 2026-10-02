@@ -1,0 +1,32 @@
+/* TV - Chat : design du salon de TomaVega-animation.html, branché sur le vrai tchat. */
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent;color:#eee;font-family:'Clarity City',Arial,sans-serif}
+.chat-slot{position:absolute;inset:0;--chat-cyan:#4bc9ff;--chat-violet:#7648e5;--chat-green:#64ff2d}
+.chat-heading{position:relative;display:flex;gap:12px;align-items:center;height:62px;box-sizing:border-box;line-height:1.2;padding:0 8px 18px;font:500 clamp(11px,.85vw,17px) 'Clarity City',Arial,sans-serif;font-size:17px;letter-spacing:.12em;color:#d8dee8}
+/* Trait dégradé aux couleurs de la marque sous l'en-tête */
+.chat-heading:after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,#4bc9ff,#7648e5);opacity:.65}
+.chat-symbol{display:inline-flex;align-items:center;justify-content:center;width:24px;height:32px;flex-shrink:0;font-size:32px;color:var(--chat-cyan)}
+.chat-subtitle{position:absolute;top:34px;display:block;margin-top:0;font-size:8px;letter-spacing:.16em;color:#778291}
+/* 14 px entre le trait de l'en-tête (62 px) et les messages, comme « LE SON » */
+.chat-messages{position:absolute;inset:76px 0 0;display:flex;flex-direction:column;justify-content:flex-end;gap:14px;padding:0 0 8px;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,transparent 0px,rgba(0,0,0,.35) 20px,#000 64px);mask-image:linear-gradient(to bottom,transparent 0px,rgba(0,0,0,.35) 20px,#000 64px)}
+.chat-message{position:relative;flex-shrink:0;padding:11px 15px 12px;margin:0 18px 0 0;line-height:1.45;font-size:18px;border:1px solid rgba(75,201,255,.22);border-left:2px solid var(--chat-cyan);border-radius:3px 13px 13px 13px;background:linear-gradient(110deg,rgba(75,201,255,.10),rgba(12,17,25,.78));transition:opacity .4s ease}
+.chat-message.is-alt{margin:0 0 0 18px;border-color:rgba(118,72,229,.30);border-left-color:var(--chat-violet);background:linear-gradient(110deg,rgba(118,72,229,.15),rgba(17,15,26,.78))}
+.chat-message.is-leaving{opacity:0}
+/* Arrivée d'un message : glisse depuis le bas à droite */
+.chat-message.entering{animation:chatArrival .65s cubic-bezier(.2,.7,.2,1) both}
+@keyframes chatArrival{from{opacity:0;transform:translateY(18px) translateX(8px)}to{opacity:1;transform:translate(0)}}
+@media(prefers-reduced-motion:reduce){.chat-message.entering{animation:none}}
+/* Le dernier message garde sa couleur (cyan, violet ou vert, comme son pseudo) : il ne gagne qu'une ombre */
+.chat-message.latest{box-shadow:0 4px 20px rgba(0,0,0,.18)}
+.chat-message.broadcaster{border-color:rgba(100,255,45,.30);border-left-color:var(--chat-green);background:linear-gradient(110deg,rgba(100,255,45,.10),rgba(12,22,17,.85))}
+.chat-meta{display:flex;align-items:center;gap:8px}
+.chat-name{font-family:'Clarity City',Arial,sans-serif;font-weight:600;font-size:.76em;letter-spacing:.03em;color:var(--chat-cyan)}
+.chat-message.is-alt .chat-name{color:var(--chat-violet)}
+.chat-message.broadcaster .chat-name{color:var(--chat-green)}
+/* Étiquette de rôle (Streamer, Modérateur, VIP, Artiste, Sub) */
+.chat-role{display:inline-flex;align-items:center;justify-content:center;margin-left:auto;padding:3px 7px;border:1px solid rgba(75,201,255,.30);border-radius:5px;background:rgba(75,201,255,.07);color:var(--chat-cyan);font-family:'Clarity City',Arial,sans-serif;font-size:.60em;font-weight:600;letter-spacing:.06em;line-height:1.3;text-transform:uppercase;white-space:nowrap}
+.chat-message.is-alt .chat-role{color:#b395f3;border-color:rgba(118,72,229,.45);background:rgba(118,72,229,.10)}
+.chat-message.broadcaster .chat-role{color:var(--chat-green);border-color:rgba(100,255,45,.35);background:rgba(100,255,45,.08)}
+.chat-role:empty{display:none}
+.chat-message p{margin:8px 0 0;color:#e0e3e8;line-height:1.4;overflow-wrap:anywhere}
+.emote{height:1.5em;vertical-align:middle;margin:-.2em .05em 0}

@@ -1,0 +1,123 @@
+/* TV - Starting screen : converti depuis TomaVega-animation.html.
+   Le fond est un item image séparé de l'overlay ; ce widget est transparent. */
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent}
+body{color:#eee;font-family:'Clarity City',Arial,sans-serif}
+.stage{position:relative;width:100vw;height:100vh;overflow:hidden;isolation:isolate;display:flex;align-items:center;justify-content:center}
+.brand{position:absolute;width:min(58vw,100vh);top:50%;left:50%;transform:translate(-50%,-59%)}
+.brand,.status{transition:opacity 3s ease}.stage.leaving .brand,.stage.leaving .status{opacity:0!important}.stage.resetting .brand,.stage.resetting .status{transition:none}
+.brand svg{display:block;width:100%;height:auto;overflow:visible;transform-origin:50% 50%;animation:breathe 8s 6.5s ease-in-out infinite}
+#outline{animation:fade .9s 5.7s forwards}
+.draw{fill:none!important;stroke-linecap:round;stroke-linejoin:round;stroke-width:2.4;stroke-dasharray:1;stroke-dashoffset:1;animation:trace 3.8s cubic-bezier(.3,.1,.3,1) forwards;filter:drop-shadow(0 0 1.5px currentColor)}
+.status{position:absolute;top:76%;width:100%;text-align:center;font-size:clamp(14px,2.1vw,38px);font-weight:500;letter-spacing:.22em;opacity:0;animation:reveal 1.2s 6s forwards}
+.accent{height:2px;background:#64ff2d;width:32px;margin:24px auto 0;opacity:.7}
+/* Halo néon du logo : cyan puis violet, avec un bref scintillement (24-29 % et 74-79 %) */
+@keyframes glowBreathe{0%,100%{filter:drop-shadow(0 0 1px rgba(0,207,255,.45)) drop-shadow(0 0 4px rgba(0,174,255,.35))}24%{filter:drop-shadow(0 0 2px rgba(0,213,255,.45)) drop-shadow(0 0 7px rgba(0,155,255,.48))}26%{filter:drop-shadow(0 0 1px rgba(0,229,255,.45)) drop-shadow(0 0 4px rgba(0,183,255,.7))}29%{filter:drop-shadow(0 0 2px rgba(0,207,255,.45))}50%{filter:drop-shadow(0 0 1px rgba(120,0,255,.45)) drop-shadow(0 0 4px rgba(104,0,255,.35))}74%{filter:drop-shadow(0 0 2px rgba(136,0,255,.45)) drop-shadow(0 0 7px rgba(100,0,255,.48))}76%{filter:drop-shadow(0 0 1px rgba(146,0,255,.45)) drop-shadow(0 0 4px rgba(120,0,255,.7))}79%{filter:drop-shadow(0 0 2px rgba(120,0,255,.45))}}
+#original{opacity:0;animation:reveal 1.8s 4.7s ease forwards,glowBreathe 9s 6.5s ease-in-out infinite}
+#original #MONOGRAMME{animation:none}
+@media (prefers-reduced-motion:reduce){#original{animation:reveal 1.8s 4.7s ease forwards}#original #MONOGRAMME{animation:none}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
+@media (prefers-reduced-motion:reduce){.brand svg{animation:none}}
+@keyframes trace{to{stroke-dashoffset:0}}
+@keyframes reveal{to{opacity:1}}
+@keyframes fade{to{opacity:0}}
+/* Le tchat occupe la droite (widget séparé) : logo, titre et réseaux centrés sur la gauche */
+.brand{left:37%;width:min(49vw,84vh)}
+.status{left:0;width:74%;top:71%}
+/* Rangée des réseaux : même largeur et même centre que le logo */
+/* Rangée des réseaux : même largeur et même centre que le logo ; bas des pseudos
+   aligné sur la ligne de l'artiste du panneau « LE SON » (993 px en 1920 × 1080) */
+.socials{position:absolute;left:37%;bottom:86.8px;width:min(49vw,84vh);transform:translateX(-50%);display:flex;justify-content:space-between;align-items:flex-end;gap:12px;color:#89919c;font-size:clamp(10px,.75vw,14px);letter-spacing:.10em;transition:opacity 3s ease}
+.socials.is-hidden{display:none}
+.social-icon{position:relative;display:inline-flex;align-items:center;gap:7px;padding-top:10px;white-space:nowrap;color:#a6afb9;opacity:.8}
+.social-icon:before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,#4bc9ff,#7648e5);opacity:.65}
+.social-icon.is-hidden{display:none}
+.social-icon svg{width:clamp(13px,.85vw,16px);height:clamp(13px,.85vw,16px)}
+.social-handle{font-family:'Clarity City',Arial,sans-serif;font-size:clamp(10px,.70vw,14px);letter-spacing:normal;line-height:1.2}
+#label{display:inline-block;letter-spacing:normal;white-space:pre}
+/* Titre tapé (scène de démarrage) en gras */
+#label.glitch-intro{font-weight:700}
+#label .typed-letter{display:inline-block;white-space:pre;min-width:0;letter-spacing:normal;visibility:hidden;animation:typedGlitch .42s steps(1,end) forwards;animation-delay:var(--type-delay)}
+#label .typed-space{min-width:0}
+@keyframes typedGlitch{
+0%{visibility:visible;font-family:'Source Code Pro',monospace;transform:translate(-1px,1px);text-shadow:2px 0 rgba(55,215,255,.65)}
+22%{visibility:visible;font-family:'Clarity City',Arial,Helvetica,sans-serif;transform:translate(1px,0);text-shadow:-2px 0 rgba(156,89,255,.6)}
+45%{visibility:visible;font-family:'Source Code Pro',monospace;transform:translate(0,-1px);text-shadow:1px 0 rgba(55,215,255,.45)}
+68%{visibility:visible;font-family:'Source Code Pro',monospace;transform:translate(0,0);text-shadow:none}
+100%{visibility:visible;font-family:'Clarity City',Arial,Helvetica,sans-serif;transform:none;text-shadow:none}
+}
+@media(prefers-reduced-motion:reduce){#label .typed-letter{animation:none;visibility:visible}}
+
+/* Halos de lumière d'ambiance, discrets, derrière tout le contenu (positions
+   et couleurs tirées au hasard en JS) */
+.ambient-lights{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1}
+.ambient-lights.is-off{display:none}
+.ambient-halo{position:absolute;width:65vw;height:75vh;border-radius:50%;opacity:0;will-change:opacity,transform;background:radial-gradient(ellipse at center,var(--halo-color) 0%,transparent 68%);mix-blend-mode:screen}
+@media(prefers-reduced-motion:reduce){.ambient-halo{animation:none;opacity:0}}
+
+/* Glitch renforcé pendant la frappe du titre : fragments « # » cyan et lettre violette découpée */
+#label .typed-letter{position:relative;animation-name:typedGlitchV2;animation-duration:.8s}
+#label .typed-letter:not(.typed-space)::before,#label .typed-letter:not(.typed-space)::after{position:absolute;inset:0;pointer-events:none;opacity:0;animation:letterNoise .8s steps(1,end) forwards;animation-delay:var(--type-delay);font-family:'Source Code Pro',monospace}
+#label .typed-letter:not(.typed-space)::before{content:'#';color:#4bc9ff}
+#label .typed-letter:not(.typed-space)::after{content:attr(data-letter);color:#7648e5;clip-path:inset(45% -12px 15% -12px);animation-name:letterSlice}
+@keyframes typedGlitchV2{
+0%{visibility:visible;font-family:'Source Code Pro',monospace;transform:translate(-3px,1px) skewX(-12deg);color:transparent;text-shadow:none}
+15%{visibility:visible;transform:translate(3px,-2px);color:#eee;text-shadow:-5px 0 #4bc9ff,4px 1px #7648e5}
+29%{visibility:visible;font-family:'Clarity City',sans-serif;transform:translate(-2px,0) skewX(10deg);color:transparent;text-shadow:none}
+42%{visibility:visible;font-family:'Source Code Pro',monospace;transform:translate(2px,1px);color:#eee;text-shadow:4px 0 #4bc9ff,-3px 0 #7648e5}
+57%{visibility:visible;transform:translate(0,0);text-shadow:none;color:#eee}
+70%{visibility:visible;font-family:'Clarity City',sans-serif;transform:translate(-2px,0);text-shadow:-3px 0 #7648e5;color:#eee}
+83%,100%{visibility:visible;font-family:'Clarity City',Arial,sans-serif;transform:none;text-shadow:none;color:inherit}
+}
+@keyframes letterNoise{
+0%{opacity:1;content:'#';transform:translate(2px,0)}
+15%{opacity:0}
+29%{opacity:1;content:'⸮';transform:translate(-3px,1px)}
+42%{opacity:.8;content:'+';transform:translate(4px,-1px)}
+57%,100%{opacity:0}
+}
+@keyframes letterSlice{
+0%{opacity:0}
+15%{opacity:1;transform:translate(7px,-1px)}
+29%{opacity:0}
+42%{opacity:.9;transform:translate(-6px,1px)}
+57%{opacity:0}
+70%{opacity:.8;transform:translate(4px,0)}
+83%,100%{opacity:0}
+}
+@media(prefers-reduced-motion:reduce){#label .typed-letter{animation:none;visibility:visible}#label .typed-letter::before,#label .typed-letter::after{display:none}}
+
+/* Énergie en arrière-plan (éclairs, traits, flashs), derrière le logo et les panneaux */
+.energy-layer{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.energy-layer.is-off{display:none}
+.energy-bolt{position:absolute;inset:0;width:100%;height:100%;opacity:0}
+.energy-bolt path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.energy-flash{position:absolute;width:55vw;height:65vh;border-radius:50%;opacity:0;background:radial-gradient(ellipse,var(--energy-color),transparent 68%)}
+.energy-strip{position:absolute;height:2px;opacity:0;background:linear-gradient(90deg,transparent,var(--energy-color),transparent)}
+
+/* Sortie en glitch (remplace le fondu) ; appliquée aux conteneurs pour ne pas
+   interrompre les animations internes du logo */
+.stage.leaving .brand,.stage.leaving .status{transition:none;opacity:1!important;animation:exitGlitch 1.2s steps(1,end) forwards}
+.stage.leaving .status{animation-name:exitTextGlitch}
+@keyframes exitGlitch{
+0%{opacity:1;translate:0 0;filter:none;clip-path:inset(0)}
+12%{translate:-7px 0;filter:drop-shadow(7px 0 #4bc9ff) drop-shadow(-5px 0 #7648e5)}
+23%{translate:5px 1px;clip-path:inset(18% 0 40% 0)}
+32%{translate:0 0;filter:none;clip-path:inset(0)}
+45%{translate:-11px 0;filter:drop-shadow(9px 0 #7648e5);clip-path:inset(42% 0 16% 0)}
+55%{translate:5px -2px;clip-path:inset(0)}
+68%{translate:13px 0;clip-path:inset(60% 0 25% 0)}
+78%{translate:-4px 0;filter:drop-shadow(-7px 0 #4bc9ff);clip-path:inset(8% 0 75% 0)}
+88%,100%{visibility:hidden;clip-path:inset(50% 0 50% 0)}
+}
+@keyframes exitTextGlitch{
+0%{opacity:1;translate:0 0;text-shadow:none;clip-path:inset(0)}
+15%{translate:5px 0;text-shadow:-6px 0 #4bc9ff,6px 0 #7648e5}
+28%{translate:-9px 0;clip-path:inset(30% 0 25% 0)}
+39%{translate:0 0;clip-path:inset(0);text-shadow:none}
+52%{translate:8px -1px;text-shadow:5px 0 #7648e5,-4px 0 #4bc9ff;clip-path:inset(5% 0 48% 0)}
+65%{translate:-12px 0;clip-path:inset(52% 0 10% 0)}
+79%{translate:4px 0;clip-path:inset(0)}
+88%,100%{visibility:hidden;clip-path:inset(50% 0 50% 0)}
+}
+@media(prefers-reduced-motion:reduce){.stage.leaving .brand,.stage.leaving .status{animation:none;opacity:0!important}}

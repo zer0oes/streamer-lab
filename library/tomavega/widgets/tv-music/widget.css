@@ -1,0 +1,30 @@
+/* TV - Music : emplacement « LE SON » de TomaVega-animation.html, branché sur Spotify. */
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent;color:#e0e3e8;font-family:'Clarity City',Arial,sans-serif}
+.music-slot{position:absolute;inset:0;color:#e0e3e8;transition:opacity .6s ease}
+.music-slot.is-hidden{opacity:0}
+.music-heading{position:relative;display:flex;align-items:center;gap:12px;height:36px;box-sizing:border-box;padding:0 8px 12px;font-size:17px;font-weight:500;line-height:1.2;letter-spacing:.12em}
+.music-heading:after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,#4bc9ff,#7648e5);opacity:.65}
+.music-note{display:inline-flex;align-items:center;justify-content:center;width:24px;height:32px;flex-shrink:0;color:#4bc9ff;font-size:20px}
+/* 14 px entre le trait de l'en-tête et le morceau, comme le salon */
+.music-track{display:flex;align-items:flex-start;gap:12px;padding-top:14px}
+.music-track[hidden]{display:none}
+.music-track.is-changing{animation:trackIn .5s cubic-bezier(.2,.7,.2,1) both}
+@keyframes trackIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.music-cover{position:relative;flex:0 0 52px;height:52px;display:grid;place-items:center;overflow:hidden;border:1px solid rgba(118,72,229,.3);border-radius:6px;background:linear-gradient(135deg,rgba(75,201,255,.12),rgba(118,72,229,.18));color:#b7b3ce;font-size:24px}
+.music-cover-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s ease}
+.music-cover-img.is-loaded{opacity:1}
+.music-info{min-width:0;flex:1}
+.music-title{font-size:19px;font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.music-artist{margin-top:5px;font-size:14px;line-height:1.2;color:#929dab;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.music-state{margin-top:10px;font-size:9px;letter-spacing:.06em;color:#687584}
+.music-state[hidden]{display:none}
+@media(prefers-reduced-motion:reduce){.music-track.is-changing{animation:none}}
+
+/* Connexion Spotify guidée : affichée dans l'aperçu de l'éditeur seulement */
+.spotify-setup{position:fixed;inset:0;z-index:50;overflow:auto;box-sizing:border-box;padding:8px 10px;background:rgba(10,12,18,.94);color:#e8ebf0;font:11px/1.35 Arial,sans-serif;user-select:text;pointer-events:auto}
+.spotify-setup p{margin:0 0 4px}
+.spotify-setup-title{font-weight:700;color:#1ed760;text-transform:uppercase;letter-spacing:.08em;font-size:10px}
+.spotify-setup-error{color:#ff8a8a}
+.spotify-setup-ok{color:#1ed760}
+.spotify-setup-copy{padding:3px 5px;border-radius:3px;background:rgba(255,255,255,.08);color:#9fe7ff;font:10px/1.3 monospace;word-break:break-all;user-select:all}

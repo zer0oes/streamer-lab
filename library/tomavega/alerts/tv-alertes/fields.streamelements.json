@@ -1,0 +1,20 @@
+[
+  {
+    "name": "message",
+    "type": "textfield",
+    "label": "Message",
+    "value": "Nouveau widget"
+  },
+  {
+    "name": "textColor",
+    "type": "colorpicker",
+    "label": "Couleur du texte",
+    "value": "#FFFFFF"
+  },
+  {
+    "name": "fontSize",
+    "type": "number",
+    "label": "Taille du texte (px)",
+    "value": "28"
+  }
+]
