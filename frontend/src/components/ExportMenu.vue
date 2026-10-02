@@ -23,11 +23,12 @@ async function exportFor(targetPlatform: string): Promise<void> {
     const widget = { html: store.editorFiles.html, css: store.editorFiles.css, js: store.editorFiles.js, fields: store.fields };
     const snapshot = store.alertboxSnapshot();
     const exported = store.alertbox && snapshot
-      ? buildAlertboxExport(snapshot, store.alertbox)
+      ? buildAlertboxExport(snapshot, store.alertbox, store.platform)
       : buildPlatformExport(widget, store.fieldData, targetPlatform);
     const archive = createZip(exported.files);
     const slug = slugifyWidgetName(store.detail.widgetMeta.name || "custom-widget");
-    const suffix = store.alertbox ? "alertbox" : exported.platform === PLATFORM_STREAMLABS ? "streamlabs" : "streamelements";
+    const platformSuffix = exported.platform === PLATFORM_STREAMLABS ? "streamlabs" : "streamelements";
+    const suffix = store.alertbox ? `alertbox-${platformSuffix}` : platformSuffix;
     const blob = new Blob([archive], { type: "application/zip" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

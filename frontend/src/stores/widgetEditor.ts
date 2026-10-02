@@ -4,7 +4,7 @@ import { getWidgetDetail, saveWidgetFile, type AlertboxTypeCode, type EditorFile
 import { normalizePlatform, type Platform } from "../lib/platformEvents";
 import { alertboxFieldStorageKey, fieldStorageKey, loadFieldData, normalizeFieldDefinitions } from "../lib/fieldData";
 import { buildWidgetSrcdoc, type BuildSrcdocOptions } from "../lib/widgetSrcdoc";
-import { ALERTBOX_ALERTS, normalizeAlertboxConfig, type AlertboxAlertSettings, type AlertboxAlertType, type AlertboxConfig } from "../lib/alertbox";
+import { alertboxAlerts, normalizeAlertboxConfig, type AlertboxAlertSettings, type AlertboxAlertType, type AlertboxConfig } from "../lib/alertbox";
 
 export type FileStatus = "synced" | "dirty" | "saving" | "error";
 
@@ -63,7 +63,8 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
 
   const isAlertbox = computed(() => detail.value?.widgetMeta.kind === "alertbox");
   // Réglages natifs par alerte (Follower alert, Subscriber alert…), édités
-  // dans le panneau Alertes et enregistrés dans alertbox.json.
+  // dans le panneau Alertes et enregistrés dans alertbox.json (StreamElements)
+  // ou streamlabs/alertbox.json (Streamlabs), selon la plateforme active.
   const alertbox = ref<AlertboxConfig | null>(null);
   const alertboxStatus = ref<FileStatus>("synced");
   let alertboxSaveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -74,10 +75,12 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
   const alertboxCode = ref<Record<AlertboxAlertType, AlertboxTypeCode> | null>(null);
   const alertboxValues = reactive<Partial<Record<AlertboxAlertType, Record<string, unknown>>>>({});
   const activeAlertType = ref<AlertboxAlertType>("follow");
+  // Alertes de l'AlertBox de la plateforme active (libellés de la plateforme)
+  const alertboxAlertList = computed(() => alertboxAlerts(platform.value));
 
   function currentFieldStorageKey(): string {
     if (!widgetId.value) return "";
-    return isAlertbox.value ? alertboxFieldStorageKey(widgetId.value, activeAlertType.value) : fieldStorageKey(widgetId.value, platform.value);
+    return isAlertbox.value ? alertboxFieldStorageKey(widgetId.value, activeAlertType.value, platform.value) : fieldStorageKey(widgetId.value, platform.value);
   }
 
   // Code et valeurs de toutes les alertes, l'alerte active reprenant les
@@ -111,7 +114,7 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
             : [type, { html: code.html, css: code.css, js: code.js, values: alertboxValues[type] || {} }];
         })
       );
-      options.alertbox = { config: alertbox.value, codes };
+      options.alertbox = { config: alertbox.value, codes, platform: platform.value };
     }
     return buildWidgetSrcdoc(previewSource, previewFieldData, options);
   });
@@ -123,7 +126,7 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
     activeAlertType.value = type;
     detail.value.files = code.files;
     fields.value = normalizeFieldDefinitions(code.fields);
-    const loaded = loadFieldData(fields.value, alertboxFieldStorageKey(widgetId.value, type));
+    const loaded = loadFieldData(fields.value, alertboxFieldStorageKey(widgetId.value, type, platform.value));
     for (const key of Object.keys(fieldData)) delete fieldData[key];
     Object.assign(fieldData, loaded);
     alertboxValues[type] = { ...loaded };
@@ -175,7 +178,8 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
     if (!widgetId.value || !alertbox.value) return;
     alertboxStatus.value = "saving";
     try {
-      await saveWidgetFile(widgetId.value, "alertbox.json", `${JSON.stringify(alertbox.value, null, 2)}\n`);
+      const configFile = platform.value === "streamlabs" ? "streamlabs/alertbox.json" : "alertbox.json";
+      await saveWidgetFile(widgetId.value, configFile, `${JSON.stringify(alertbox.value, null, 2)}\n`);
       alertboxStatus.value = "synced";
     } catch {
       alertboxStatus.value = "error";
@@ -219,13 +223,13 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
       alertboxStatus.value = "synced";
 
       if (data.widgetMeta.kind === "alertbox" && data.alertboxCode) {
-        alertbox.value = normalizeAlertboxConfig(data.alertbox);
+        alertbox.value = normalizeAlertboxConfig(data.alertbox, data.platform);
         alertboxCode.value = data.alertboxCode;
         for (const key of Object.keys(alertboxValues) as AlertboxAlertType[]) delete alertboxValues[key];
         for (const [type, code] of Object.entries(data.alertboxCode) as [AlertboxAlertType, AlertboxTypeCode][]) {
-          alertboxValues[type] = loadFieldData(normalizeFieldDefinitions(code.fields), alertboxFieldStorageKey(id, type));
+          alertboxValues[type] = loadFieldData(normalizeFieldDefinitions(code.fields), alertboxFieldStorageKey(id, type, data.platform));
         }
-        loadAlertTypeIntoEditor(ALERTBOX_ALERTS[0].type);
+        loadAlertTypeIntoEditor(alertboxAlerts(data.platform)[0].type);
         return;
       }
 
@@ -243,7 +247,13 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
   }
 
   async function switchPlatform(nextPlatform: Platform): Promise<void> {
-    if (!widgetId.value || nextPlatform === platform.value || isAlertbox.value) return;
+    if (!widgetId.value || nextPlatform === platform.value) return;
+    // Modifications en attente de la plateforme quittée (code, réglages natifs)
+    await flushDirtyFiles();
+    if (alertboxStatus.value === "dirty") {
+      clearTimeout(alertboxSaveTimer);
+      await saveAlertbox();
+    }
     localStorage.setItem(PREVIEW_PLATFORM_KEY, nextPlatform);
     await open(widgetId.value, nextPlatform);
   }
@@ -341,6 +351,7 @@ export const useWidgetEditorStore = defineStore("widgetEditor", () => {
     alertboxStatus,
     updateAlertbox,
     alertboxCode,
+    alertboxAlertList,
     activeAlertType,
     selectAlertType,
     alertboxSnapshot,

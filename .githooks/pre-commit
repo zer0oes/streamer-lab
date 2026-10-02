@@ -1,0 +1,4 @@
+#!/bin/sh
+# Bloque un commit qui contiendrait une clé API ou un secret (cf. scripts/check-secrets.mjs).
+# Installé automatiquement par « npm install » (git config core.hooksPath .githooks).
+node scripts/check-secrets.mjs --staged

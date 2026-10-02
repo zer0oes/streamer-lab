@@ -32,9 +32,11 @@ import { decryptIntegrationToken, disconnectIntegration, maskIntegration, saveMa
 import { saveContactMessage } from "./lib/contact.mjs";
 import { deleteLocalMedia, listLocalMedia, resolveLocalMediaPath, saveLocalMedia, MAX_MEDIA_BYTES, MEDIA_URL_PREFIX } from "./lib/media.mjs";
 import {
-  ALERTBOX_TYPES,
+  ALERTBOX_TYPES_BY_PLATFORM,
   ALERTBOX_CODE_FILES,
+  alertboxDir,
   isAlertboxCodeFile,
+  isAlertboxConfigFile,
   LIBRARY_ROOT,
   categoryDirsForProject,
   categoryDirectory,
@@ -54,6 +56,7 @@ import {
   deleteOverlay,
   duplicateOverlay
 } from "./lib/overlays.mjs";
+import { createSecretsStore, mergeOverlaySecrets, splitOverlaySecrets } from "./lib/secrets.mjs";
 import {
   RESERVED_PROJECT_IDS,
   listProjects,
@@ -130,6 +133,11 @@ const SE_MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
 
 store.deleteExpiredSessions();
 await migrateLegacyLibrary();
+
+// Valeurs sensibles (clés API, secrets, tokens) des items d'overlay : jamais
+// dans library/ (suivi par git), toujours dans data/secrets.json (ignoré).
+const secretsStore = createSecretsStore();
+await migrateOverlaySecrets();
 
 let session = await readJson(MOCK_SESSION_PATH);
 let liveStatus = config.channelId && config.token ? "connecting" : "disabled";
@@ -280,7 +288,7 @@ const server = createServer(async (request, response) => {
       if (!found) return sendJson(response, 404, { error: "Widget introuvable" });
       const isAlertbox = found.widgetInfo.kind === "alertbox";
       const allowed = isAlertbox
-        ? body.file === "alertbox.json" || isAlertboxCodeFile(body.file)
+        ? isAlertboxConfigFile(body.file) || isAlertboxCodeFile(body.file)
         : editableWidgetFiles.has(body.file);
       if (!allowed) {
         return sendJson(response, 400, { error: "Fichier de widget non autorise" });
@@ -365,7 +373,9 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/api/overlay") {
       const found = await findOverlayInfo(url.searchParams.get("id"));
       if (!found) return sendJson(response, 404, { error: "Overlay introuvable" });
-      return sendJson(response, 200, { overlay: { ...found.overlayInfo, projectId: found.projectId } });
+      const secrets = await secretsStore.getOverlaySecrets(found.overlayInfo.id);
+      const items = mergeOverlaySecrets(found.overlayInfo.items, secrets);
+      return sendJson(response, 200, { overlay: { ...found.overlayInfo, items, projectId: found.projectId } });
     }
 
     if (request.method === "POST" && url.pathname === "/api/overlays") {
@@ -431,7 +441,10 @@ const server = createServer(async (request, response) => {
       if (!Array.isArray(body.items)) return sendJson(response, 400, { error: "Items invalides" });
       const found = await findOverlayInfo(body.overlayId);
       if (!found) return sendJson(response, 404, { error: "Overlay introuvable" });
-      const overlay = await replaceOverlayItems(found.projectId, body.overlayId, body.items);
+      // Secrets d'abord (data/), puis les items nettoyés (library/, suivi par git)
+      const { items, secrets } = splitOverlaySecrets(body.items);
+      await secretsStore.setOverlaySecrets(body.overlayId, secrets);
+      const overlay = await replaceOverlayItems(found.projectId, body.overlayId, items);
       return sendJson(response, 200, { saved: true, overlayId: overlay.id, at: Date.now() });
     }
 
@@ -449,6 +462,7 @@ const server = createServer(async (request, response) => {
       const found = await findOverlayInfo(overlayId);
       if (!found) return sendJson(response, 404, { error: "Overlay introuvable" });
       await deleteOverlay(found.projectId, overlayId);
+      await secretsStore.deleteOverlaySecrets(overlayId);
       return sendJson(response, 200, { deleted: true, overlayId });
     }
 
@@ -460,6 +474,7 @@ const server = createServer(async (request, response) => {
       const newId = uniqueWidgetId(slugify(newName), await allOverlayIds());
       const overlay = await duplicateOverlay(found.projectId, body.overlayId, newId, newName);
       if (!overlay) return sendJson(response, 404, { error: "Overlay introuvable" });
+      await secretsStore.copyOverlaySecrets(body.overlayId, newId);
       return sendJson(response, 201, { overlay: { ...overlay, projectId: found.projectId } });
     }
 
@@ -1055,6 +1070,24 @@ async function listAllWidgets() {
   return widgets;
 }
 
+// Une seule fois par overlay concerné : déplace vers data/secrets.json les
+// valeurs sensibles encore présentes dans un overlay.json (enregistré avant
+// cette protection), puis réécrit l'overlay sans elles.
+async function migrateOverlaySecrets() {
+  for (const entry of await listAllOverlays()) {
+    const info = await getOverlayInfo(entry.projectId, entry.id);
+    if (!info) continue;
+    const { items, secrets } = splitOverlaySecrets(info.items);
+    if (!Object.keys(secrets).length) continue;
+    const existing = await secretsStore.getOverlaySecrets(entry.id);
+    const merged = { ...existing };
+    for (const [itemId, values] of Object.entries(secrets)) merged[itemId] = { ...merged[itemId], ...values };
+    await secretsStore.setOverlaySecrets(entry.id, merged);
+    await replaceOverlayItems(entry.projectId, entry.id, items);
+    console.log(`Secrets de l'overlay « ${entry.id} » déplacés vers data/secrets.json`);
+  }
+}
+
 async function listAllOverlays() {
   const overlays = [];
   for (const project of await listProjects()) {
@@ -1156,7 +1189,8 @@ function assertValidWidgetFileContent(file, content) {
     file === "data.streamelements.json" ||
     file === "data.streamlabs.json" ||
     file === "alertbox.json" ||
-    /^[a-z]+\/(fields|data)\.json$/.test(file)
+    file === "streamlabs/alertbox.json" ||
+    /^(streamlabs\/)?[a-z]+\/(fields|data)\.json$/.test(file)
   ) {
     try {
       JSON.parse(content);
@@ -1209,12 +1243,14 @@ function widgetMetaOf(widgetInfo) {
   };
 }
 
-// Code custom CSS de chaque alerte d'une AlertBox (un sous-dossier par type).
-// Un type sans dossier repart d'un code vide, créé au premier enregistrement.
-async function loadAlertboxCode(directory) {
+// Code custom de chaque alerte d'une AlertBox (un sous-dossier par type, sous
+// streamlabs/ pour l'Alert Box Streamlabs). Un type sans dossier repart d'un
+// code vide, créé au premier enregistrement.
+async function loadAlertboxCode(directory, platform) {
+  const prefix = alertboxDir(platform);
   const entries = await Promise.all(
-    ALERTBOX_TYPES.map(async (type) => {
-      const files = Object.fromEntries(Object.entries(ALERTBOX_CODE_FILES).map(([key, name]) => [key, `${type}/${name}`]));
+    ALERTBOX_TYPES_BY_PLATFORM[platform].map(async (type) => {
+      const files = Object.fromEntries(Object.entries(ALERTBOX_CODE_FILES).map(([key, name]) => [key, `${prefix}${type}/${name}`]));
       const [html, css, js, fieldsSource, dataSource] = await Promise.all([
         readOptionalFile(join(directory, files.html), ""),
         readOptionalFile(join(directory, files.css), ""),
@@ -1229,15 +1265,16 @@ async function loadAlertboxCode(directory) {
 }
 
 async function loadWidget(widgetInfo, requestedPlatform = "streamelements") {
-  // Une AlertBox (custom CSS) n'existe que sur StreamElements, et son code
-  // vit dans un sous-dossier par alerte : la première alerte sert de code
-  // « courant » pour les champs génériques de la réponse.
+  // AlertBox : StreamElements (racine) ou Streamlabs (streamlabs/), avec un
+  // sous-dossier par alerte ; la première alerte sert de code « courant »
+  // pour les champs génériques de la réponse.
   if (widgetInfo.kind === "alertbox") {
+    const alertboxPlatform = requestedPlatform === "streamlabs" ? "streamlabs" : "streamelements";
     const [alertboxCode, alertboxSource] = await Promise.all([
-      loadAlertboxCode(widgetInfo.directory),
-      readOptionalFile(join(widgetInfo.directory, "alertbox.json"), '{ "alerts": {} }\n')
+      loadAlertboxCode(widgetInfo.directory, alertboxPlatform),
+      readOptionalFile(join(widgetInfo.directory, `${alertboxDir(alertboxPlatform)}alertbox.json`), '{ "alerts": {} }\n')
     ]);
-    const first = alertboxCode[ALERTBOX_TYPES[0]];
+    const first = alertboxCode[ALERTBOX_TYPES_BY_PLATFORM[alertboxPlatform][0]];
     return {
       alertbox: JSON.parse(alertboxSource),
       alertboxCode,
@@ -1247,7 +1284,7 @@ async function loadWidget(widgetInfo, requestedPlatform = "streamelements") {
       fields: first.fields,
       fieldsSource: first.fieldsSource,
       dataSource: first.dataSource,
-      platform: "streamelements",
+      platform: alertboxPlatform,
       widgetId: widgetInfo.id,
       widgetMeta: widgetMetaOf(widgetInfo),
       files: first.files

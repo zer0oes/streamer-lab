@@ -117,9 +117,6 @@
           "width": 450,
           "border_color": "#34385f",
           "background_opacity": 0.7,
-          "spotify_client_id": "a136f08305c84aa89fa0f1a74854da78",
-          "spotify_client_secret": "d64f2f9cc52443e0b0c75e2e47d656eb",
-          "spotify_refresh_token": "AQAmcHdhK5bNi1aKnGiBVprbuB58b0nymHqUqQWUegY3zmAQlqB8Ewo5UECjLLt405qtbzoLG_UMiRje68l8FtGZ6MrYB8jZnxvcsGsD0qw2V4sLcRWNhllukkkC8pVAEu8",
           "text_size": 14,
           "font_weight": "500",
           "border_opacity": 0.8
@@ -154,7 +151,7 @@
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1790960796263,
+  "updatedAt": 1790967488546,
   "guides": {
     "horizontal": [
       966,

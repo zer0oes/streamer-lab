@@ -24,6 +24,8 @@ export interface BuildSrcdocOptions {
   // iframe (cf. alertboxRuntime.js).
   alertbox?: {
     config: unknown;
+    // Défaut : StreamElements (Streamlabs : variables et cycle de vie propres)
+    platform?: Platform;
     codes: Partial<Record<string, WidgetBundle & { values: Record<string, unknown> }>>;
   };
 }
@@ -67,7 +69,7 @@ export function buildWidgetSrcdoc(
     : {};
   const runWidget = isAlertbox
     ? `${ALERTBOX_RUNTIME_SOURCE}
-  AlertboxRuntime.createHost({ codes: ${toScriptJson(hostCodes)}, config: ${toScriptJson(alertbox.config)}, stage: document.getElementById("alertbox-stage") });`
+  AlertboxRuntime.createHost({ codes: ${toScriptJson(hostCodes)}, config: ${toScriptJson(alertbox.config)}, platform: ${toScriptJson(alertbox.platform ?? PLATFORM_STREAM_ELEMENTS)}, stage: document.getElementById("alertbox-stage") });`
     : `try { (new Function(${executableJs}))(); } catch (error) { console.error(error.stack || error.message); }`;
 
   // Sur le canevas d'overlay (Phase 3), chaque widget est un item parmi

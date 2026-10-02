@@ -41,7 +41,7 @@ Le sélecteur placé dans l’en-tête permet de passer d’un environnement à 
 - **StreamElements** : événements `onWidgetLoad`, `onEventReceived` et `onSessionUpdate` sur `window`, payload `{ listener, event }` et émulation de `SE_API` ;
 - **Streamlabs** : événement `onLoad` avec `detail.custom_json`, puis `onEventReceived` sur `document` avec l’événement directement dans `detail`.
 
-Le choix est mémorisé dans le navigateur. Il sélectionne également la version locale de **JS** et de **Fields** correspondante. Les simulations Follow, Sub (classique, Prime, sub offert, community gift), Tip, Bits, Raid, Achat, Don caritatif et Chat utilisent le format de la plateforme sélectionnée. Pour une AlertBox, la plateforme est verrouillée sur StreamElements.
+Le choix est mémorisé dans le navigateur. Il sélectionne également la version locale de **JS** et de **Fields** correspondante. Les simulations Follow, Sub (classique, Prime, sub offert, community gift), Tip, Bits, Raid, Achat, Don caritatif et Chat utilisent le format de la plateforme sélectionnée. Pour une AlertBox, le sélecteur bascule entre l’AlertBox StreamElements et l’Alert Box Streamlabs.
 
 Le menu d’export génère une archive ZIP prête à copier dans l’éditeur de la plateforme active, ou permet de la convertir directement pour l’autre plateforme. Elle contient les quatre onglets, les valeurs de champs actuellement réglées et un fichier d’instructions. Lorsque le code utilise uniquement les événements de l’autre plateforme, un pont de compatibilité est automatiquement ajouté au début du JavaScript exporté. Une AlertBox a son propre export (un dossier par alerte, voir plus bas).
 
@@ -70,15 +70,17 @@ L’onglet **DATA** contient un objet JSON libre (`{}` par défaut) fusionné so
 
 Les données initiales de session se trouvent dans `mocks/session.json`. Le panneau **Événement JSON personnalisé** permet d’envoyer directement le contenu de `detail` attendu par `onEventReceived`.
 
-### Alertes AlertBox StreamElements (custom CSS)
+### Alertes AlertBox StreamElements et Alert Box Streamlabs
 
-Une alerte dont le `widget.json` contient `"kind": "alertbox"` est du code « custom CSS » d’une [AlertBox StreamElements](https://docs.streamelements.com/overlays/custom-code-in-alertbox) (StreamElements uniquement : le sélecteur de plateforme est verrouillé). C’est le cas de `zer0oes - Alerts`.
+Une alerte dont le `widget.json` contient `"kind": "alertbox"` est du code personnalisé d’AlertBox, en deux versions basculées par le sélecteur de plateforme : le « custom CSS » d’une [AlertBox StreamElements](https://docs.streamelements.com/overlays/custom-code-in-alertbox) et le « custom HTML/CSS » d’une Alert Box Streamlabs. C’est le cas de `zer0oes - Alerts`.
 
-- **Un code par alerte** : comme dans l’AlertBox, chaque alerte a son propre HTML, CSS, JS et ses propres champs, rangés dans un sous-dossier : `follow/`, `sub/`, `resub/`, `gift/`, `community/`, `cheer/`, `tip/`, `raid/`, `purchase/` (Purchase alert), `charity/` (Charity campaign donation alert) (`widget.html`, `widget.css`, `widget.js`, `fields.json`, `data.json`). Resub, sub offert et community gift sont des variations de la Subscriber alert : c’est StreamElements qui choisit la bonne, le code n’a rien à détecter. Le bouton <code>code</code> d’une alerte (onglet **Alertes**), ou la liste en haut du panneau, charge son code et ses champs dans l’éditeur ; les valeurs des champs sont mémorisées par alerte.
+- **Un code par alerte** : comme dans l’AlertBox, chaque alerte a son propre HTML, CSS, JS et ses propres champs, rangés dans un sous-dossier. Pour StreamElements, à la racine du widget : `follow/`, `sub/`, `resub/`, `gift/`, `community/`, `cheer/`, `tip/`, `raid/`, `purchase/` (Purchase alert), `charity/` (Charity campaign donation alert) (`widget.html`, `widget.css`, `widget.js`, `fields.json`, `data.json`). Resub, sub offert et community gift sont des variations de la Subscriber alert : c’est StreamElements qui choisit la bonne, le code n’a rien à détecter. Pour Streamlabs, sous `streamlabs/` : `follow/`, `sub/`, `resub/`, `giftsub/` (subs offerts), `bits/`, `raid/`, `tip/` (Donations), `merch/`, `charity/`, avec leurs réglages natifs dans `streamlabs/alertbox.json`. Le bouton <code>code</code> d’une alerte (onglet **Alertes**), ou la liste en haut du panneau, charge son code et ses champs dans l’éditeur ; les valeurs des champs sont mémorisées par alerte et par plateforme.
 - **Réglages natifs** : l’onglet **Alertes** reproduit les réglages de l’AlertBox, alerte par alerte (activée, son, volume, durée). Ils sont enregistrés dans `alertbox.json`. Les sons peuvent être téléversés dans les médias locaux (mp3, ogg, wav, m4a).
 - **Aperçu** : comme l’AlertBox, le labo affiche chaque alerte dans une iframe neuve, avec le code et les champs de l’alerte, et les variables (`{{name}}`, `{{amount}}`, `{{message}}`, `{{sender}}`, `{{widgetDuration}}`…) remplacées. Il joue le son de l’alerte et la retire après sa durée ; les alertes s’enchaînent en file d’attente. Un sub de plus d’un mois passe par la variation Resub. Le fonctionnement est le même sur le canevas d’overlay, avec les valeurs de champs réglées dans l’éditeur (pas de surcharge par item pour une AlertBox).
-- **Code** : le son, la durée et la file d’attente sont gérés par l’AlertBox ; le code ne fait que l’affichage et cale son animation de sortie sur `{{widgetDuration}}`. L’AlertBox remplace aussi les variables à accolade simple (`{name}`) : ne pas en écrire par accident dans le code, même en commentaire.
-- **Export** : un dossier par alerte activée, avec son code et ses valeurs de champs, et un `README.txt` qui indique où coller chaque dossier (alerte ou variation, avec sa condition) et les réglages natifs (son, volume, durée) à reporter à la main.
+- **Code** : le son, la durée et la file d’attente sont gérés par l’AlertBox ; le code ne fait que l’affichage. L’AlertBox remplace aussi les variables à accolade simple (`{name}`) : ne pas en écrire par accident dans le code, même en commentaire.
+  - StreamElements : variables `{{name}}`, `{{amount}}`, `{{message}}`, `{{sender}}`…, champs reçus par `onWidgetLoad`, sortie calée sur `{{widgetDuration}}`.
+  - Streamlabs : variables `{name}`, `{amount}`, `{count}` (subs offerts, viewers), `{message}`, `{product}` (merch) ; pas d’`onWidgetLoad`, les Custom Fields sont remplacés dans le code (`{nomDuChamp}`) et le JS démarre au DOM prêt, jQuery chargé. Streamlabs ne fournit pas la durée : un champ « Durée de l’alerte » cale la sortie et doit rester égal à la durée réglée dans l’Alert Box.
+- **Export** : selon la plateforme active, un dossier par alerte activée, avec son code et ses valeurs de champs (au format de la plateforme), et un `README.txt` qui indique où coller chaque dossier (alerte ou variation, avec sa condition) et les réglages natifs (son, volume, durée) à reporter à la main.
 
 ## Éditeur d’overlays
 
@@ -166,7 +168,17 @@ Le widget `library/zer0oes/widgets/music-player/` affiche le morceau en cours de
 
 Sans identifiants, le widget tourne en mode démo dans l’éditeur (laboratoire ou éditeur StreamElements) et reste masqué en live. Les erreurs d’authentification ne s’affichent que dans l’éditeur.
 
-> Les identifiants sont visibles par quiconque a accès aux champs du widget : ne pas partager l’overlay ni ses exports.
+> Les identifiants sont visibles par quiconque a accès aux champs du widget : ne pas partager l’overlay ni ses exports. Dans le labo, ils ne sont jamais écrits dans `library/` (voir « Protection des clés API »).
+
+## Protection des clés API
+
+Le dépôt peut être public : aucune clé API, aucun secret ni token ne doit être versionné.
+
+- **Champs sensibles** : un champ dont le nom contient `secret`, `token`, `password`, `api_key`/`apikey` ou `client_id` est traité comme sensible (même règle dans `lib/secrets.mjs` et `frontend/src/lib/secretFields.ts`). Sa saisie est masquée dans les panneaux de champs.
+- **Overlays** : quand un item d’overlay porte une valeur sensible, le serveur la range dans `data/secrets.json` (ignoré par git) au lieu de `overlay.json`, puis la réinjecte à la lecture : l’overlay fonctionne normalement dans le labo. Une valeur encore présente dans un `overlay.json` (enregistré avant cette protection) est déplacée automatiquement au démarrage du serveur. Dupliquer ou supprimer un overlay duplique ou supprime aussi ses secrets.
+- **Widgets** : les valeurs réglées dans le panneau **Champs** restent dans le stockage du navigateur ; les valeurs par défaut de `fields.json` doivent rester vides pour un champ sensible.
+- **Garde-fou de commit** : `npm install` active les hooks de `.githooks/` (`git config core.hooksPath .githooks`). Le hook `pre-commit` lance `scripts/check-secrets.mjs` sur les fichiers indexés et bloque le commit s’il trouve une valeur affectée à un champ sensible. `npm run check:secrets` vérifie tous les fichiers suivis, et `npm test` échoue s’il en reste un. Faux positif : ajouter le commentaire `check-secrets: ignore` sur la ligne.
+- **Une clé déjà poussée doit être considérée comme compromise** : la révoquer et la régénérer côté service (la retirer des fichiers ne l’efface pas de l’historique git).
 
 ## Compatibilité et limites
 
@@ -174,7 +186,7 @@ Sans identifiants, le widget tourne en mode démo dans l’éditeur (laboratoire
 - `SE_API.store.get/set`, `getOverlayStatus`, `setField`, `resumeQueue`, `sanitize`, `cheerFilter` et `counters.get` possèdent une émulation locale. Les compteurs renvoient actuellement `0`, et la reprise de queue est simulée.
 - Les payloads chat Astro Twitch, YouTube et Kick sont normalisés vers la forme historique `obj.detail.event.data`. Le payload original reste disponible dans `_raw`.
 - Le laboratoire ne publie rien sur StreamElements, ni pour les widgets ni pour les overlays composés dans l’éditeur (la connexion OAuth2 associée est en lecture seule). La mise en production reste volontaire : copier les quatre fichiers dans un nouveau Custom Widget, valider, puis seulement remplacer le widget utilisé par l’overlay. Pour une AlertBox, coller chaque dossier de l’export dans l’alerte (ou la variation) correspondante et y reporter son, volume et durée.
-- AlertBox : le labo simule le comportement documenté de l’AlertBox (une iframe neuve par alerte, variables remplacées, son et durée natifs). La documentation StreamElements ne détaille pas les données des alertes Purchase et Charity ; elles sont simulées d’après des sources tierces (nom, montant, message, articles). Dans OBS, l’AlertBox peut laisser l’alerte précédente dans la page : le code zer0oes ne cherche donc que dans sa propre carte et attend qu’elle soit affichée pour mesurer le titre.
+- AlertBox : le labo simule le comportement documenté de l’AlertBox (une iframe neuve par alerte, variables remplacées, son et durée natifs). La documentation StreamElements ne détaille pas les données des alertes Purchase et Charity ; elles sont simulées d’après des sources tierces (nom, montant, message, articles). Pour Streamlabs, les variables suivent les modèles par défaut de l’Alert Box (dépôt `neferent/streamlabs-custom-code-starter`), faute de documentation officielle : le format exact du montant d’un don peut varier, et aucune variable connue ne donne le destinataire d’un sub offert unique (seul le gifteur est affiché). Le canevas d’overlay affiche toujours la version StreamElements. Dans OBS, l’AlertBox peut laisser l’alerte précédente dans la page : le code zer0oes ne cherche donc que dans sa propre carte et attend qu’elle soit affichée pour mesurer le titre.
 
 ## Vérification
 

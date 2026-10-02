@@ -164,3 +164,71 @@ describe("createHost", () => {
     expect(stage.querySelector("iframe")?.dataset.alertType).toBe("raid");
   });
 });
+
+describe("Alert Box Streamlabs", () => {
+  it("a ses propres types d'alerte", () => {
+    expect(Object.keys(runtime.normalizeConfig({}, "streamlabs").alerts)).toEqual(["follow", "sub", "resub", "giftsub", "bits", "raid", "tip", "merch", "charity"]);
+  });
+
+  it("convertit les évènements vers les alertes Streamlabs", () => {
+    expect(runtime.detectAlertType("cheer-latest", { name: "a", amount: 100 }, "streamlabs")).toBe("bits");
+    expect(runtime.detectAlertType("", { type: "bits", name: "a", amount: 100 }, "streamlabs")).toBe("bits");
+    expect(runtime.detectAlertType("", { type: "donation", name: "a", amount: 5 }, "streamlabs")).toBe("tip");
+    expect(runtime.detectAlertType("", { type: "subscription", name: "a", amount: 6 }, "streamlabs")).toBe("resub");
+    expect(runtime.detectAlertType("", { type: "subscription", name: "b", gifted: true, sender: "c", amount: 1 }, "streamlabs")).toBe("giftsub");
+    expect(runtime.detectAlertType("", { type: "subscription", name: "c", gifted: true, bulkGifted: true, amount: 5 }, "streamlabs")).toBe("giftsub");
+    expect(runtime.detectAlertType("", { type: "purchase", name: "a", amount: 20 }, "streamlabs")).toBe("merch");
+    expect(runtime.detectAlertType("", { type: "charitycampaigndonation", name: "a", amount: 20 }, "streamlabs")).toBe("charity");
+  });
+
+  it("expose les variables Streamlabs", () => {
+    const giftsub = runtime.buildAlertVariables("giftsub", { name: "Gifteur", sender: "Gifteur", bulkGifted: true, amount: 10 }, settings, undefined, "streamlabs");
+    expect([giftsub.name, giftsub.count]).toEqual(["Gifteur", "10"]);
+    const single = runtime.buildAlertVariables("giftsub", { name: "Destinataire", sender: "Gifteur", gifted: true, amount: 1 }, settings, undefined, "streamlabs");
+    expect([single.name, single.count]).toEqual(["Gifteur", "1"]);
+    expect(runtime.buildAlertVariables("raid", { name: "r", viewers: 42 }, settings, undefined, "streamlabs").count).toBe("42");
+    expect(runtime.buildAlertVariables("tip", { name: "t", amount: 5, formattedAmount: "5.00 €" }, settings, undefined, "streamlabs").amount).toBe("5.00 €");
+    expect(runtime.buildAlertVariables("tip", { name: "t", amount: 7.5 }, settings, { symbol: "€" }, "streamlabs").amount).toBe("7.50 €");
+    const merch = runtime.buildAlertVariables("merch", { name: "m", items: [{ name: "Mug", quantity: 2 }] }, settings, undefined, "streamlabs");
+    expect(merch.product).toBe("2× Mug");
+    expect(merch.widgetDuration).toBeUndefined();
+  });
+
+  it("charge jQuery et n'envoie pas onWidgetLoad dans le document d'alerte", () => {
+    const doc = runtime.buildAlertDocument({ html: "<p>{name}</p>", css: "", js: "" }, { name: "Nova" }, { fieldData: {} }, "streamlabs");
+    expect(doc).toContain('<script src="/vendor/jquery.min.js">');
+    expect(doc).toContain("<p>Nova</p>");
+    expect(doc).not.toContain("onWidgetLoad");
+    expect(runtime.buildAlertDocument({ html: "", css: "", js: "" }, {}, { fieldData: {} })).toContain("onWidgetLoad");
+  });
+
+  it("l'hôte reçoit les évènements Streamlabs à plat sur document", () => {
+    vi.useFakeTimers();
+    const stage = document.createElement("div");
+    document.body.append(stage);
+    const played: string[] = [];
+    const target = new EventTarget();
+    const docTarget = new EventTarget();
+    const fakeWindow = Object.assign(target, {
+      document: Object.assign(docTarget, { createElement: (tag: string) => document.createElement(tag) }),
+      parent: null,
+      setTimeout: (fn: () => void, ms: number) => window.setTimeout(fn, ms)
+    }) as unknown as Window;
+    runtime.createHost({
+      codes: { bits: { html: "<b>{name} {amount}</b>", css: "", js: "", fieldData: {} } },
+      config: { alerts: { bits: { sound: "/s/bits.mp3", duration: 3 } } },
+      platform: "streamlabs",
+      stage,
+      window: fakeWindow,
+      log: () => {},
+      playSound: (alertSettings, type) => played.push(`${type}:${alertSettings.sound}`)
+    });
+    docTarget.dispatchEvent(new CustomEvent("onEventReceived", { detail: { type: "bits", name: "Nova", amount: 500, message: "" } }));
+    const frame = stage.querySelector("iframe");
+    expect(frame?.dataset.alertType).toBe("bits");
+    expect(frame?.srcdoc).toContain("<b>Nova 500</b>");
+    expect(played).toEqual(["bits:/s/bits.mp3"]);
+    stage.remove();
+    vi.useRealTimers();
+  });
+});

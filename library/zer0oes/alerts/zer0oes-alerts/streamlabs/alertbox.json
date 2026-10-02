@@ -1,0 +1,13 @@
+{
+  "alerts": {
+    "follow": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
+    "sub": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
+    "resub": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
+    "giftsub": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
+    "bits": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
+    "raid": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
+    "tip": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
+    "merch": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
+    "charity": { "enabled": false, "sound": "", "volume": 0.5, "duration": 8 }
+  }
+}

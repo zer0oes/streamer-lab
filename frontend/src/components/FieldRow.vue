@@ -2,6 +2,7 @@
 import { useWidgetEditorStore } from "../stores/widgetEditor";
 import { dispatchToWidget } from "../composables/useWidgetPreviewBridge";
 import { FIELD_INLINE_TYPES, fieldTypeIcon, resolveInputType } from "../lib/fieldTypes";
+import { fieldInputType } from "../lib/secretFields";
 import type { FieldDefinition } from "../api/widgetDetail";
 
 const props = defineProps<{
@@ -56,7 +57,7 @@ function onInputChange(event: Event): void {
     </select>
     <input
       v-else
-      :type="resolveInputType(definition.type)"
+      :type="fieldInputType(fieldKey, resolveInputType(definition.type))"
       :min="definition.min"
       :max="definition.max"
       :step="definition.step ?? definition.steps"

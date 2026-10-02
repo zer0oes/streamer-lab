@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { bumpUpdatedAt, ensureManifestDates, getWidgetInfo, isAlertboxCodeFile, listWidgets, widgetFromManifest } from "../lib/widgets.mjs";
+import { bumpUpdatedAt, ensureManifestDates, getWidgetInfo, isAlertboxCodeFile, isAlertboxConfigFile, listWidgets, widgetFromManifest } from "../lib/widgets.mjs";
 
 // These tests never touch the real library/widgets|alerts directories —
 // every fixture lives under a fresh os.tmpdir() subdirectory, removed after
@@ -133,6 +133,19 @@ test("isAlertboxCodeFile n'accepte que <type d'alerte>/<fichier de code>", () =>
   assert.equal(isAlertboxCodeFile("tip/../widget.json"), false);
   assert.equal(isAlertboxCodeFile("../tip/widget.js"), false);
   assert.equal(isAlertboxCodeFile("widget.html"), false);
+});
+
+test("isAlertboxCodeFile accepte les alertes Streamlabs sous streamlabs/", () => {
+  assert.equal(isAlertboxCodeFile("streamlabs/bits/widget.js"), true);
+  assert.equal(isAlertboxCodeFile("streamlabs/giftsub/fields.json"), true);
+  // Types propres à chaque plateforme
+  assert.equal(isAlertboxCodeFile("streamlabs/cheer/widget.js"), false);
+  assert.equal(isAlertboxCodeFile("bits/widget.js"), false);
+  assert.equal(isAlertboxCodeFile("streamlabs/bits/../widget.js"), false);
+  assert.equal(isAlertboxCodeFile("streamlabs/alertbox.json"), false);
+  assert.equal(isAlertboxConfigFile("streamlabs/alertbox.json"), true);
+  assert.equal(isAlertboxConfigFile("alertbox.json"), true);
+  assert.equal(isAlertboxConfigFile("streamlabs/tip/alertbox.json"), false);
 });
 
 test("widgetFromManifest expose le type de widget (alertbox ou custom)", () => {

@@ -1,14 +1,64 @@
 {
   "alerts": {
-    "follow": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
-    "sub": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
-    "resub": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
-    "gift": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
-    "community": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
-    "cheer": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
-    "tip": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
-    "raid": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
-    "purchase": { "enabled": true, "sound": "", "volume": 0.5, "duration": 8 },
-    "charity": { "enabled": false, "sound": "", "volume": 0.5, "duration": 8 }
+    "follow": {
+      "enabled": true,
+      "sound": "",
+      "volume": 0.5,
+      "duration": 8
+    },
+    "sub": {
+      "enabled": true,
+      "sound": "",
+      "volume": 0.5,
+      "duration": 8
+    },
+    "resub": {
+      "enabled": true,
+      "sound": "",
+      "volume": 0.5,
+      "duration": 8
+    },
+    "gift": {
+      "enabled": true,
+      "sound": "",
+      "volume": 0.5,
+      "duration": 8
+    },
+    "community": {
+      "enabled": true,
+      "sound": "",
+      "volume": 0.5,
+      "duration": 8
+    },
+    "cheer": {
+      "enabled": true,
+      "sound": "",
+      "volume": 0.5,
+      "duration": 8
+    },
+    "tip": {
+      "enabled": true,
+      "sound": "",
+      "volume": 0.5,
+      "duration": 8
+    },
+    "raid": {
+      "enabled": true,
+      "sound": "",
+      "volume": 0.5,
+      "duration": 8
+    },
+    "purchase": {
+      "enabled": false,
+      "sound": "",
+      "volume": 0.5,
+      "duration": 8
+    },
+    "charity": {
+      "enabled": false,
+      "sound": "",
+      "volume": 0.5,
+      "duration": 8
+    }
   }
 }

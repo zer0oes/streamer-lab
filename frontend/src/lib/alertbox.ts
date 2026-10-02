@@ -3,7 +3,24 @@
 // telle quelle dans l'aperçu, cf. widgetSrcdoc.ts.
 import runtimeSource from "./alertboxRuntime.js?raw";
 
-export type AlertboxAlertType = "follow" | "sub" | "resub" | "gift" | "community" | "cheer" | "tip" | "raid" | "purchase" | "charity";
+// StreamElements : follow… charity ; Streamlabs : follow, sub, resub, giftsub,
+// bits, raid, tip, merch, charity (types de son Alert Box).
+export type AlertboxAlertType =
+  | "follow"
+  | "sub"
+  | "resub"
+  | "gift"
+  | "community"
+  | "cheer"
+  | "tip"
+  | "raid"
+  | "purchase"
+  | "charity"
+  | "giftsub"
+  | "bits"
+  | "merch";
+
+export type AlertboxPlatform = "streamelements" | "streamlabs";
 
 export interface AlertboxAlertSettings {
   enabled: boolean;
@@ -21,7 +38,14 @@ export interface AlertboxConfig {
 // Libellés repris de l'AlertBox StreamElements (Follower alert, Subscriber
 // alert…) ; resub, gift et community y sont des variations de la Subscriber
 // alert, chacune avec son propre code.
-export const ALERTBOX_ALERTS: { type: AlertboxAlertType; label: string; icon: string; hint?: string }[] = [
+export interface AlertboxAlertInfo {
+  type: AlertboxAlertType;
+  label: string;
+  icon: string;
+  hint?: string;
+}
+
+export const ALERTBOX_ALERTS: AlertboxAlertInfo[] = [
   { type: "follow", label: "Follower alert", icon: "favorite" },
   { type: "sub", label: "Subscriber alert", icon: "star_shine" },
   { type: "resub", label: "Resub", icon: "star_shine", hint: "Variation de la Subscriber alert" },
@@ -34,6 +58,27 @@ export const ALERTBOX_ALERTS: { type: AlertboxAlertType; label: string; icon: st
   { type: "charity", label: "Charity campaign donation alert", icon: "volunteer_activism" }
 ];
 
+// Libellés de l'Alert Box Streamlabs (un réglage par type d'alerte)
+export const STREAMLABS_ALERTBOX_ALERTS: AlertboxAlertInfo[] = [
+  { type: "follow", label: "Follows", icon: "favorite" },
+  { type: "sub", label: "Subscriptions", icon: "star_shine" },
+  { type: "resub", label: "Resubs", icon: "star_shine" },
+  { type: "giftsub", label: "Gift Subs", icon: "redeem", hint: "Subs offerts (un ou plusieurs)" },
+  { type: "bits", label: "Bits", icon: "diamond_shine" },
+  { type: "raid", label: "Raids", icon: "bolt" },
+  { type: "tip", label: "Donations", icon: "money_bag" },
+  { type: "merch", label: "Merch", icon: "shopping_bag" },
+  { type: "charity", label: "Charity", icon: "volunteer_activism" }
+];
+
+export function alertboxAlerts(platform: AlertboxPlatform | string): AlertboxAlertInfo[] {
+  return platform === "streamlabs" ? STREAMLABS_ALERTBOX_ALERTS : ALERTBOX_ALERTS;
+}
+
+export function alertboxPlatformLabel(platform: AlertboxPlatform | string): string {
+  return platform === "streamlabs" ? "Alert Box Streamlabs" : "AlertBox StreamElements";
+}
+
 // Code d'une alerte tel que l'hôte le reçoit : champs déjà remplacés, et
 // valeurs envoyées dans onWidgetLoad.
 export interface AlertboxHostCode {
@@ -45,20 +90,28 @@ export interface AlertboxHostCode {
 
 export interface AlertboxRuntime {
   ALERT_TYPES: AlertboxAlertType[];
-  normalizeConfig(raw: unknown): AlertboxConfig;
+  TYPES_BY_PLATFORM: Record<AlertboxPlatform, AlertboxAlertType[]>;
+  normalizeConfig(raw: unknown, platform?: AlertboxPlatform): AlertboxConfig;
   escapeHtml(value: unknown): string;
-  detectAlertType(listener: string, event: Record<string, unknown> | null): AlertboxAlertType | null;
+  detectAlertType(listener: string, event: Record<string, unknown> | null, platform?: AlertboxPlatform): AlertboxAlertType | null;
   buildAlertVariables(
     type: AlertboxAlertType,
     event: Record<string, unknown>,
     settings: AlertboxAlertSettings,
-    currency?: { symbol?: string }
+    currency?: { symbol?: string },
+    platform?: AlertboxPlatform
   ): Record<string, string>;
   substituteAlertVariables(source: string, vars: Record<string, string>): string;
-  buildAlertDocument(code: { html: string; css: string; js: string }, vars: Record<string, string>, loadDetail: Record<string, unknown>): string;
+  buildAlertDocument(
+    code: { html: string; css: string; js: string },
+    vars: Record<string, string>,
+    loadDetail: Record<string, unknown>,
+    platform?: AlertboxPlatform
+  ): string;
   createHost(options: {
     codes: Partial<Record<AlertboxAlertType, AlertboxHostCode>>;
     config: unknown;
+    platform?: AlertboxPlatform;
     stage: HTMLElement;
     window?: Window;
     log?: (level: "info" | "warn", message: string) => void;
@@ -79,6 +132,6 @@ export function loadAlertboxRuntime(): AlertboxRuntime {
   return runtime;
 }
 
-export function normalizeAlertboxConfig(raw: unknown): AlertboxConfig {
-  return loadAlertboxRuntime().normalizeConfig(raw);
+export function normalizeAlertboxConfig(raw: unknown, platform: AlertboxPlatform = "streamelements"): AlertboxConfig {
+  return loadAlertboxRuntime().normalizeConfig(raw, platform);
 }

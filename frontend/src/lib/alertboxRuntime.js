@@ -1,4 +1,5 @@
-// Simulation locale d'une AlertBox StreamElements avec « custom CSS ».
+// Simulation locale d'une AlertBox StreamElements (« custom CSS ») ou d'une
+// Alert Box Streamlabs (« custom HTML/CSS »).
 //
 // Ce fichier n'est PAS un module : il est injecté tel quel (import ?raw)
 // dans le document de l'aperçu (cf. widgetSrcdoc.ts) et évalué de la même
@@ -12,19 +13,33 @@
 // réglages de l'alerte (alertbox.json), et les alertes s'enchaînent en file
 // d'attente.
 // Doc : https://docs.streamelements.com/overlays/custom-code-in-alertbox
+//
+// Streamlabs : mêmes principes, mais variables à accolade simple ({name},
+// {amount}, {count}, {message}, {product}…), champs remplacés dans le code
+// sans onWidgetLoad, et JS exécuté au $(document).ready avec jQuery.
 var AlertboxRuntime = (function () {
   "use strict";
 
-  var ALERT_TYPES = ["follow", "sub", "resub", "gift", "community", "cheer", "tip", "raid", "purchase", "charity"];
+  var TYPES_BY_PLATFORM = {
+    streamelements: ["follow", "sub", "resub", "gift", "community", "cheer", "tip", "raid", "purchase", "charity"],
+    streamlabs: ["follow", "sub", "resub", "giftsub", "bits", "raid", "tip", "merch", "charity"]
+  };
+  var ALERT_TYPES = TYPES_BY_PLATFORM.streamelements;
+  // Type StreamElements -> alerte Streamlabs équivalente
+  var STREAMLABS_TYPE = { cheer: "bits", purchase: "merch", gift: "giftsub", community: "giftsub" };
+
+  function platformOf(value) {
+    return value === "streamlabs" ? "streamlabs" : "streamelements";
+  }
   var DEFAULT_SETTINGS = { enabled: true, sound: "", volume: 0.5, duration: 8 };
   // Courte pause entre deux alertes, comme l'AlertBox
   var ALERT_GAP_MS = 500;
   var DEDUPE_MS = 4000;
 
-  function normalizeConfig(raw) {
+  function normalizeConfig(raw, platform) {
     var alerts = (raw && raw.alerts) || {};
     var result = {};
-    ALERT_TYPES.forEach(function (type) {
+    TYPES_BY_PLATFORM[platformOf(platform)].forEach(function (type) {
       var settings = alerts[type] || {};
       var volume = Number(settings.volume);
       var duration = Number(settings.duration);
@@ -71,7 +86,13 @@ var AlertboxRuntime = (function () {
     return Boolean(ev.isCommunityGift || (ev.data && ev.data.isCommunityGift));
   }
 
-  function detectAlertType(listener, ev) {
+  function detectAlertType(listener, ev, platform) {
+    var type = detectStreamElementsType(listener, ev);
+    if (!type || platformOf(platform) !== "streamlabs") return type;
+    return STREAMLABS_TYPE[type] || type;
+  }
+
+  function detectStreamElementsType(listener, ev) {
     if (!ev) return null;
     var key = String(listener || "").toLowerCase() + " " + String(ev.type || "").toLowerCase();
 
@@ -94,7 +115,8 @@ var AlertboxRuntime = (function () {
   // ------------------------------------
   // Variables AlertBox
   // ------------------------------------
-  function buildAlertVariables(type, ev, settings, currency) {
+  function buildAlertVariables(type, ev, settings, currency, platform) {
+    if (platformOf(platform) === "streamlabs") return buildStreamlabsVariables(type, ev, currency);
     var data = (ev && ev.data) || {};
     var name = ev.name || ev.from || data.displayName || data.username || "Anonyme";
     var sender = ev.sender || data.sender || ev.gifter || data.gifter || "";
@@ -140,6 +162,48 @@ var AlertboxRuntime = (function () {
     };
   }
 
+  // Variables de l'Alert Box Streamlabs (modèles par défaut de Streamlabs)
+  function buildStreamlabsVariables(type, ev, currency) {
+    var data = (ev && ev.data) || {};
+    var name = ev.name || ev.from || data.displayName || data.username || "Anonyme";
+    var sender = ev.sender || data.sender || ev.gifter || data.gifter || "";
+    var amount = Number(ev.amount != null ? ev.amount : data.amount) || 0;
+    var symbol = (currency && currency.symbol) || "€";
+    var count = amount;
+    var amountText = String(amount);
+
+    if (type === "sub" || type === "resub") amountText = String(Math.max(1, Math.round(amount)));
+    if (type === "raid") count = Number(ev.viewers != null ? ev.viewers : amount) || 0;
+    // Gift Sub : name = la personne qui offre, count = nombre de subs offerts
+    if (type === "giftsub") {
+      name = sender || name;
+      count = isBulkGift(ev) ? Math.max(1, Math.round(amount)) : 1;
+    }
+    // Montant d'un don formaté avec sa devise
+    if (type === "tip" || type === "charity") amountText = ev.formattedAmount || amount.toFixed(2) + " " + symbol;
+
+    var product = ev.product || data.product || (ev.items || data.items || [])
+      .map(function (item) {
+        var quantity = Number(item && item.quantity) || 1;
+        return (quantity > 1 ? quantity + "× " : "") + String((item && item.name) || "");
+      })
+      .filter(function (label) { return label.trim(); })
+      .join(", ");
+    var message = escapeHtml(String(ev.message != null ? ev.message : data.message != null ? data.message : data.text || ""));
+
+    return {
+      name: escapeHtml(name),
+      amount: escapeHtml(amountText),
+      count: String(count),
+      months: escapeHtml(amountText),
+      message: message,
+      userMessage: message,
+      product: escapeHtml(product),
+      img: "",
+      messageTemplate: ""
+    };
+  }
+
   // {{variable}} et {variable} sont équivalents dans l'AlertBox
   function substituteAlertVariables(source, vars) {
     return String(source).replace(/\{\{\s*(\w+)\s*\}\}|\{(\w+)\}/g, function (match, doubleName, singleName) {
@@ -153,15 +217,19 @@ var AlertboxRuntime = (function () {
   }
 
   // Document d'UNE alerte : code du widget avec variables remplacées, console
-  // relayée vers l'hôte, puis onWidgetLoad (fieldData + alert_type).
-  function buildAlertDocument(code, vars, loadDetail) {
+  // relayée vers l'hôte, puis onWidgetLoad (StreamElements) ; pour Streamlabs,
+  // jQuery chargé avant et aucun onWidgetLoad (le JS démarre au DOM prêt).
+  function buildAlertDocument(code, vars, loadDetail, platform) {
+    var isStreamlabs = platformOf(platform) === "streamlabs";
     var html = substituteAlertVariables(code.html || "", vars);
     var css = substituteAlertVariables(code.css || "", vars);
     var js = substituteAlertVariables(code.js || "", vars);
     var closeScript = "</" + "script>";
 
     return (
-      '<!doctype html><html><head><meta charset="utf-8"><style>html,body{background:transparent!important}' +
+      '<!doctype html><html><head><meta charset="utf-8">' +
+      (isStreamlabs ? '<script src="/vendor/jquery.min.js">' + closeScript : "") +
+      "<style>html,body{background:transparent!important}" +
       css +
       "</style></head><body>" +
       html +
@@ -173,9 +241,7 @@ var AlertboxRuntime = (function () {
       "try{(new Function(" +
       scriptJson(js) +
       "))()}catch(e){console.error(e.stack||e.message)}" +
-      'window.dispatchEvent(new CustomEvent("onWidgetLoad",{detail:' +
-      scriptJson(loadDetail) +
-      "}));" +
+      (isStreamlabs ? "" : 'window.dispatchEvent(new CustomEvent("onWidgetLoad",{detail:' + scriptJson(loadDetail) + "}));") +
       "})();" +
       closeScript +
       "</body></html>"
@@ -186,7 +252,8 @@ var AlertboxRuntime = (function () {
   // Hôte : file d'attente, une iframe par alerte, son natif
   // ------------------------------------
   function createHost(options) {
-    var config = normalizeConfig(options.config);
+    var platform = platformOf(options.platform);
+    var config = normalizeConfig(options.config, platform);
     var stage = options.stage;
     var win = options.window || window;
     var log = options.log || function (level, message) { console[level](message); };
@@ -234,7 +301,7 @@ var AlertboxRuntime = (function () {
         win.setTimeout(next, 0);
         return;
       }
-      var vars = buildAlertVariables(item.type, item.event, settings, loadDetail.currency);
+      var vars = buildAlertVariables(item.type, item.event, settings, loadDetail.currency, platform);
       // Valeurs des champs propres à CETTE alerte, comme dans l'AlertBox
       var detail = {};
       Object.keys(loadDetail).forEach(function (key) {
@@ -246,7 +313,7 @@ var AlertboxRuntime = (function () {
       frame.className = "alertbox-frame";
       frame.setAttribute("sandbox", "allow-scripts");
       frame.setAttribute("data-alert-type", item.type);
-      frame.srcdoc = buildAlertDocument(code, vars, detail);
+      frame.srcdoc = buildAlertDocument(code, vars, detail, platform);
       stage.appendChild(frame);
       playSound(settings, item.type);
       log("info", "AlertBox · " + item.type + " · " + settings.duration + " s");
@@ -261,7 +328,7 @@ var AlertboxRuntime = (function () {
       var listener = String((detail && detail.listener) || "").toLowerCase();
       var ev = detail && detail.event;
       if (!ev) return;
-      var type = detectAlertType(listener, ev);
+      var type = detectAlertType(listener, ev, platform);
       if (!type) return;
       if (!config.alerts[type].enabled) {
         log("info", "AlertBox · alerte « " + type + " » désactivée, ignorée");
@@ -278,6 +345,11 @@ var AlertboxRuntime = (function () {
     win.addEventListener("onEventReceived", function (event) {
       handleEvent(event && event.detail);
     });
+    // Format Streamlabs : évènement à plat (type, name, amount…) sur document
+    win.document.addEventListener("onEventReceived", function (event) {
+      var detail = event && event.detail;
+      if (detail && !detail.listener && detail.type) handleEvent({ listener: "", event: detail });
+    });
     // Relaye vers le labo la console des iframes d'alerte
     win.addEventListener("message", function (event) {
       var data = event.data;
@@ -289,6 +361,7 @@ var AlertboxRuntime = (function () {
 
   return {
     ALERT_TYPES: ALERT_TYPES,
+    TYPES_BY_PLATFORM: TYPES_BY_PLATFORM,
     normalizeConfig: normalizeConfig,
     escapeHtml: escapeHtml,
     detectAlertType: detectAlertType,

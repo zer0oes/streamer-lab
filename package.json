@@ -6,6 +6,7 @@
   "description": "Bac a sable local pour developper des Custom Widgets StreamElements et StreamLabs sans modifier les overlays publies.",
   "scripts": {
     "postinstall": "npm --prefix frontend install",
+    "prepare": "node scripts/install-hooks.mjs",
     "build": "npm --prefix frontend run build",
     "dev": "npm run build && concurrently -k \"npm --prefix frontend run build:watch\" \"node server.mjs --open\"",
     "start": "npm run build && node server.mjs",
@@ -15,7 +16,8 @@
     "spotify:token": "node scripts/spotify-token.mjs",
     "reinstall": "npm run clean && npm install",
     "test": "node --test && npm run test:frontend",
-    "test:frontend": "npm --prefix frontend run test"
+    "test:frontend": "npm --prefix frontend run test",
+    "check:secrets": "node scripts/check-secrets.mjs --all"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",

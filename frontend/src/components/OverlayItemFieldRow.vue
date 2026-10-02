@@ -6,6 +6,7 @@
 // défaut globales du widget.
 import { dispatchToOverlayItems } from "../composables/useOverlayPreviewBridge";
 import { FIELD_INLINE_TYPES, fieldTypeIcon, resolveInputType } from "../lib/fieldTypes";
+import { fieldInputType } from "../lib/secretFields";
 import type { FieldDefinition } from "../api/widgetDetail";
 
 const props = defineProps<{
@@ -66,7 +67,7 @@ function onInputChange(event: Event, commit: boolean): void {
     </select>
     <input
       v-else
-      :type="resolveInputType(definition.type)"
+      :type="fieldInputType(fieldKey, resolveInputType(definition.type))"
       :min="definition.min"
       :max="definition.max"
       :step="definition.step ?? definition.steps"

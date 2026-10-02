@@ -1,0 +1,61 @@
+<link id="googleFontLink" rel="stylesheet" href="" />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@24,200,1,0"
+/>
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Oswald:wght@300;500&display=swap"
+/>
+
+<div class="stage" id="stage">
+  <!-- Variables de l'alerte, remplacées par l'Alert Box Streamlabs -->
+  <div class="alert-data" id="alertData" hidden>
+    <span data-var="name">{name}</span>
+    <span data-var="count">{count}</span>
+  </div>
+
+  <!-- Custom Fields (Streamlabs les remplace dans le code, sans onWidgetLoad) -->
+  <div class="alert-data" id="alertFields" hidden>
+    <span data-field="alert_title">{alert_title}</span>
+    <span data-field="alert_unit">{alert_unit}</span>
+    <span data-field="accent_color">{accent_color}</span>
+    <span data-field="alert_duration">{alert_duration}</span>
+    <span data-field="title_font">{title_font}</span>
+    <span data-field="number_font">{number_font}</span>
+    <span data-field="card_width">{card_width}</span>
+    <span data-field="text_size">{text_size}</span>
+    <span data-field="card_bg">{card_bg}</span>
+    <span data-field="card_border">{card_border}</span>
+    <span data-field="panel_bg">{panel_bg}</span>
+    <span data-field="text_color">{text_color}</span>
+    <span data-field="second_color">{second_color}</span>
+    <span data-field="glitch_enabled">{glitch_enabled}</span>
+    <span data-field="title_idle">{title_idle}</span>
+    <span data-field="animation_duration">{animation_duration}</span>
+    <span data-field="anim_direction">{anim_direction}</span>
+    <span data-field="exit_direction">{exit_direction}</span>
+  </div>
+
+  <div class="card" id="alert">
+    <div class="card-panel">
+      <!-- Icône du type en filigrane, inclinée, rognée par le bloc -->
+      <span id="alertIcon" class="material-symbols-sharp card-icon" aria-hidden="true"></span>
+      <div class="title" id="alertTitle">
+        <!-- Deux calques identiques, décalés : trait secondaire derrière, accent devant -->
+        <div class="title-layer title-layer--back" aria-hidden="true"></div>
+        <div class="title-layer title-layer--front"></div>
+      </div>
+    </div>
+
+    <div class="card-stats">
+      <span class="card-number" id="alertNumber"></span>
+      <span class="card-unit" id="alertUnit"></span>
+    </div>
+
+    <div class="card-divider"></div>
+
+    <div class="card-name"><span class="card-name-text" id="alertName"></span></div>
+    <div class="card-message" id="alertMessage"></div>
+  </div>
+</div>

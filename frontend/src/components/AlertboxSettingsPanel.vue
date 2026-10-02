@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Réglages natifs de l'AlertBox StreamElements, alerte par alerte (cf.
+// Réglages natifs de l'AlertBox (StreamElements ou Streamlabs), alerte par alerte (cf.
 // « Settings » d'une AlertBox : case à cocher + roue dentée → son, volume,
 // durée). Enregistrés dans alertbox.json ; le code du widget n'en connaît
 // que {{widgetDuration}}, {{audio}} et {{audioVolume}}.
@@ -7,7 +7,7 @@ import { computed, onMounted, ref } from "vue";
 import { useWidgetEditorStore } from "../stores/widgetEditor";
 import { useMediaStore } from "../stores/media";
 import { useToast } from "../composables/useToast";
-import { ALERTBOX_ALERTS, type AlertboxAlertType } from "../lib/alertbox";
+import { alertboxPlatformLabel, type AlertboxAlertType } from "../lib/alertbox";
 
 const store = useWidgetEditorStore();
 const mediaStore = useMediaStore();
@@ -82,11 +82,11 @@ function onNumber(type: AlertboxAlertType, key: "volume" | "duration", event: Ev
 <template>
   <form v-if="store.alertbox" class="alertbox-form" @submit.prevent>
     <p class="alertbox-form__intro">
-      Réglages natifs de l’AlertBox StreamElements, à reporter dans chaque alerte. Chaque alerte a son propre code et ses propres champs :
+      Réglages natifs de l’{{ alertboxPlatformLabel(store.platform) }}, à reporter dans chaque alerte. Chaque alerte a son propre code et ses propres champs :
       <span class="material-symbols-sharp alertbox-form__inline-icon" aria-hidden="true">code</span> pour les éditer.
     </p>
 
-    <details v-for="alert in ALERTBOX_ALERTS" :key="alert.type" class="field-group alertbox-form__alert" :class="{ 'is-disabled': !settingsOf(alert.type).enabled, 'is-editing': store.activeAlertType === alert.type }">
+    <details v-for="alert in store.alertboxAlertList" :key="alert.type" class="field-group alertbox-form__alert" :class="{ 'is-disabled': !settingsOf(alert.type).enabled, 'is-editing': store.activeAlertType === alert.type }">
       <summary class="field-group__summary alertbox-form__summary">
         <input
           type="checkbox"

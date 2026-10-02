@@ -127,3 +127,32 @@ describe("buildAlertboxExport", () => {
     expect(readme).toContain("Désactivées (à laisser décochées) : Raid alert");
   });
 });
+
+describe("buildAlertboxExport · Streamlabs", () => {
+  const code = {
+    html: "<div>{name}</div>",
+    css: "div{}",
+    js: "console.log(1)",
+    fields: { alert_title: { type: "text", value: "Défaut" }, title_font: { type: "googleFont", value: "Bungee" } } as FieldDefinitions,
+    values: { alert_title: "Bi_|ts" }
+  };
+  const config = normalizeAlertboxConfig({ alerts: { charity: { enabled: false } } }, "streamlabs");
+
+  it("exporte les alertes Streamlabs avec des champs au format Streamlabs", () => {
+    const exported = buildAlertboxExport({ bits: code, giftsub: code }, config, "streamlabs");
+    expect(exported.platformName).toBe("Alert Box Streamlabs");
+    expect(exported.files["bits/widget.html"]).toBe("<div>{name}</div>\n");
+    const fields = JSON.parse(exported.files["bits/fields.json"]);
+    expect(fields.alert_title).toMatchObject({ type: "textfield", value: "Bi_|ts" });
+    expect(fields.title_font.type).toBe("fontpicker");
+  });
+
+  it("donne les instructions de l'Alert Box Streamlabs", () => {
+    const readme = buildAlertboxExport({ bits: code }, config, "streamlabs").files["README.txt"];
+    expect(readme).toContain("Enable Custom HTML/CSS");
+    expect(readme).toContain("Custom Fields");
+    expect(readme).toContain("bits/ → Bits");
+    expect(readme).not.toContain("variation de la Subscriber alert");
+    expect(readme).toContain("Désactivées (à laisser décochées) : Charity");
+  });
+});

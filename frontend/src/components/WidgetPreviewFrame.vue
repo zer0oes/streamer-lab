@@ -89,7 +89,11 @@ async function onFrameLoad(): Promise<void> {
   const rawSession = toRaw(session.value);
   const rawChannel = toRaw(channelInfo.value);
   if (store.platform === PLATFORM_STREAMLABS) {
-    dispatchToWidget("onLoad", buildStreamlabsLoadDetail(store.fields, rawFieldData, structuredClone(rawSession)), "document");
+    // Copie JSON des définitions : store.fields est un Proxy réactif jusque
+    // dans ses objets imbriqués (options d'une liste…), que postMessage ne
+    // sait pas cloner (DataCloneError).
+    const rawFields = JSON.parse(JSON.stringify(store.fields));
+    dispatchToWidget("onLoad", buildStreamlabsLoadDetail(rawFields, rawFieldData, structuredClone(rawSession)), "document");
     store.addConsoleLine("event", "onLoad · Streamlabs");
   } else {
     dispatchToWidget("onWidgetLoad", {

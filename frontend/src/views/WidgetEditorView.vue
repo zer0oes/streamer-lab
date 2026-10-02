@@ -8,11 +8,11 @@ import FieldsForm from "../components/FieldsForm.vue";
 import AlertboxSettingsPanel from "../components/AlertboxSettingsPanel.vue";
 import EventSimulatorPanel from "../components/EventSimulatorPanel.vue";
 import { widgetFieldsCollapsed } from "../composables/useWidgetFieldsCollapse";
-import { ALERTBOX_ALERTS, type AlertboxAlertType } from "../lib/alertbox";
+import type { AlertboxAlertType } from "../lib/alertbox";
 
 const store = useWidgetEditorStore();
 const simulatorOpen = ref(false);
-// AlertBox : réglages natifs par alerte (comme l'AlertBox StreamElements) ou
+// AlertBox : réglages natifs par alerte (comme l'AlertBox de la plateforme) ou
 // champs du custom CSS, dans le même panneau latéral.
 const sideTab = ref<"alerts" | "fields">("alerts");
 
@@ -36,13 +36,13 @@ function onAlertSelect(event: Event): void {
         <button type="button" role="tab" class="widget-fields__tab" :class="{ 'is-active': sideTab === 'fields' }" :aria-selected="sideTab === 'fields'" @click="sideTab = 'fields'">
           Champs
         </button>
-        <span class="hint">{{ sideTab === "alerts" ? "alertbox.json" : store.detail?.files.fields }}</span>
+        <span class="hint">{{ sideTab === "alerts" ? (store.platform === "streamlabs" ? "streamlabs/alertbox.json" : "alertbox.json") : store.detail?.files.fields }}</span>
       </div>
       <!-- Alerte dont le code et les champs sont chargés dans l'éditeur -->
       <label v-if="store.isAlertbox" class="widget-fields__alert-select">
         <span class="field__label">Code et champs de l’alerte</span>
         <select :value="store.activeAlertType" @change="onAlertSelect">
-          <option v-for="alert in ALERTBOX_ALERTS" :key="alert.type" :value="alert.type">
+          <option v-for="alert in store.alertboxAlertList" :key="alert.type" :value="alert.type">
             {{ alert.label }}{{ alert.hint ? ` · ${alert.hint}` : "" }}
           </option>
         </select>

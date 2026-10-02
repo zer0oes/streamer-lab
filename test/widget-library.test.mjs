@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { access, readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { listAllWidgetDirectories } from "./helpers/library-paths.mjs";
-import { ALERTBOX_CODE_FILES, ALERTBOX_TYPES } from "../lib/widgets.mjs";
+import { ALERTBOX_CODE_FILES, ALERTBOX_TYPES_BY_PLATFORM, alertboxDir } from "../lib/widgets.mjs";
 
 const requiredFiles = [
   "widget.json",
@@ -18,12 +18,14 @@ const requiredFiles = [
   "data.streamlabs.json"
 ];
 
-// AlertBox (custom CSS, StreamElements uniquement) : réglages natifs, puis le
-// code complet de chaque alerte dans son sous-dossier
+// AlertBox : pour StreamElements (racine) et Streamlabs (streamlabs/), les
+// réglages natifs puis le code complet de chaque alerte dans son sous-dossier
 const requiredAlertboxFiles = [
   "widget.json",
-  "alertbox.json",
-  ...ALERTBOX_TYPES.flatMap(type => Object.values(ALERTBOX_CODE_FILES).map(file => `${type}/${file}`))
+  ...Object.entries(ALERTBOX_TYPES_BY_PLATFORM).flatMap(([platform, types]) => [
+    `${alertboxDir(platform)}alertbox.json`,
+    ...types.flatMap(type => Object.values(ALERTBOX_CODE_FILES).map(file => `${alertboxDir(platform)}${type}/${file}`))
+  ])
 ];
 
 test("la bibliothèque contient tous les widgets avec leurs deux variantes", async () => {
@@ -35,7 +37,9 @@ test("la bibliothèque contient tous les widgets avec leurs deux variantes", asy
     const files = manifest.kind === "alertbox" ? requiredAlertboxFiles : requiredFiles;
     await Promise.all(files.map(file => access(join(directory, file))));
     if (manifest.kind === "alertbox") {
-      assert.doesNotThrow(() => JSON.parse(readFileSync(join(directory, "alertbox.json"), "utf8")));
+      for (const config of ["alertbox.json", "streamlabs/alertbox.json"]) {
+        assert.doesNotThrow(() => JSON.parse(readFileSync(join(directory, config), "utf8")));
+      }
     }
     assert.equal(manifest.id, widgetId);
     assert.ok(manifest.name);

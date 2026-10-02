@@ -28,9 +28,10 @@ export function configuredFieldOverrides(definitions: FieldDefinitions, storageK
   );
 }
 
-// AlertBox : chaque alerte a ses propres champs, donc ses propres valeurs
-export function alertboxFieldStorageKey(widgetId: string, alertType: string): string {
-  return fieldStorageKey(`${widgetId}--${alertType}`, "streamelements");
+// AlertBox : chaque alerte a ses propres champs, donc ses propres valeurs,
+// distinctes entre l'AlertBox StreamElements et l'Alert Box Streamlabs
+export function alertboxFieldStorageKey(widgetId: string, alertType: string, platform = "streamelements"): string {
+  return fieldStorageKey(`${widgetId}--${alertType}`, platform === "streamlabs" ? "streamlabs" : "streamelements");
 }
 
 export function loadFieldData(definitions: FieldDefinitions, storageKey: string): Record<string, unknown> {

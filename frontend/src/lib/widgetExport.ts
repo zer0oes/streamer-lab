@@ -7,7 +7,7 @@
 
 import { PLATFORM_STREAM_ELEMENTS, PLATFORM_STREAMLABS, type Platform } from "./platformEvents";
 import type { FieldDefinition, FieldDefinitions } from "../api/widgetDetail";
-import { ALERTBOX_ALERTS, type AlertboxAlertType, type AlertboxConfig } from "./alertbox";
+import { alertboxAlerts, type AlertboxAlertType, type AlertboxConfig } from "./alertbox";
 
 export interface ExportableWidget {
   html: string;
@@ -72,9 +72,10 @@ export function buildPlatformExport(widget: ExportableWidget, values: Record<str
   };
 }
 
-// AlertBox StreamElements : un dossier par alerte activée, avec SON code et
-// ses valeurs de champs, et un README qui liste les réglages natifs à
-// reporter à la main — StreamElements ne permet pas de les importer.
+// AlertBox StreamElements ou Alert Box Streamlabs : un dossier par alerte
+// activée, avec SON code et ses valeurs de champs, et un README qui liste les
+// réglages natifs à reporter à la main — aucune des deux plateformes ne
+// permet de les importer.
 export interface AlertboxExportCode extends ExportableWidget {
   values: Record<string, unknown>;
 }
@@ -86,43 +87,70 @@ const ALERTBOX_VARIATION_HINTS: Partial<Record<AlertboxAlertType, string>> = {
   community: "variation de la Subscriber alert, condition : community gift"
 };
 
-export function buildAlertboxExport(codes: Partial<Record<AlertboxAlertType, AlertboxExportCode>>, config: AlertboxConfig): PlatformExportResult {
-  const files: Record<string, string> = {};
-  const readme = [
+const ALERTBOX_README_INTRO: Record<Platform, string[]> = {
+  [PLATFORM_STREAM_ELEMENTS]: [
     "Export AlertBox StreamElements (custom CSS)",
     "",
     "Chaque dossier contient le code d'UNE alerte. Dans l'AlertBox de l'overlay :",
     "  1. ouvrir les réglages (roue dentée) de l'alerte indiquée, ou créer la variation indiquée ;",
     "  2. activer « Enable custom CSS », puis « Open editor » ;",
     "  3. coller widget.html, widget.css, widget.js et fields.json dans les onglets HTML, CSS, JS et FIELDS ;",
-    "  4. reporter le son, le volume et la durée indiqués (réglages natifs de l'alerte).",
-    ""
-  ];
+    "  4. reporter le son, le volume et la durée indiqués (réglages natifs de l'alerte)."
+  ],
+  [PLATFORM_STREAMLABS]: [
+    "Export Alert Box Streamlabs (custom HTML/CSS)",
+    "",
+    "Chaque dossier contient le code d'UN type d'alerte. Dans les réglages de l'Alert Box Streamlabs :",
+    "  1. ouvrir le type d'alerte indiqué ;",
+    "  2. activer « Enable Custom HTML/CSS » ;",
+    "  3. coller widget.html, widget.css, widget.js et fields.json dans les onglets HTML, CSS, JS et Custom Fields ;",
+    "  4. reporter le son, le volume et la durée indiqués (réglages natifs de l'alerte) ;",
+    "  5. garder le champ « Durée de l'alerte » égal à la durée réglée dans Streamlabs (il cale l'animation de sortie)."
+  ]
+};
 
-  for (const { type, label } of ALERTBOX_ALERTS) {
+export function buildAlertboxExport(
+  codes: Partial<Record<AlertboxAlertType, AlertboxExportCode>>,
+  config: AlertboxConfig,
+  platform: Platform = PLATFORM_STREAM_ELEMENTS
+): PlatformExportResult {
+  const isStreamlabs = platform === PLATFORM_STREAMLABS;
+  const platformName = isStreamlabs ? "Streamlabs" : "StreamElements";
+  const alerts = alertboxAlerts(platform);
+  const files: Record<string, string> = {};
+  const readme = [...ALERTBOX_README_INTRO[isStreamlabs ? PLATFORM_STREAMLABS : PLATFORM_STREAM_ELEMENTS], ""];
+
+  for (const { type, label } of alerts) {
     const settings = config.alerts[type];
     const code = codes[type];
-    if (!settings.enabled || !code) continue;
+    if (!settings?.enabled || !code) continue;
+    const fields = isStreamlabs ? toStreamlabsFields(code.fields, code.values) : toStreamElementsFields(code.fields, code.values);
     files[`${type}/widget.html`] = ensureTrailingNewline(code.html);
     files[`${type}/widget.css`] = ensureTrailingNewline(code.css);
     files[`${type}/widget.js`] = ensureTrailingNewline(code.js);
-    files[`${type}/fields.json`] = `${JSON.stringify(toStreamElementsFields(code.fields, code.values), null, 2)}\n`;
+    files[`${type}/fields.json`] = `${JSON.stringify(fields, null, 2)}\n`;
 
+    const hint = isStreamlabs ? undefined : ALERTBOX_VARIATION_HINTS[type];
     const isLocalSound = settings.sound.startsWith("/");
     readme.push(
-      `${type}/ → ${label}${ALERTBOX_VARIATION_HINTS[type] ? ` (${ALERTBOX_VARIATION_HINTS[type]})` : ""}`,
-      `  Son : ${settings.sound ? settings.sound.split("/").pop() : "aucun"}${isLocalSound ? " (fichier local du labo : à téléverser dans StreamElements)" : ""}`,
+      `${type}/ → ${label}${hint ? ` (${hint})` : ""}`,
+      `  Son : ${settings.sound ? settings.sound.split("/").pop() : "aucun"}${isLocalSound ? ` (fichier local du labo : à téléverser dans ${platformName})` : ""}`,
       `  Volume : ${Math.round(settings.volume * 100)} %`,
       `  Durée : ${settings.duration} s`,
       ""
     );
   }
 
-  const disabled = ALERTBOX_ALERTS.filter(({ type }) => !config.alerts[type].enabled).map(({ label }) => label);
+  const disabled = alerts.filter(({ type }) => !config.alerts[type]?.enabled).map(({ label }) => label);
   if (disabled.length > 0) readme.push(`Désactivées (à laisser décochées) : ${disabled.join(", ")}`);
   files["README.txt"] = `${readme.join("\n")}\n`;
 
-  return { files, platform: PLATFORM_STREAM_ELEMENTS, platformName: "AlertBox StreamElements", bridgeInjected: false };
+  return {
+    files,
+    platform: isStreamlabs ? PLATFORM_STREAMLABS : PLATFORM_STREAM_ELEMENTS,
+    platformName: isStreamlabs ? "Alert Box Streamlabs" : "AlertBox StreamElements",
+    bridgeInjected: false
+  };
 }
 
 export function toStreamElementsFields(definitions: FieldDefinitions = {}, values: Record<string, unknown> = {}): FieldDefinitions {
