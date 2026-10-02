@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { bumpUpdatedAt, ensureManifestDates, getWidgetInfo, listWidgets, widgetFromManifest } from "../lib/widgets.mjs";
+import { bumpUpdatedAt, ensureManifestDates, getWidgetInfo, isAlertboxCodeFile, listWidgets, widgetFromManifest } from "../lib/widgets.mjs";
 
 // These tests never touch the real library/widgets|alerts directories —
 // every fixture lives under a fresh os.tmpdir() subdirectory, removed after
@@ -123,4 +123,19 @@ test("widgetFromManifest renvoie null pour createdAt/updatedAt manquants (defens
   const entry = widgetFromManifest("raw", { name: "Brut" }, "widget");
   assert.equal(entry.createdAt, null);
   assert.equal(entry.updatedAt, null);
+});
+
+test("isAlertboxCodeFile n'accepte que <type d'alerte>/<fichier de code>", () => {
+  assert.equal(isAlertboxCodeFile("tip/widget.css"), true);
+  assert.equal(isAlertboxCodeFile("resub/fields.json"), true);
+  assert.equal(isAlertboxCodeFile("host/widget.css"), false);
+  assert.equal(isAlertboxCodeFile("tip/widget.streamlabs.js"), false);
+  assert.equal(isAlertboxCodeFile("tip/../widget.json"), false);
+  assert.equal(isAlertboxCodeFile("../tip/widget.js"), false);
+  assert.equal(isAlertboxCodeFile("widget.html"), false);
+});
+
+test("widgetFromManifest expose le type de widget (alertbox ou custom)", () => {
+  assert.equal(widgetFromManifest("a", { kind: "alertbox" }, "alert").kind, "alertbox");
+  assert.equal(widgetFromManifest("b", {}, "widget").kind, "custom");
 });

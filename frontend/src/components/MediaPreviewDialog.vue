@@ -3,7 +3,7 @@ import { ref } from "vue";
 import { useDialogBackdropClose } from "../composables/useDialogBackdropClose";
 
 interface PreviewItem {
-  type: "image" | "video";
+  type: "image" | "video" | "audio";
   url: string;
   name: string;
 }
@@ -32,6 +32,7 @@ defineExpose({ open });
     </button>
     <div class="media-preview-dialog__body">
       <video v-if="item?.type === 'video'" :src="item.url" controls autoplay playsinline></video>
+      <audio v-else-if="item?.type === 'audio'" :src="item.url" controls autoplay></audio>
       <img v-else-if="item" :src="item.url" alt="" />
     </div>
     <p class="media-preview-dialog__caption">{{ item?.name }}</p>

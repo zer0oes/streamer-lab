@@ -28,6 +28,11 @@ export function configuredFieldOverrides(definitions: FieldDefinitions, storageK
   );
 }
 
+// AlertBox : chaque alerte a ses propres champs, donc ses propres valeurs
+export function alertboxFieldStorageKey(widgetId: string, alertType: string): string {
+  return fieldStorageKey(`${widgetId}--${alertType}`, "streamelements");
+}
+
 export function loadFieldData(definitions: FieldDefinitions, storageKey: string): Record<string, unknown> {
   const defaults = Object.fromEntries(Object.entries(definitions).map(([key, field]) => [key, field.value]));
   try {

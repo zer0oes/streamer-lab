@@ -210,6 +210,7 @@ watch(frameEl, (el) => {
         class="preview-shell__frame"
         title="Aperçu du Custom Widget"
         sandbox="allow-scripts"
+        allow="autoplay"
         scrolling="no"
         :srcdoc="store.srcdoc"
         @load="onFrameLoad"

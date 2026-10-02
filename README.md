@@ -1,11 +1,11 @@
 # Streamer Lab
 
-Un environnement local pour développer et tester des **Custom Widgets StreamElements et Streamlabs** sans modifier un overlay déjà publié, avec en complément un **éditeur d’overlays** visuel (mise en page par calques) qui réutilise cette même bibliothèque de widgets.
+Un environnement local pour développer et tester des **Custom Widgets StreamElements et Streamlabs** et des **alertes AlertBox StreamElements** (custom CSS) sans modifier un overlay déjà publié, avec en complément un **éditeur d’overlays** visuel (mise en page par calques) qui réutilise cette même bibliothèque de widgets.
 
 Le widget s’exécute dans une iframe isolée et reçoit les mêmes événements navigateur que sur StreamElements :
 
 - `onWidgetLoad` avec `fieldData`, `session`, `recents`, `currency` et `channel` ;
-- `onEventReceived` pour les follows, abonnements, dons, cheers, raids, messages et boutons ;
+- `onEventReceived` pour les follows, abonnements, dons, cheers, raids, achats, dons caritatifs, messages et boutons ;
 - `onSessionUpdate` après une modification de session ;
 - une émulation locale des fonctions courantes de `SE_API`, notamment le store persistant.
 
@@ -24,15 +24,15 @@ npm run dev
 
 `npm run dev` build d'abord le frontend Vue (`frontend/` vers `frontend/dist/`, gitignoré) puis lance le serveur et un watcher Vite en parallèle : toute modification dans `frontend/src/` recompile automatiquement. `npm start` fait un build unique sans watcher, pour une exécution proche de la production. Pendant un développement frontend actif (itération rapide sur l'UI), `npm run dev:vue` lance à la place le serveur de dev Vite seul (rechargement à chaud, proxy `/api` vers le serveur Node qui doit tourner en parallèle sur le port 4173) : c'est le mode le plus confortable pour modifier des composants Vue, mais il ne sert pas le build final. `npm run typecheck` vérifie les types TypeScript du frontend sans build.
 
-Le code source du frontend vit dans `frontend/` : Vue 3 (Composition API, `<script setup>`), TypeScript, Pinia pour l'état partagé, Vitest pour les tests unitaires de la logique pure (snapping du canevas d'overlay, tokenizer de surlignage syntaxique, construction du document `srcdoc` de l'aperçu, export ZIP, etc.). Il n'y a pas de routeur : la bascule entre le dashboard et les deux éditeurs (widget/alerte, overlay) est un simple état, pas une vraie navigation d'URL, mais les liens `?widget=<id>` et `?overlay=<id>` restent pris en charge pour ouvrir directement un élément.
+Le code source du frontend vit dans `frontend/` : Vue 3 (Composition API, `<script setup>`), TypeScript, Pinia pour l'état partagé, Vitest pour les tests unitaires de la logique pure (snapping du canevas d'overlay, tokenizer de surlignage syntaxique, construction du document `srcdoc` de l'aperçu, export ZIP, etc.). Il n'y a pas de routeur : la bascule entre le dashboard et les deux éditeurs (widget/alerte, overlay) est un simple état, synchronisé avec l'adresse de la page. Les liens `/widget/<id>`, `/alerte/<id>` et `/overlay/<id>` ouvrent directement un élément.
 
 `styles/` est organisé en trois dossiers : `base/` (tokens, reset, atomes partagés comme `.eyebrow`/`.hint`), `layouts/` (les régions macro de la page : topbar, sidebar, preview, dashboard) et `components/` (pièces UI autonomes : bibliothèque, éditeur, simulateur d'événements, tiroir compte, boutons/formulaires, toast). `_responsive.scss` reste à la racine, hors de ces trois dossiers, car ses règles touchent plusieurs composants par palier de largeur.
 
-Les classes suivent la convention BEM (`bloc__élément--modificateur`), avec les sélecteurs imbriqués via `&` dans chaque partial (`&__élément`, `&--modificateur`, `&:état`) plutôt qu'une liste plate de sélecteurs répétés. Deux exceptions documentées dans le code : `.material-symbols-rounded` (classe vendor de la police d'icônes) et les classes `.tok-*` du surlignage syntaxique (namespace plat façon `hljs-*`) ne suivent pas BEM et ne sont pas imbriquées.
+Les classes suivent la convention BEM (`bloc__élément--modificateur`), avec les sélecteurs imbriqués via `&` dans chaque partial (`&__élément`, `&--modificateur`, `&:état`) plutôt qu'une liste plate de sélecteurs répétés. Deux exceptions documentées dans le code : `.material-symbols-sharp` (classe vendor de la police d'icônes) et les classes `.tok-*` du surlignage syntaxique (namespace plat façon `hljs-*`) ne suivent pas BEM et ne sont pas imbriquées.
 
 Le mode simulation fonctionne immédiatement. La bibliothèque située dans `library/` est organisée en **projets** : chaque projet a son propre dossier `library/<id-projet>/`, contenant lui-même `overlays/`, `widgets/` et `alerts/`. Un overlay/widget/alerte appartient à un seul projet à la fois ; le panneau **Ma bibliothèque** regroupe la liste sous un en-tête repliable par projet, et un bouton « Nouveau projet » permet d'en créer d'autres (icône, nom, description). `library/media/` reste partagé entre tous les projets. Une bibliothèque existante créée avant l'introduction des projets est migrée automatiquement, une seule fois, au démarrage du serveur, dans un projet nommé « Bibliothèque principale » (`library/principal/`). Les changements apportés au widget actif déclenchent automatiquement un rechargement de l’aperçu, sans dépendre du mode `node --watch` de Node.
 
-L’éditeur intégré, placé entre l’aperçu et la console, permet aussi de modifier directement les quatre fichiers utilisés par la plateforme active. L’aperçu est actualisé pendant la saisie et les changements sont enregistrés automatiquement dans `library/`. `Ctrl + S` force l’enregistrement immédiat. L’onglet **Fields** vérifie que le JSON est valide avant toute sauvegarde.
+L’éditeur intégré, placé entre l’aperçu et la console, permet aussi de modifier directement les fichiers utilisés par la plateforme active (HTML, CSS, JS, Fields et Data ; pour une AlertBox, ceux de l’alerte sélectionnée). Le bouton de copie, en haut à droite, copie le contenu de l’onglet affiché. L’aperçu est actualisé pendant la saisie et les changements sont enregistrés automatiquement dans `library/`. `Ctrl + S` force l’enregistrement immédiat. L’onglet **Fields** vérifie que le JSON est valide avant toute sauvegarde.
 
 ## Choisir la plateforme simulée
 
@@ -41,9 +41,9 @@ Le sélecteur placé dans l’en-tête permet de passer d’un environnement à 
 - **StreamElements** : événements `onWidgetLoad`, `onEventReceived` et `onSessionUpdate` sur `window`, payload `{ listener, event }` et émulation de `SE_API` ;
 - **Streamlabs** : événement `onLoad` avec `detail.custom_json`, puis `onEventReceived` sur `document` avec l’événement directement dans `detail`.
 
-Le choix est mémorisé dans le navigateur. Il sélectionne également la version locale de **JS** et de **Fields** correspondante. Les simulations Follow, Sub, Tip, Bits, Raid et Chat utilisent le format de la plateforme sélectionnée.
+Le choix est mémorisé dans le navigateur. Il sélectionne également la version locale de **JS** et de **Fields** correspondante. Les simulations Follow, Sub (classique, Prime, sub offert, community gift), Tip, Bits, Raid, Achat, Don caritatif et Chat utilisent le format de la plateforme sélectionnée. Pour une AlertBox, la plateforme est verrouillée sur StreamElements.
 
-Le menu d’export génère une archive ZIP prête à copier dans l’éditeur de la plateforme active, ou permet de la convertir directement pour l’autre plateforme. Elle contient les quatre onglets, les valeurs de champs actuellement réglées et un fichier d’instructions. Lorsque le code utilise uniquement les événements de l’autre plateforme, un pont de compatibilité est automatiquement ajouté au début du JavaScript exporté.
+Le menu d’export génère une archive ZIP prête à copier dans l’éditeur de la plateforme active, ou permet de la convertir directement pour l’autre plateforme. Elle contient les quatre onglets, les valeurs de champs actuellement réglées et un fichier d’instructions. Lorsque le code utilise uniquement les événements de l’autre plateforme, un pont de compatibilité est automatiquement ajouté au début du JavaScript exporté. Une AlertBox a son propre export (un dossier par alerte, voir plus bas).
 
 ## Développer un widget
 
@@ -62,29 +62,41 @@ Par exemple, le dossier `library/zer0oes/widgets/zer0oes-goal-bar/` contient :
 | `data.streamelements.json` | StreamElements | DATA |
 | `data.streamlabs.json` | Streamlabs | DATA |
 
-Le widget d’exemple affiche le dernier événement avec une animation. Il peut être remplacé sans modifier le code du laboratoire.
+Ce widget est une barre d’objectif multi-événements (follows, subs, cheers ou tips). Comme tout widget de la bibliothèque, il peut être modifié ou remplacé sans toucher au code du laboratoire.
 
-Les valeurs de champs sont disponibles via `event.detail.fieldData` et les formes `{{nomDuChamp}}` / `{nomDuChamp}` sont remplacées dans le HTML, le CSS et le JavaScript. Les valeurs modifiées dans l’interface locale sont conservées dans le stockage du navigateur.
+Les valeurs de champs sont disponibles via `event.detail.fieldData` et les formes `{{nomDuChamp}}` / `{nomDuChamp}` sont remplacées dans le HTML, le CSS et le JavaScript. Les valeurs modifiées dans le panneau **Champs** sont conservées dans le stockage du navigateur (pas dans le projet) ; l’export ZIP les inclut dans `fields.json`.
 
 L’onglet **DATA** contient un objet JSON libre (`{}` par défaut) fusionné sous les valeurs de Fields avant chaque envoi de `fieldData` à l’aperçu. Il sert à rejouer fidèlement un payload brut récupéré manuellement depuis la vraie plateforme (par exemple des clés parasites laissées par un ancien widget dans le même emplacement d’overlay), sans polluer le schéma de Fields. StreamElements n’exposant aucune API publique pour récupérer ces valeurs, ce contenu doit être collé à la main depuis le tableau de bord de la plateforme.
 
 Les données initiales de session se trouvent dans `mocks/session.json`. Le panneau **Événement JSON personnalisé** permet d’envoyer directement le contenu de `detail` attendu par `onEventReceived`.
 
+### Alertes AlertBox StreamElements (custom CSS)
+
+Une alerte dont le `widget.json` contient `"kind": "alertbox"` est du code « custom CSS » d’une [AlertBox StreamElements](https://docs.streamelements.com/overlays/custom-code-in-alertbox) (StreamElements uniquement : le sélecteur de plateforme est verrouillé). C’est le cas de `zer0oes - Alerts`.
+
+- **Un code par alerte** : comme dans l’AlertBox, chaque alerte a son propre HTML, CSS, JS et ses propres champs, rangés dans un sous-dossier : `follow/`, `sub/`, `resub/`, `gift/`, `community/`, `cheer/`, `tip/`, `raid/`, `purchase/` (Purchase alert), `charity/` (Charity campaign donation alert) (`widget.html`, `widget.css`, `widget.js`, `fields.json`, `data.json`). Resub, sub offert et community gift sont des variations de la Subscriber alert : c’est StreamElements qui choisit la bonne, le code n’a rien à détecter. Le bouton <code>code</code> d’une alerte (onglet **Alertes**), ou la liste en haut du panneau, charge son code et ses champs dans l’éditeur ; les valeurs des champs sont mémorisées par alerte.
+- **Réglages natifs** : l’onglet **Alertes** reproduit les réglages de l’AlertBox, alerte par alerte (activée, son, volume, durée). Ils sont enregistrés dans `alertbox.json`. Les sons peuvent être téléversés dans les médias locaux (mp3, ogg, wav, m4a).
+- **Aperçu** : comme l’AlertBox, le labo affiche chaque alerte dans une iframe neuve, avec le code et les champs de l’alerte, et les variables (`{{name}}`, `{{amount}}`, `{{message}}`, `{{sender}}`, `{{widgetDuration}}`…) remplacées. Il joue le son de l’alerte et la retire après sa durée ; les alertes s’enchaînent en file d’attente. Un sub de plus d’un mois passe par la variation Resub. Le fonctionnement est le même sur le canevas d’overlay, avec les valeurs de champs réglées dans l’éditeur (pas de surcharge par item pour une AlertBox).
+- **Code** : le son, la durée et la file d’attente sont gérés par l’AlertBox ; le code ne fait que l’affichage et cale son animation de sortie sur `{{widgetDuration}}`. L’AlertBox remplace aussi les variables à accolade simple (`{name}`) : ne pas en écrire par accident dans le code, même en commentaire.
+- **Export** : un dossier par alerte activée, avec son code et ses valeurs de champs, et un `README.txt` qui indique où coller chaque dossier (alerte ou variation, avec sa condition) et les réglages natifs (son, volume, durée) à reporter à la main.
+
 ## Éditeur d’overlays
 
-En plus du mode simulation, un éditeur visuel permet de composer un overlay complet par calques, en réutilisant les widgets et alertes de la bibliothèque. Il partage la même application que le simulateur : la bibliothèque de gauche propose un onglet **Overlays** à côté de **Widgets** et **Alertes**, et ouvrir un overlay bascule le panneau principal vers la vue édition (lien direct possible via `?overlay=<id>`).
+En plus du mode simulation, un éditeur visuel permet de composer un overlay complet par calques, en réutilisant les widgets et alertes de la bibliothèque. Il partage la même application que le simulateur : la bibliothèque de gauche propose un onglet **Overlays** à côté de **Widgets** et **Alertes**, et ouvrir un overlay bascule le panneau principal vers la vue édition (lien direct possible via `/overlay/<id>`).
 
 Un overlay est composé d’éléments positionnés librement sur un canevas : widget ou alerte de la bibliothèque, texte, image, vidéo, embed (URL uniquement — les `data:` URI sont refusées), icône, forme ou groupe. Le canevas propose des formats prédéfinis 16:9 et 9:16, ou des dimensions personnalisées (100 à 7680 px).
 
 - **Calques** : réordonner, renommer, masquer et verrouiller depuis le panneau dédié ; les enfants d'un groupe s'affichent indentés sous lui.
-- **Barre d’outils** : outil sélection, menu « Ajouter » (widget/alerte existant de la bibliothèque, ou nouveau texte/image/icône/forme/vidéo/embed depuis un lien), groupement, duplication, suppression, centrage, alignement (6 directions) et répartition horizontale/verticale. Un groupe se comporte comme un seul bloc (ses enfants suivent) ; un élément ou groupe sélectionné seul s’aligne sur le canevas, plusieurs s’alignent entre eux.
+- **Widgets et alertes** : à l’ajout sur un overlay, un widget reprend les réglages faits dans son panneau **Champs** (seules les valeurs qui diffèrent des valeurs par défaut sont copiées dans l’item). Chaque item peut ensuite être réglé séparément depuis l’inspecteur, sauf une AlertBox, dont les alertes utilisent toujours les réglages de leur éditeur.
+- **Barre d’outils** : outil sélection, outil texte, pipette de style (copie le style d’un texte vers un autre), menu « Ajouter » (widget/alerte existant de la bibliothèque, ou nouveau texte/image/icône/forme/vidéo/embed depuis un lien), groupement, duplication, suppression, centrage, alignement (6 directions) et répartition horizontale/verticale. Un groupe se comporte comme un seul bloc (ses enfants suivent) ; un élément ou groupe sélectionné seul s’aligne sur le canevas, plusieurs s’alignent entre eux.
 - **Zoom** avec boutons `+`/`−` et pourcentage cliquable pour ajuster à la fenêtre.
-- Le déplacement et le redimensionnement (poignées aux 4 coins, y compris un redimensionnement proportionnel pour un groupe entier) s'accrochent au centre horizontal/vertical du canevas.
+- **Règles et repères** : le bouton Repères affiche les règles ; on crée un repère en glissant depuis une règle, on le déplace en le glissant, et on le supprime en le sortant du canevas.
+- Le déplacement et le redimensionnement (poignées aux 4 coins, y compris un redimensionnement proportionnel pour un groupe entier) s'accrochent aux repères et au centre horizontal/vertical du canevas.
 - **Annuler/rétablir** : `Ctrl/Cmd + Z`, `Ctrl/Cmd + Maj + Z` ou `Ctrl/Cmd + Y` ; `Ctrl/Cmd + D` duplique la sélection ; `Suppr`/`Retour arrière` supprime la sélection ; `Échap` la vide. Ces raccourcis sont inactifs pendant l'édition d'un champ texte.
 
 Chaque overlay est enregistré dans `library/<id-projet>/overlays/<id>/overlay.json` (taille de canevas, éléments, guides, dates), sur le même principe que les widgets. Un overlay ne peut référencer que des widgets/alertes de son propre projet.
 
-Écarts encore ouverts par rapport à la bibliothèque d'origine : pas de règles/guides visuels ni de repères personnalisés déplaçables (seul l'accrochage au centre du canevas est actif), pas de pipette de style pour un texte, pas de réglages avancés de texte (dégradé, ombre, contour) ni de personnalisation des valeurs de champs par item widget/alerte depuis le canevas, et pas encore d'export ZIP dédié à un overlay complet (l'export ZIP d'un widget/alerte individuel, lui, est disponible depuis son éditeur).
+Écarts encore ouverts : pas de réglages avancés de texte (dégradé, ombre, contour), et pas encore d'export ZIP dédié à un overlay complet (l'export ZIP d'un widget/alerte individuel, lui, est disponible depuis son éditeur).
 
 ## Comptes et médias
 
@@ -93,7 +105,7 @@ Un panneau compte, accessible depuis la barre du haut, permet de connecter des c
 - **Twitch** (`dev.twitch.tv/console/apps`) active le panneau compte et une session locale signée.
 - **StreamElements (OAuth2)** sert uniquement à alimenter la section **Médias** de la bibliothèque, en retrouvant les images/vidéos déjà utilisées dans les overlays existants du compte connecté. C’est une connexion **en lecture seule** : le laboratoire ne publie ni ne modifie rien sur StreamElements, y compris pour les overlays composés dans l’éditeur. Les identifiants ne sont pas en self-service (à demander au support StreamElements) et StreamElements n’accepte pas `localhost` comme `redirect_uri` ; la procédure de contournement (fichier hosts) est détaillée dans `.env.example`. Un jeton manuel (JWT ou clé API) déjà renseigné pour les événements réels alimente aussi cette section Médias, sans passer par l’OAuth2.
 
-La bibliothèque propose également une section **Médias locaux**, indépendante de tout compte : import de fichiers (25 Mo max, nom normalisé), stockés dans `library/media/` et servis sous `/library-media/`.
+La bibliothèque propose également une section **Médias locaux**, indépendante de tout compte : import de fichiers (images, vidéos et sons, 25 Mo max, nom normalisé), stockés dans `library/media/` et servis sous `/library-media/`.
 
 Les jetons des comptes connectés sont chiffrés (`TOKEN_ENCRYPTION_KEY`) et stockés dans `data/app.sqlite`.
 
@@ -161,7 +173,8 @@ Sans identifiants, le widget tourne en mode démo dans l’éditeur (laboratoire
 - jQuery est chargé avant le code du widget, comme dans l’environnement StreamElements.
 - `SE_API.store.get/set`, `getOverlayStatus`, `setField`, `resumeQueue`, `sanitize`, `cheerFilter` et `counters.get` possèdent une émulation locale. Les compteurs renvoient actuellement `0`, et la reprise de queue est simulée.
 - Les payloads chat Astro Twitch, YouTube et Kick sont normalisés vers la forme historique `obj.detail.event.data`. Le payload original reste disponible dans `_raw`.
-- Le laboratoire ne publie rien sur StreamElements, ni pour les widgets ni pour les overlays composés dans l’éditeur (la connexion OAuth2 associée est en lecture seule). La mise en production reste volontaire : copier les quatre fichiers dans un nouveau Custom Widget, valider, puis seulement remplacer le widget utilisé par l’overlay.
+- Le laboratoire ne publie rien sur StreamElements, ni pour les widgets ni pour les overlays composés dans l’éditeur (la connexion OAuth2 associée est en lecture seule). La mise en production reste volontaire : copier les quatre fichiers dans un nouveau Custom Widget, valider, puis seulement remplacer le widget utilisé par l’overlay. Pour une AlertBox, coller chaque dossier de l’export dans l’alerte (ou la variation) correspondante et y reporter son, volume et durée.
+- AlertBox : le labo simule le comportement documenté de l’AlertBox (une iframe neuve par alerte, variables remplacées, son et durée natifs). La documentation StreamElements ne détaille pas les données des alertes Purchase et Charity ; elles sont simulées d’après des sources tierces (nom, montant, message, articles). Dans OBS, l’AlertBox peut laisser l’alerte précédente dans la page : le code zer0oes ne cherche donc que dans sa propre carte et attend qu’elle soit affichée pour mesurer le titre.
 
 ## Vérification
 
@@ -169,7 +182,7 @@ Sans identifiants, le widget tourne en mode démo dans l’éditeur (laboratoire
 npm test
 ```
 
-`npm test` enchaîne les tests backend (`node --test` : conversion des activités, mises à jour de session, messages chat Astro, bibliothèque de widgets/overlays/projets…) puis les tests frontend (`npm run test:frontend`, Vitest : logique pure du frontend Vue — snapping et géométrie du canevas d'overlay, tokenizer de surlignage syntaxique, construction du `srcdoc` de l'aperçu, export ZIP…). `npm run typecheck` vérifie séparément les types TypeScript du frontend.
+`npm test` enchaîne les tests backend (`node --test` : conversion des activités, mises à jour de session, messages chat Astro, bibliothèque de widgets/overlays/projets…) puis les tests frontend (`npm run test:frontend`, Vitest : logique pure du frontend Vue — snapping et géométrie du canevas d'overlay, tokenizer de surlignage syntaxique, construction du `srcdoc` de l'aperçu, simulation AlertBox (types d’alerte, variables, file d’attente, son, durée), export ZIP…). `npm run typecheck` vérifie séparément les types TypeScript du frontend.
 
 ## Réinstallation propre
 

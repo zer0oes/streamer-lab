@@ -24,7 +24,8 @@ const store = useWidgetEditorStore();
       :class="{ 'is-active': store.platform === PLATFORM_STREAMLABS }"
       :aria-pressed="store.platform === PLATFORM_STREAMLABS"
       aria-label="Streamlabs"
-      title="Streamlabs"
+      :title="store.isAlertbox ? 'AlertBox : StreamElements uniquement' : 'Streamlabs'"
+      :disabled="store.isAlertbox"
       @click="store.switchPlatform(PLATFORM_STREAMLABS)"
     >
       <img class="platform-logo platform-logo--streamlabs" src="/assets/platforms/streamlabs.svg" alt="" aria-hidden="true" />

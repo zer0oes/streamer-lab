@@ -62,7 +62,11 @@ function updateField(key: string, value: unknown, commit: boolean): void {
 </script>
 
 <template>
-  <form v-if="bundle" id="fields-form" class="fields-form" @submit.prevent>
+  <!-- AlertBox : un jeu de champs par alerte, réglé dans l'éditeur de l'alerte -->
+  <p v-if="bundle?.alertboxCode" class="hint">
+    AlertBox : chaque alerte a ses propres champs, à régler dans l’éditeur de l’alerte (onglet Champs, après avoir choisi l’alerte).
+  </p>
+  <form v-else-if="bundle" id="fields-form" class="fields-form" @submit.prevent>
     <template v-for="(slot, index) in slots" :key="slot.group ?? `field-${index}`">
       <details v-if="slot.group" class="field-group field-group--overlay" open>
         <summary class="field-group__summary">

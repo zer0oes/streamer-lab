@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, reactive, ref } from "vue";
 import { getOverlay, saveOverlayGuides, saveOverlayItems } from "../api/overlayDetail";
-import { getWidgetDetail, type FieldDefinitions } from "../api/widgetDetail";
+import { getWidgetDetail, type FieldDefinitions, type WidgetDetail } from "../api/widgetDetail";
 import type { OverlayEntry } from "../api/types";
 import type { OverlayGuides, OverlayItem, OverlayItemType } from "../lib/overlayTypes";
 import { DEFAULT_OVERLAY_CANVAS } from "../lib/overlayTypes";
@@ -25,6 +25,9 @@ import { PLATFORM_STREAM_ELEMENTS, PLATFORM_STREAMLABS } from "../lib/platformEv
 export interface OverlayWidgetBundle extends WidgetBundle {
   fields: FieldDefinitions;
   name: string;
+  // AlertBox : réglages natifs (alertbox.json) et code de chaque alerte
+  alertbox: unknown | null;
+  alertboxCode: WidgetDetail["alertboxCode"];
 }
 
 export type OverlayTool = "select" | "text" | "eyedropper" | "image" | "video" | "embed" | "icon" | "shape";
@@ -106,7 +109,15 @@ export const useOverlayEditorStore = defineStore("overlayEditor", () => {
     widgetBundles[widgetId] = null;
     try {
       const detail = await getWidgetDetail(widgetId, "streamelements");
-      widgetBundles[widgetId] = { html: detail.html, css: detail.css, js: detail.js, fields: detail.fields, name: detail.widgetMeta.name };
+      widgetBundles[widgetId] = {
+        html: detail.html,
+        css: detail.css,
+        js: detail.js,
+        fields: detail.fields,
+        name: detail.widgetMeta.name,
+        alertbox: detail.widgetMeta.kind === "alertbox" ? detail.alertbox : null,
+        alertboxCode: detail.widgetMeta.kind === "alertbox" ? detail.alertboxCode : null
+      };
       widgetSizes[widgetId] = { width: detail.widgetMeta.width, height: detail.widgetMeta.height };
     } catch {
       widgetBundles[widgetId] = null;
@@ -234,8 +245,9 @@ export const useOverlayEditorStore = defineStore("overlayEditor", () => {
     const item = createOverlayWidgetItem(overlay.value.items, widgetId, isAlert, size.width, size.height);
     // Reprend les réglages définis dans l'éditeur du widget (aperçu
     // StreamElements en priorité, comme le rendu du canevas, sinon Streamlabs)
+    // (sauf AlertBox : ses alertes lisent directement leurs propres réglages)
     const bundle = widgetBundles[widgetId];
-    if (bundle) {
+    if (bundle && !bundle.alertboxCode) {
       const fieldData = configuredFieldOverrides(normalizeFieldDefinitions(bundle.fields), [
         fieldStorageKey(widgetId, PLATFORM_STREAM_ELEMENTS),
         fieldStorageKey(widgetId, PLATFORM_STREAMLABS)

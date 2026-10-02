@@ -27,10 +27,12 @@ interface EventFormState {
   amount: string | number;
   subType: string;
   sender: string;
+  // Purchase event : nom de l'article acheté
+  item: string;
 }
 
 function blankForm(): EventFormState {
-  return { name: "", broadcaster: false, message: "", amount: "", subType: "tier1", sender: "" };
+  return { name: "", broadcaster: false, message: "", amount: "", subType: "tier1", sender: "", item: "" };
 }
 
 const forms = reactive<Record<string, EventFormState>>({
@@ -39,16 +41,20 @@ const forms = reactive<Record<string, EventFormState>>({
   "subscriber-latest": blankForm(),
   "tip-latest": blankForm(),
   "cheer-latest": blankForm(),
-  "raid-latest": blankForm()
+  "raid-latest": blankForm(),
+  "purchase-latest": blankForm(),
+  "charityCampaignDonation-latest": blankForm()
 });
 
-const eventTypes: { key: string; icon: string; label: string; hasAmount?: boolean; amountLabel?: string; hasMessage?: boolean; hasSubType?: boolean }[] = [
+const eventTypes: { key: string; icon: string; label: string; hasAmount?: boolean; amountLabel?: string; hasMessage?: boolean; hasSubType?: boolean; hasItem?: boolean }[] = [
   { key: "message", icon: "chat", label: "Chat message", hasMessage: true },
   { key: "follower-latest", icon: "favorite", label: "Follower event" },
   { key: "subscriber-latest", icon: "person_add", label: "Subscriber event", hasSubType: true },
   { key: "tip-latest", icon: "credit_card", label: "Tipper event", hasAmount: true, amountLabel: "Montant (€)", hasMessage: true },
   { key: "cheer-latest", icon: "award_star", label: "Cheer event", hasAmount: true, amountLabel: "Montant (bits)", hasMessage: true },
-  { key: "raid-latest", icon: "groups", label: "Raid event", hasAmount: true, amountLabel: "Viewers" }
+  { key: "raid-latest", icon: "groups", label: "Raid event", hasAmount: true, amountLabel: "Viewers" },
+  { key: "purchase-latest", icon: "shopping_bag", label: "Purchase event", hasAmount: true, amountLabel: "Montant (€)", hasItem: true, hasMessage: true },
+  { key: "charityCampaignDonation-latest", icon: "volunteer_activism", label: "Charity donation event", hasAmount: true, amountLabel: "Montant (€)", hasMessage: true }
 ];
 
 const customEvent = ref(`{
@@ -99,6 +105,7 @@ function sendPreset(listener: string): void {
     if (listener === "raid-latest") event.viewers = amount;
   }
   if (eventType?.hasMessage) event.message = form.message;
+  if (eventType?.hasItem) event.items = [{ name: form.item.trim() || "T-shirt zer0oes", quantity: 1, price: event.amount }];
   if (eventType?.hasSubType) applySubscriberFields(event, name, form);
 
   dispatchToOverlayItems("onEventReceived", { listener, event });
@@ -183,6 +190,10 @@ function close(): void {
               <label v-if="eventType.hasAmount" class="field">
                 <span class="field__label">{{ eventType.amountLabel }}</span>
                 <input v-model="forms[eventType.key].amount" type="number" min="0" step="1" placeholder="Aléatoire si vide" />
+              </label>
+              <label v-if="eventType.hasItem" class="field">
+                <span class="field__label">Article</span>
+                <input v-model="forms[eventType.key].item" placeholder="T-shirt zer0oes si vide" autocomplete="off" />
               </label>
               <label v-if="eventType.hasMessage" class="field">
                 <span class="field__label">Message</span>

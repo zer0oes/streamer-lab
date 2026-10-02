@@ -1,0 +1,150 @@
+{
+  "widgetName": {
+    "type": "hidden",
+    "value": "zer0oes Alerts · cheer",
+    "group": "Alerte"
+  },
+  "alert_title": {
+    "type": "textfield",
+    "label": "Titre (| = retour à la ligne)",
+    "value": "Che_|er",
+    "group": "Alerte"
+  },
+  "alert_unit": {
+    "type": "textfield",
+    "label": "Unité",
+    "value": "Bits",
+    "group": "Alerte"
+  },
+  "accent_color": {
+    "type": "colorpicker",
+    "label": "Couleur d'accent",
+    "value": "#2ABDFF",
+    "group": "Alerte"
+  },
+  "title_font": {
+    "type": "googleFont",
+    "label": "Police du bloc titre",
+    "value": "Bungee",
+    "group": "Carte & police"
+  },
+  "number_font": {
+    "type": "googleFont",
+    "label": "Police des chiffres",
+    "value": "Anton",
+    "group": "Carte & police"
+  },
+  "card_width": {
+    "type": "number",
+    "label": "Largeur de la carte (px)",
+    "value": 240,
+    "min": 140,
+    "max": 800,
+    "step": 10,
+    "group": "Carte & police"
+  },
+  "text_size": {
+    "type": "number",
+    "label": "Taille du message (px)",
+    "value": 13,
+    "min": 8,
+    "max": 32,
+    "step": 1,
+    "group": "Carte & police"
+  },
+  "card_bg": {
+    "type": "colorpicker",
+    "label": "Fond de la carte",
+    "value": "#FFFFFF",
+    "group": "Couleurs"
+  },
+  "card_border": {
+    "type": "colorpicker",
+    "label": "Bordure & séparateur",
+    "value": "#E3DFF0",
+    "group": "Couleurs"
+  },
+  "panel_bg": {
+    "type": "colorpicker",
+    "label": "Fond du bloc titre",
+    "value": "#161225",
+    "group": "Couleurs"
+  },
+  "text_color": {
+    "type": "colorpicker",
+    "label": "Couleur du texte",
+    "value": "#161225",
+    "group": "Couleurs"
+  },
+  "second_color": {
+    "type": "colorpicker",
+    "label": "Second trait du titre",
+    "value": "#8B5CF6",
+    "group": "Couleurs"
+  },
+  "show_message": {
+    "type": "dropdown",
+    "label": "Afficher le message du viewer",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Comportement"
+  },
+  "glitch_enabled": {
+    "type": "dropdown",
+    "label": "Effet \"bug\" sur le titre à l'apparition",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Comportement"
+  },
+  "title_idle": {
+    "type": "dropdown",
+    "label": "Titre animé pendant l'affichage",
+    "value": "yes",
+    "options": {
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "group": "Comportement"
+  },
+  "animation_duration": {
+    "type": "number",
+    "label": "Durée d'animation (ms)",
+    "value": 600,
+    "min": 100,
+    "max": 2000,
+    "step": 50,
+    "group": "Comportement"
+  },
+  "anim_direction": {
+    "type": "dropdown",
+    "label": "Direction d'entrée",
+    "value": "up",
+    "options": {
+      "up": "De bas en haut",
+      "down": "De haut en bas",
+      "right": "De gauche à droite",
+      "left": "De droite à gauche"
+    },
+    "group": "Comportement"
+  },
+  "exit_direction": {
+    "type": "dropdown",
+    "label": "Direction de sortie",
+    "value": "same",
+    "options": {
+      "same": "Même sens que l'entrée",
+      "back": "Sens inverse (repart d'où elle vient)",
+      "up": "Vers le haut",
+      "down": "Vers le bas",
+      "right": "Vers la droite",
+      "left": "Vers la gauche"
+    },
+    "group": "Comportement"
+  }
+}

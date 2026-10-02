@@ -1,11 +1,12 @@
 {
   "id": "zer0oes-alerts",
   "name": "zer0oes - Alerts",
-  "description": "Alertes Follow / Sub / Cheer / Tip / Raid au look neon violet zer0oes",
+  "description": "AlertBox StreamElements (custom CSS) : Follow / Sub / Gift / Cheer / Tip / Raid au look néon violet zer0oes",
   "icon": "celebration",
+  "kind": "alertbox",
   "order": 50,
   "createdAt": 1784910851500,
-  "updatedAt": 1790797894728,
+  "updatedAt": 1790964844331,
   "width": 1920,
   "height": 1080
 }

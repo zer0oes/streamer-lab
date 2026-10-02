@@ -5,6 +5,7 @@
 // pour chaque item widget/alerte posé sur le canevas d'un overlay (Phase 3).
 
 import { PLATFORM_STREAM_ELEMENTS, type Platform } from "./platformEvents";
+import { ALERTBOX_RUNTIME_SOURCE } from "./alertbox";
 
 export interface WidgetBundle {
   html: string;
@@ -17,6 +18,14 @@ export interface BuildSrcdocOptions {
   themeClass?: string;
   platform?: Platform;
   transparent?: boolean;
+  // AlertBox StreamElements : réglages natifs (alertbox.json) et code de
+  // chaque alerte avec ses valeurs de champs. Présent = le document n'exécute
+  // pas `bundle` mais l'hôte simulé, qui affiche chaque alerte dans sa propre
+  // iframe (cf. alertboxRuntime.js).
+  alertbox?: {
+    config: unknown;
+    codes: Partial<Record<string, WidgetBundle & { values: Record<string, unknown> }>>;
+  };
 }
 
 export function substituteFields(source: string, values: Record<string, unknown>): string {
@@ -32,12 +41,34 @@ export function substituteFields(source: string, values: Record<string, unknown>
 export function buildWidgetSrcdoc(
   bundle: WidgetBundle,
   values: Record<string, unknown>,
-  { checkerClass = "", themeClass = "", platform = PLATFORM_STREAM_ELEMENTS, transparent = false }: BuildSrcdocOptions = {}
+  { checkerClass = "", themeClass = "", platform = PLATFORM_STREAM_ELEMENTS, transparent = false, alertbox }: BuildSrcdocOptions = {}
 ): string {
   const html = substituteFields(bundle.html, values);
   const css = substituteFields(bundle.css, values);
   const js = substituteFields(bundle.js, values);
-  const executableJs = JSON.stringify(js).replaceAll("<", "\\u003c");
+  const toScriptJson = (value: unknown) => JSON.stringify(value).replaceAll("<", "\\u003c");
+  const executableJs = toScriptJson(js);
+
+  // AlertBox : ce document n'affiche rien lui-même, chaque alerte vit dans sa
+  // propre iframe créée par l'hôte, avec les variables de l'alerte.
+  const isAlertbox = alertbox != null;
+  const headCss = isAlertbox
+    ? "#alertbox-stage{position:fixed;inset:0;pointer-events:none}.alertbox-frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent}"
+    : css;
+  const bodyHtml = isAlertbox ? `<div id="alertbox-stage"></div>` : html;
+  const hostCodes = isAlertbox
+    ? Object.fromEntries(
+        Object.entries(alertbox.codes).flatMap(([type, code]) =>
+          code
+            ? [[type, { html: substituteFields(code.html, code.values), css: substituteFields(code.css, code.values), js: substituteFields(code.js, code.values), fieldData: code.values }]]
+            : []
+        )
+      )
+    : {};
+  const runWidget = isAlertbox
+    ? `${ALERTBOX_RUNTIME_SOURCE}
+  AlertboxRuntime.createHost({ codes: ${toScriptJson(hostCodes)}, config: ${toScriptJson(alertbox.config)}, stage: document.getElementById("alertbox-stage") });`
+    : `try { (new Function(${executableJs}))(); } catch (error) { console.error(error.stack || error.message); }`;
 
   // Sur le canevas d'overlay (Phase 3), chaque widget est un item parmi
   // d'autres posés sur le damier commun : son iframe ne doit jamais peindre
@@ -68,11 +99,11 @@ export function buildWidgetSrcdoc(
   }`;
 
   return `<!doctype html>
-<html class="se-lab-preview${transparent ? "" : checkerClass}${transparent ? "" : themeClass}"><head><meta charset="utf-8"><style>${css}</style>
+<html class="se-lab-preview${transparent ? "" : checkerClass}${transparent ? "" : themeClass}"><head><meta charset="utf-8"><style>${headCss}</style>
 <style id="se-lab-surface">
   ${surfaceCss}
 </style><script src="/vendor/jquery.min.js"></script></head>
-<body>${html}
+<body>${bodyHtml}
 <script>
 (() => {
   const pending = new Map();
@@ -127,7 +158,7 @@ export function buildWidgetSrcdoc(
     setField: (key, value, shouldReload = true) => send("set-field", { key, value, shouldReload }),
     resumeQueue: () => send("queue-resume")
   };
-  try { (new Function(${executableJs}))(); } catch (error) { console.error(error.stack || error.message); }
+  ${runWidget}
 })();
 </script></body></html>`;
 }

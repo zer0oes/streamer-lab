@@ -5,11 +5,20 @@ import WidgetPreviewFrame from "../components/WidgetPreviewFrame.vue";
 import CodeEditorPanel from "../components/CodeEditorPanel.vue";
 import ConsolePanel from "../components/ConsolePanel.vue";
 import FieldsForm from "../components/FieldsForm.vue";
+import AlertboxSettingsPanel from "../components/AlertboxSettingsPanel.vue";
 import EventSimulatorPanel from "../components/EventSimulatorPanel.vue";
 import { widgetFieldsCollapsed } from "../composables/useWidgetFieldsCollapse";
+import { ALERTBOX_ALERTS, type AlertboxAlertType } from "../lib/alertbox";
 
 const store = useWidgetEditorStore();
 const simulatorOpen = ref(false);
+// AlertBox : réglages natifs par alerte (comme l'AlertBox StreamElements) ou
+// champs du custom CSS, dans le même panneau latéral.
+const sideTab = ref<"alerts" | "fields">("alerts");
+
+function onAlertSelect(event: Event): void {
+  void store.selectAlertType((event.target as HTMLSelectElement).value as AlertboxAlertType);
+}
 </script>
 
 <template>
@@ -20,12 +29,31 @@ const simulatorOpen = ref(false);
     <ConsolePanel />
 
     <aside class="widget-fields" :class="{ 'is-collapsed': widgetFieldsCollapsed }" aria-label="Champs">
-      <div class="widget-fields__header">
+      <div v-if="store.isAlertbox" class="widget-fields__tabs" role="tablist" aria-label="Réglages de l’AlertBox">
+        <button type="button" role="tab" class="widget-fields__tab" :class="{ 'is-active': sideTab === 'alerts' }" :aria-selected="sideTab === 'alerts'" @click="sideTab = 'alerts'">
+          Alertes
+        </button>
+        <button type="button" role="tab" class="widget-fields__tab" :class="{ 'is-active': sideTab === 'fields' }" :aria-selected="sideTab === 'fields'" @click="sideTab = 'fields'">
+          Champs
+        </button>
+        <span class="hint">{{ sideTab === "alerts" ? "alertbox.json" : store.detail?.files.fields }}</span>
+      </div>
+      <!-- Alerte dont le code et les champs sont chargés dans l'éditeur -->
+      <label v-if="store.isAlertbox" class="widget-fields__alert-select">
+        <span class="field__label">Code et champs de l’alerte</span>
+        <select :value="store.activeAlertType" @change="onAlertSelect">
+          <option v-for="alert in ALERTBOX_ALERTS" :key="alert.type" :value="alert.type">
+            {{ alert.label }}{{ alert.hint ? ` · ${alert.hint}` : "" }}
+          </option>
+        </select>
+      </label>
+      <div v-else class="widget-fields__header">
         <h3 class="widget-fields__title">Champs</h3>
         <span class="hint">{{ store.detail?.files.fields }}</span>
       </div>
       <div class="widget-fields__list">
-        <FieldsForm />
+        <AlertboxSettingsPanel v-if="store.isAlertbox && sideTab === 'alerts'" />
+        <FieldsForm v-else />
       </div>
     </aside>
 

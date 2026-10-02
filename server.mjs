@@ -32,6 +32,9 @@ import { decryptIntegrationToken, disconnectIntegration, maskIntegration, saveMa
 import { saveContactMessage } from "./lib/contact.mjs";
 import { deleteLocalMedia, listLocalMedia, resolveLocalMediaPath, saveLocalMedia, MAX_MEDIA_BYTES, MEDIA_URL_PREFIX } from "./lib/media.mjs";
 import {
+  ALERTBOX_TYPES,
+  ALERTBOX_CODE_FILES,
+  isAlertboxCodeFile,
   LIBRARY_ROOT,
   categoryDirsForProject,
   categoryDirectory,
@@ -151,6 +154,10 @@ const mimeTypes = {
   ".mp4": "video/mp4",
   ".webm": "video/webm",
   ".mov": "video/quicktime",
+  ".mp3": "audio/mpeg",
+  ".ogg": "audio/ogg",
+  ".wav": "audio/wav",
+  ".m4a": "audio/mp4",
   ".woff2": "font/woff2"
 };
 
@@ -271,9 +278,14 @@ const server = createServer(async (request, response) => {
       const body = await readRequestJson(request);
       const found = await findWidgetInfo(body.widgetId);
       if (!found) return sendJson(response, 404, { error: "Widget introuvable" });
-      if (!editableWidgetFiles.has(body.file)) {
+      const isAlertbox = found.widgetInfo.kind === "alertbox";
+      const allowed = isAlertbox
+        ? body.file === "alertbox.json" || isAlertboxCodeFile(body.file)
+        : editableWidgetFiles.has(body.file);
+      if (!allowed) {
         return sendJson(response, 400, { error: "Fichier de widget non autorise" });
       }
+      if (isAlertbox) await mkdir(join(found.widgetInfo.directory, dirname(body.file)), { recursive: true });
       try {
         assertValidWidgetFileContent(body.file, body.content);
       } catch (error) {
@@ -1142,7 +1154,9 @@ function assertValidWidgetFileContent(file, content) {
     file === "fields.streamelements.json" ||
     file === "fields.streamlabs.json" ||
     file === "data.streamelements.json" ||
-    file === "data.streamlabs.json"
+    file === "data.streamlabs.json" ||
+    file === "alertbox.json" ||
+    /^[a-z]+\/(fields|data)\.json$/.test(file)
   ) {
     try {
       JSON.parse(content);
@@ -1183,7 +1197,64 @@ function placeholderLabel(sourceType, name) {
   return name && name !== "Widget StreamElements" ? name : (PLACEHOLDER_LABELS[sourceType] || PLACEHOLDER_LABELS.native);
 }
 
-async function loadWidget(widgetInfo, platform = "streamelements") {
+function widgetMetaOf(widgetInfo) {
+  return {
+    name: widgetInfo.name,
+    description: widgetInfo.description,
+    icon: widgetInfo.icon,
+    kind: widgetInfo.kind,
+    archived: widgetInfo.archived,
+    width: widgetInfo.width,
+    height: widgetInfo.height
+  };
+}
+
+// Code custom CSS de chaque alerte d'une AlertBox (un sous-dossier par type).
+// Un type sans dossier repart d'un code vide, créé au premier enregistrement.
+async function loadAlertboxCode(directory) {
+  const entries = await Promise.all(
+    ALERTBOX_TYPES.map(async (type) => {
+      const files = Object.fromEntries(Object.entries(ALERTBOX_CODE_FILES).map(([key, name]) => [key, `${type}/${name}`]));
+      const [html, css, js, fieldsSource, dataSource] = await Promise.all([
+        readOptionalFile(join(directory, files.html), ""),
+        readOptionalFile(join(directory, files.css), ""),
+        readOptionalFile(join(directory, files.js), ""),
+        readOptionalFile(join(directory, files.fields), "{}\n"),
+        readOptionalFile(join(directory, files.data), "{}\n")
+      ]);
+      return [type, { html, css, js, fields: JSON.parse(fieldsSource), fieldsSource, dataSource, files }];
+    })
+  );
+  return Object.fromEntries(entries);
+}
+
+async function loadWidget(widgetInfo, requestedPlatform = "streamelements") {
+  // Une AlertBox (custom CSS) n'existe que sur StreamElements, et son code
+  // vit dans un sous-dossier par alerte : la première alerte sert de code
+  // « courant » pour les champs génériques de la réponse.
+  if (widgetInfo.kind === "alertbox") {
+    const [alertboxCode, alertboxSource] = await Promise.all([
+      loadAlertboxCode(widgetInfo.directory),
+      readOptionalFile(join(widgetInfo.directory, "alertbox.json"), '{ "alerts": {} }\n')
+    ]);
+    const first = alertboxCode[ALERTBOX_TYPES[0]];
+    return {
+      alertbox: JSON.parse(alertboxSource),
+      alertboxCode,
+      html: first.html,
+      css: first.css,
+      js: first.js,
+      fields: first.fields,
+      fieldsSource: first.fieldsSource,
+      dataSource: first.dataSource,
+      platform: "streamelements",
+      widgetId: widgetInfo.id,
+      widgetMeta: widgetMetaOf(widgetInfo),
+      files: first.files
+    };
+  }
+
+  const platform = requestedPlatform;
   const platformFiles = widgetPlatformFiles[platform] || widgetPlatformFiles.streamelements;
   const [html, css, js, fieldsSource, dataSource] = await Promise.all([
     readFile(join(widgetInfo.directory, "widget.html"), "utf8"),
@@ -1193,6 +1264,8 @@ async function loadWidget(widgetInfo, platform = "streamelements") {
     readOptionalFile(join(widgetInfo.directory, platformFiles.data), "{}\n")
   ]);
   return {
+    alertbox: null,
+    alertboxCode: null,
     html,
     css,
     js,
@@ -1201,14 +1274,7 @@ async function loadWidget(widgetInfo, platform = "streamelements") {
     dataSource,
     platform,
     widgetId: widgetInfo.id,
-    widgetMeta: {
-      name: widgetInfo.name,
-      description: widgetInfo.description,
-      icon: widgetInfo.icon,
-      archived: widgetInfo.archived,
-      width: widgetInfo.width,
-      height: widgetInfo.height
-    },
+    widgetMeta: widgetMetaOf(widgetInfo),
     files: {
       html: "widget.html",
       css: "widget.css",

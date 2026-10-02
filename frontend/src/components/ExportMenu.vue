@@ -4,7 +4,7 @@ import { useWidgetEditorStore } from "../stores/widgetEditor";
 import { useDropdownToggle } from "../composables/useDropdownToggle";
 import { useToast } from "../composables/useToast";
 import { PLATFORM_STREAM_ELEMENTS, PLATFORM_STREAMLABS } from "../lib/platformEvents";
-import { buildPlatformExport, slugifyWidgetName } from "../lib/widgetExport";
+import { buildAlertboxExport, buildPlatformExport, slugifyWidgetName } from "../lib/widgetExport";
 import { createZip } from "../lib/zip";
 
 const store = useWidgetEditorStore();
@@ -20,14 +20,14 @@ async function exportFor(targetPlatform: string): Promise<void> {
   busy.value = true;
   try {
     await store.flushDirtyFiles();
-    const exported = buildPlatformExport(
-      { html: store.editorFiles.html, css: store.editorFiles.css, js: store.editorFiles.js, fields: store.fields },
-      store.fieldData,
-      targetPlatform
-    );
+    const widget = { html: store.editorFiles.html, css: store.editorFiles.css, js: store.editorFiles.js, fields: store.fields };
+    const snapshot = store.alertboxSnapshot();
+    const exported = store.alertbox && snapshot
+      ? buildAlertboxExport(snapshot, store.alertbox)
+      : buildPlatformExport(widget, store.fieldData, targetPlatform);
     const archive = createZip(exported.files);
     const slug = slugifyWidgetName(store.detail.widgetMeta.name || "custom-widget");
-    const suffix = exported.platform === PLATFORM_STREAMLABS ? "streamlabs" : "streamelements";
+    const suffix = store.alertbox ? "alertbox" : exported.platform === PLATFORM_STREAMLABS ? "streamlabs" : "streamelements";
     const blob = new Blob([archive], { type: "application/zip" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -73,7 +73,7 @@ function convertToOther(): void {
         <span class="material-symbols-sharp" aria-hidden="true">download</span>
         <span>Télécharger</span>
       </button>
-      <button type="button" class="export-menu__item" role="menuitem" @click="convertToOther">
+      <button v-if="!store.isAlertbox" type="button" class="export-menu__item" role="menuitem" @click="convertToOther">
         <span class="material-symbols-sharp" aria-hidden="true">sync_alt</span>
         <span>Convertir pour {{ otherPlatformLabel }}</span>
       </button>

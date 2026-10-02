@@ -9,6 +9,15 @@
 />
 
 <div class="stage" id="stage">
+  <!-- Variables de l'alerte, remplacées par l'AlertBox StreamElements -->
+  <div class="alert-data" id="alertData" hidden>
+    <span data-var="name">{{name}}</span>
+    <span data-var="sender">{{sender}}</span>
+    <span data-var="amount">{{amount}}</span>
+    <span data-var="duration">{{widgetDuration}}</span>
+    <div data-var="message">{{message}}</div>
+  </div>
+
   <div class="card" id="alert">
     <div class="card-panel">
       <!-- Icône du type en filigrane, inclinée, rognée par le bloc -->
@@ -31,5 +40,3 @@
     <div class="card-message" id="alertMessage"></div>
   </div>
 </div>
-
-<audio id="alertSound" preload="auto"></audio>

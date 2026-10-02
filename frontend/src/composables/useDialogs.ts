@@ -26,7 +26,7 @@ export interface ContactDialogHandle {
 }
 
 export interface MediaPreviewDialogHandle {
-  open(item: { type: "image" | "video"; url: string; name: string }): void;
+  open(item: { type: "image" | "video" | "audio"; url: string; name: string }): void;
 }
 
 export interface StreamElementsOverlayPickerDialogHandle {

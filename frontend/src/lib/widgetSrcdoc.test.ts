@@ -54,3 +54,36 @@ describe("buildWidgetSrcdoc", () => {
     expect(srcdoc).toContain('class="se-lab-preview se-lab-checker se-lab-light"');
   });
 });
+
+describe("buildWidgetSrcdoc · AlertBox", () => {
+  const bundle = { html: '<div class="card">{{title}}</div>', css: ".card{color:red}", js: "console.log('alerte')" };
+  const alertbox = {
+    config: { alerts: { tip: { duration: 4 } } },
+    codes: {
+      follow: { html: "<b>{{title}}</b>", css: "", js: "", values: { title: "Fol_|low" } },
+      tip: { html: "<i>{title}</i>", css: "", js: "", values: { title: "Merci" } }
+    }
+  };
+
+  it("embarque l'hôte AlertBox avec le code de chaque alerte, champs remplacés par alerte", () => {
+    const doc = buildWidgetSrcdoc(bundle, { title: "Hello" }, { alertbox });
+    expect(doc).toContain('<div id="alertbox-stage"></div>');
+    expect(doc).toContain("AlertboxRuntime.createHost(");
+    expect(doc).toContain('"duration":4');
+    // Code transmis en JSON (< échappé) à l'hôte, champs remplacés par alerte
+    const escapedLt = "\\" + "u003c";
+    expect(doc).toContain(`${escapedLt}b>Fol_|low${escapedLt}/b>`);
+    expect(doc).toContain(`${escapedLt}i>Merci${escapedLt}/i>`);
+    // Le bundle « courant » n'est ni rendu ni exécuté directement
+    expect(doc).not.toContain('<div class="card">Hello</div>');
+    expect(doc).not.toContain(".card{color:red}</style>");
+    // Aucune fermeture de script en plus de celles de jQuery et du pont
+    expect(doc.match(/<\/script>/g)).toHaveLength(2);
+  });
+
+  it("garde le rendu Custom Widget sans réglages AlertBox", () => {
+    const doc = buildWidgetSrcdoc(bundle, { title: "Hello" });
+    expect(doc).toContain('<div class="card">Hello</div>');
+    expect(doc).not.toContain("AlertboxRuntime");
+  });
+});

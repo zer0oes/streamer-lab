@@ -116,18 +116,45 @@
           "height": 36,
           "width": 450,
           "border_color": "#34385f",
-          "background_opacity": 0.75,
+          "background_opacity": 0.7,
           "spotify_client_id": "a136f08305c84aa89fa0f1a74854da78",
           "spotify_client_secret": "d64f2f9cc52443e0b0c75e2e47d656eb",
           "spotify_refresh_token": "AQAmcHdhK5bNi1aKnGiBVprbuB58b0nymHqUqQWUegY3zmAQlqB8Ewo5UECjLLt405qtbzoLG_UMiRje68l8FtGZ6MrYB8jZnxvcsGsD0qw2V4sLcRWNhllukkkC8pVAEu8",
           "text_size": 14,
-          "font_weight": "500"
+          "font_weight": "500",
+          "border_opacity": 0.8
+        }
+      }
+    },
+    {
+      "id": "item-mur7q6c7-nidm8",
+      "type": "alert",
+      "widgetId": "zer0oes-alerts",
+      "x": 1420,
+      "y": 0,
+      "w": 500,
+      "h": 500,
+      "z": 6,
+      "hidden": false,
+      "locked": false,
+      "name": "",
+      "collapsed": false,
+      "props": {
+        "fieldData": {
+          "card_width": 260,
+          "text_size": 15,
+          "card_bg": "#ffffff",
+          "card_border": "#34385F",
+          "sub_color": "#2ABDFF",
+          "cheer_color": "#FF1BDF",
+          "tip_color": "#5900FF",
+          "tip_title": "Tip"
         }
       }
     }
   ],
   "createdAt": 1785342046492,
-  "updatedAt": 1790957323801,
+  "updatedAt": 1790960796263,
   "guides": {
     "horizontal": [
       966,

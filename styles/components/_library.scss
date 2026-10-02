@@ -445,6 +445,16 @@
       height: 100%;
       border-radius: 0;
     }
+
+    // Son (alertes) : pas d'aperçu visuel, simple pictogramme
+    &--audio {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+
+      .material-symbols-sharp { font-size: 32px; }
+    }
   }
 
   &__thumb-frame {

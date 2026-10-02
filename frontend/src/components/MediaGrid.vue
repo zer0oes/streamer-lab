@@ -7,7 +7,7 @@ import { useToast } from "../composables/useToast";
 
 interface DisplayItem {
   source: "local" | "streamelements";
-  type: "image" | "video";
+  type: "image" | "video" | "audio";
   url: string;
   name: string;
   id?: string;
@@ -94,7 +94,7 @@ function openPreview(item: DisplayItem, event: Event): void {
     >
       <span class="material-symbols-sharp" aria-hidden="true">upload</span>
       <span class="media-library__dropzone-text">Glisser un média ici, ou cliquer pour parcourir</span>
-      <input ref="fileInput" type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden @change="onFileInputChange" />
+      <input ref="fileInput" type="file" accept="image/*,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/ogg,audio/wav,audio/mp4" multiple hidden @change="onFileInputChange" />
     </label>
 
     <p v-if="!items.length" class="media-library__empty">Aucun média pour l’instant.</p>
@@ -111,6 +111,9 @@ function openPreview(item: DisplayItem, event: Event): void {
       >
         <span class="media-library__thumb-frame">
           <video v-if="item.type === 'video'" class="media-library__thumb media-library__thumb--video" :src="item.url" muted preload="metadata"></video>
+          <span v-else-if="item.type === 'audio'" class="media-library__thumb media-library__thumb--audio">
+            <span class="material-symbols-sharp" aria-hidden="true">music_note</span>
+          </span>
           <img v-else class="media-library__thumb" :src="item.url" alt="" loading="lazy" />
           <span v-if="item.type === 'video'" class="media-library__play-badge">
             <span class="material-symbols-sharp" aria-hidden="true">play_circle</span>

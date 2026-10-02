@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildPlatformExport, slugifyWidgetName, toStreamElementsFields, toStreamlabsFields } from "./widgetExport";
+import { buildAlertboxExport, buildPlatformExport, slugifyWidgetName, toStreamElementsFields, toStreamlabsFields } from "./widgetExport";
+import { normalizeAlertboxConfig } from "./alertbox";
 import { createZip } from "./zip";
 import type { FieldDefinitions } from "../api/widgetDetail";
 
@@ -90,5 +91,39 @@ describe("slugifyWidgetName", () => {
 
   it("retombe sur un nom par défaut si le résultat est vide", () => {
     expect(slugifyWidgetName("!!!")).toBe("custom-widget");
+  });
+});
+
+describe("buildAlertboxExport", () => {
+  const code = (title: string) => ({
+    html: `<div>${title} {{name}}</div>`,
+    css: "div{}",
+    js: "console.log(1)",
+    fields: { alert_title: { type: "textfield", value: "Défaut" } } as FieldDefinitions,
+    values: { alert_title: title }
+  });
+  const codes = { follow: code("Fol_|low"), tip: code("Merci"), resub: code("Re_|Sub"), raid: code("Raid") };
+  const config = normalizeAlertboxConfig({
+    alerts: { follow: { sound: "/library-media/ding.mp3", volume: 0.3, duration: 6 }, raid: { enabled: false } }
+  });
+
+  it("crée un dossier par alerte activée, avec SON code et SES valeurs de champs", () => {
+    const { files } = buildAlertboxExport(codes, config);
+    expect(files["follow/widget.html"]).toBe("<div>Fol_|low {{name}}</div>\n");
+    expect(files["tip/widget.html"]).toBe("<div>Merci {{name}}</div>\n");
+    expect(files["raid/widget.html"]).toBeUndefined();
+    // Alerte activée mais sans code : pas de dossier
+    expect(files["cheer/widget.html"]).toBeUndefined();
+    expect(JSON.parse(files["tip/fields.json"]).alert_title).toMatchObject({ type: "text", value: "Merci" });
+  });
+
+  it("liste dans le README les réglages natifs et les variations à créer", () => {
+    const readme = buildAlertboxExport(codes, config).files["README.txt"];
+    expect(readme).toContain("follow/ → Follower alert");
+    expect(readme).toContain("resub/ → Resub (variation de la Subscriber alert, condition : 2 mois cumulés ou plus)");
+    expect(readme).toContain("Son : ding.mp3 (fichier local du labo : à téléverser dans StreamElements)");
+    expect(readme).toContain("Volume : 30 %");
+    expect(readme).toContain("Durée : 6 s");
+    expect(readme).toContain("Désactivées (à laisser décochées) : Raid alert");
   });
 });

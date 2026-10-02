@@ -75,6 +75,116 @@ $preview-surface: #11141a;
   overflow-y: auto;
 }
 
+// AlertBox : onglets « Alertes » (réglages natifs) / « Champs » (custom CSS)
+.widget-fields__tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-12);
+
+  .hint { margin-left: auto; }
+}
+
+.widget-fields__alert-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-12);
+
+  .field__label { color: var(--muted); font-size: var(--text-10); }
+  select { height: 32px; padding: 0 var(--space-8); font-size: var(--text-11); }
+}
+
+.widget-fields__tab {
+  padding: var(--space-5) var(--space-10);
+  border: 0;
+  border-radius: var(--radius-4);
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: var(--text-11);
+  font-weight: 700;
+
+  &:hover { color: var(--text); }
+  &:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+
+  &.is-active {
+    color: var(--text);
+    background: var(--panel-soft);
+  }
+}
+
+.alertbox-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+
+  &__intro {
+    margin: 0 0 var(--space-8);
+    color: var(--muted);
+    font-size: var(--text-10);
+    line-height: 1.5;
+  }
+
+  &__summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+
+    input[type="checkbox"] { flex: 0 0 auto; margin: 0; }
+    .material-symbols-sharp { font-size: 16px; }
+  }
+
+  &__label {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+
+    small { color: var(--muted); font-size: var(--text-10); font-weight: 500; }
+  }
+
+  &__gear { color: var(--muted); }
+
+  &__inline-icon { font-size: 13px !important; vertical-align: -2px; }
+
+  &__code {
+    flex: 0 0 auto;
+
+    &.is-active { color: var(--accent-bright); }
+  }
+
+  &__alert.is-disabled &__label { opacity: 0.5; }
+  &__alert.is-editing { border-color: var(--accent); }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+    padding: var(--space-4) var(--space-10) var(--space-12);
+
+    .field { display: flex; flex-direction: column; gap: var(--space-4); margin: 0; }
+    .field__label { min-height: 0; color: var(--muted); font-size: var(--text-10); }
+
+    select,
+    input[type="number"] {
+      height: 32px;
+      padding: 0 var(--space-8);
+      font-size: var(--text-11);
+    }
+
+    input[type="range"] { width: 100%; }
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+
+    select { flex: 1 1 auto; min-width: 0; }
+  }
+}
+
 .preview-toolbar {
   @include primitives.heading-row;
   flex-wrap: wrap;

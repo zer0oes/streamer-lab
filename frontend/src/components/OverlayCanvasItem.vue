@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from "vue";
 import { useOverlayEditorStore } from "../stores/overlayEditor";
 import { overlayItemDefaultLabel, resolveOverlayItemFieldData } from "../lib/overlayItems";
 import { buildWidgetSrcdoc } from "../lib/widgetSrcdoc";
+import { alertboxFieldStorageKey, loadFieldData, normalizeFieldDefinitions } from "../lib/fieldData";
 import type { OverlayItem, TextProps } from "../lib/overlayTypes";
 import { PLATFORM_STREAM_ELEMENTS } from "../lib/platformEvents";
 import { loadAppState, useAppState } from "../composables/useAppState";
@@ -109,9 +110,28 @@ watch(widgetFieldData, (next) => {
 
 onBeforeUnmount(() => clearTimeout(fieldDebounceTimer));
 
+// AlertBox : chaque alerte avec son propre code et les valeurs de ses champs
+// réglées dans l'éditeur de l'alerte (pas de surcharge par item : comme sur
+// StreamElements, une AlertBox a un seul jeu de réglages par alerte).
+function alertboxOption(b: NonNullable<typeof bundle.value>) {
+  if (!b.alertbox || !b.alertboxCode || !props.item.widgetId) return undefined;
+  const widgetId = props.item.widgetId;
+  const codes = Object.fromEntries(
+    Object.entries(b.alertboxCode).map(([type, code]) => [
+      type,
+      { html: code.html, css: code.css, js: code.js, values: loadFieldData(normalizeFieldDefinitions(code.fields), alertboxFieldStorageKey(widgetId, type)) }
+    ])
+  );
+  return { config: b.alertbox, codes };
+}
+
 const widgetSrcdoc = computed(() => {
   if (!bundle.value) return "<!doctype html><body></body>";
-  return buildWidgetSrcdoc(bundle.value, previewFieldData.value, { platform: PLATFORM_STREAM_ELEMENTS, transparent: true });
+  return buildWidgetSrcdoc(bundle.value, previewFieldData.value, {
+    platform: PLATFORM_STREAM_ELEMENTS,
+    transparent: true,
+    alertbox: alertboxOption(bundle.value)
+  });
 });
 
 // Sans cet envoi au chargement de l'iframe, équivalent au frame.onload de
@@ -207,7 +227,7 @@ defineExpose({ beginTextEdit });
     </div>
 
     <template v-if="item.type === 'widget' || item.type === 'alert'">
-      <iframe :key="frameRevision" class="overlay-item__frame" sandbox="allow-scripts" scrolling="no" :title="item.widgetId" :srcdoc="widgetSrcdoc" @load="onWidgetFrameLoad"></iframe>
+      <iframe :key="frameRevision" class="overlay-item__frame" sandbox="allow-scripts" allow="autoplay" scrolling="no" :title="item.widgetId" :srcdoc="widgetSrcdoc" @load="onWidgetFrameLoad"></iframe>
     </template>
     <div
       v-else-if="item.type === 'text'"

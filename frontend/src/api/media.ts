@@ -3,7 +3,7 @@ import { apiDelete, apiGet, apiPostFile, ApiError } from "./client";
 export interface LocalMediaItem {
   id: string;
   url: string;
-  type: "image" | "video";
+  type: "image" | "video" | "audio";
   name: string;
   size: number;
   createdAt: number;
