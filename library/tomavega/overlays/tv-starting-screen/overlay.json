@@ -1,0 +1,21 @@
+{
+  "id": "tv-starting-screen",
+  "name": "TV - STARTING SCREEN",
+  "description": "",
+  "icon": "desktop_landscape",
+  "order": 10,
+  "archived": false,
+  "canvas": {
+    "width": 1920,
+    "height": 1080
+  },
+  "items": [],
+  "guides": {
+    "horizontal": [],
+    "vertical": []
+  },
+  "sourcePlatform": null,
+  "sourceOverlayId": null,
+  "createdAt": 1790972901450,
+  "updatedAt": 1790972901450
+}
