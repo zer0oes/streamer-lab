@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "./client";
+import { apiDelete, apiGet, apiPost } from "./client";
 import type { OverlayEntry } from "./types";
 
 export interface StreamElementsOverlaySummary {
@@ -15,16 +15,30 @@ export interface StreamElementsOverlayImportResult {
 }
 
 // Chaîne StreamElements dont on peut importer les overlays : celle du compte
-// connecté, ou une chaîne qu'il gère (rôle administrator, editor...).
+// connecté, une chaîne qu'il gère (rôle administrator, editor...), ou une
+// chaîne ajoutée à la main avec son propre jeton (source "token").
 export interface StreamElementsChannel {
   id: string;
   name: string;
   provider: string | null;
   role: string | null;
+  source: "account" | "token";
 }
+
+export type StreamElementsChannelTokenType = "jwt" | "apikey";
 
 export function listStreamElementsChannels(): Promise<{ channels: StreamElementsChannel[]; defaultChannelId: string }> {
   return apiGet<{ channels: StreamElementsChannel[]; defaultChannelId: string }>("/api/integrations/streamelements/channels");
+}
+
+export function addStreamElementsChannel(token: string, tokenType: StreamElementsChannelTokenType): Promise<StreamElementsChannel> {
+  return apiPost<{ channel: StreamElementsChannel }>("/api/integrations/streamelements/channels", { token, tokenType }).then(
+    (body) => body.channel
+  );
+}
+
+export function removeStreamElementsChannel(channelId: string): Promise<{ deleted: boolean }> {
+  return apiDelete<{ deleted: boolean }>(`/api/integrations/streamelements/channels?channelId=${encodeURIComponent(channelId)}`);
 }
 
 export function listStreamElementsOverlays(channelId?: string): Promise<StreamElementsOverlaySummary[]> {

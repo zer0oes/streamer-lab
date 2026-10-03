@@ -40,6 +40,10 @@
 
   &--small { max-width: 92px; }
 
+  // Colonne d'un bouton a cote d'un champ dans un .field__row : largeur du
+  // bouton, pas la moitie de la ligne.
+  &--action { flex: none; }
+
   &__input-group {
     position: relative;
     display: flex;
