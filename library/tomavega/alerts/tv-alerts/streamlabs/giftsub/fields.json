@@ -50,7 +50,7 @@
   "card_width": {
     "type": "slider",
     "label": "Largeur de l'alerte (px)",
-    "value": 490,
+    "value": 440,
     "min": 240,
     "max": 900,
     "steps": 10,
@@ -59,10 +59,10 @@
   "name_size": {
     "type": "slider",
     "label": "Taille du pseudo (px)",
-    "value": 46,
+    "value": 40,
     "min": 16,
     "max": 90,
-    "steps": 1,
+    "steps": 0.5,
     "group": "Style"
   },
   "wire_enabled": {

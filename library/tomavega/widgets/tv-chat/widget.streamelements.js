@@ -34,6 +34,31 @@ let ignoredUsers = new Set();
 let messageCount = 0;
 let nextTestMessage = 0;
 
+// ------------------------------------
+// Diagnostic (champ « Diagnostic ») : petite ligne sous l'en-tête avec les
+// évènements reçus, pour vérifier dans OBS que le tchat arrive bien
+// ------------------------------------
+const diagnostic = { loaded: false, events: 0, messages: 0, shown: 0, last: "", error: "" };
+
+function updateDiagnostic(){
+  let line = document.getElementById("chatDiagnostic");
+  if (fields.diagnostic !== "yes"){
+    line?.remove();
+    return;
+  }
+  if (!line){
+    line = document.createElement("div");
+    line.id = "chatDiagnostic";
+    line.className = "chat-diagnostic";
+    document.querySelector(".chat-slot").append(line);
+  }
+  const size = chat.clientWidth + "×" + chat.clientHeight;
+  line.textContent = (diagnostic.loaded ? "Chargé" : "Pas de onWidgetLoad") +
+    " · évènements " + diagnostic.events + " (dernier : " + (diagnostic.last || "aucun") + ")" +
+    " · messages reçus " + diagnostic.messages + " · affichés " + chat.childElementCount +
+    " · salon " + size + (diagnostic.error ? " · erreur : " + diagnostic.error : "");
+}
+
 function addTestMessage(){
   const sample = TEST_MESSAGES[nextTestMessage++ % TEST_MESSAGES.length];
   addMessage({
@@ -52,11 +77,30 @@ window.addEventListener("onWidgetLoad", ({ detail }) => {
   ignoredUsers = new Set(String(fields.ignored_users || "").split(",").map((name) => name.trim().toLowerCase()).filter(Boolean));
   document.getElementById("chatTitle").textContent = fields.chat_title ?? "LE SALON";
   document.getElementById("chatSubtitle").textContent = fields.chat_subtitle ?? "TOMAVEGA / COMMUNITY";
+  diagnostic.loaded = true;
+  updateDiagnostic();
+});
+
+window.addEventListener("onWidgetUpdate", ({ detail }) => {
+  fields = detail?.fieldData || fields;
+  updateDiagnostic();
 });
 
 window.addEventListener("onEventReceived", ({ detail }) => {
   const event = detail?.event || {};
   const listener = detail?.listener || event.listener;
+  diagnostic.events += 1;
+  diagnostic.last = String(listener || "?");
+  try {
+    handleEvent(listener, event);
+  } catch (error){
+    diagnostic.error = String(error?.message || error);
+    console.error("[TV - Chat]", error);
+  }
+  updateDiagnostic();
+});
+
+function handleEvent(listener, event){
 
   // Bouton « Message d'essai » (sur un overlay, le clic est envoyé à tous les
   // widgets : on ne réagit qu'à notre propre champ)
@@ -75,13 +119,14 @@ window.addEventListener("onEventReceived", ({ detail }) => {
   if (listener !== "message") return;
 
   const data = event.data || event;
+  diagnostic.messages += 1;
   const nickname = String(data.nick || data.displayName || "").toLowerCase();
   const text = String(data.text || "");
   if (fields.hide_commands !== "no" && text.trimStart().startsWith("!")) return;
   if (ignoredUsers.has(nickname)) return;
 
   addMessage(data);
-});
+}
 
 function addMessage(data){
   const badges = Array.isArray(data.badges) ? data.badges : [];
@@ -93,7 +138,7 @@ function addMessage(data){
   // Alternance cyan / violet, comme sur la page d'origine
   if (messageCount++ % 2 === 1) row.classList.add("is-alt");
   if (isBroadcaster) row.classList.add("broadcaster");
-  row.dataset.msgid = String(data.msgId || data.tags?.id || crypto.randomUUID());
+  row.dataset.msgid = String(data.msgId || data.tags?.id || "msg-" + Date.now() + "-" + messageCount);
   row.dataset.sender = String(data.userId || data.tags?.["user-id"] || "");
 
   const meta = document.createElement("div");
@@ -162,8 +207,13 @@ function trimToLimit(){
   const limit = Math.max(1, Number(fields.max_messages) || 6);
   while (chat.childElementCount > limit) chat.firstElementChild?.remove();
 
+  // Dans OBS, la source peut être chargée avant d'avoir sa taille (salon de
+  // hauteur nulle) : on ne retire rien sur la hauteur tant que ce n'est pas
+  // le cas, sinon tous les messages sauf le dernier disparaîtraient. Le tri
+  // reprend au redimensionnement.
   const style = getComputedStyle(chat);
   const available = chat.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+  if (available <= 0) return;
   const gap = parseFloat(style.rowGap) || 0;
   const contentHeight = () => [...chat.children].reduce((sum, row) => sum + row.offsetHeight, 0) + Math.max(0, chat.childElementCount - 1) * gap;
   while (chat.childElementCount > 1 && contentHeight() - chat.firstElementChild.offsetHeight - gap >= available) chat.firstElementChild?.remove();
@@ -192,4 +242,8 @@ function removeRow(row){
   setTimeout(() => row.remove(), 450);
 }
 
-window.addEventListener("resize", trimToLimit);
+window.addEventListener("resize", () => {
+  trimToLimit();
+  updateDiagnostic();
+});
+if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => trimToLimit()).observe(chat);

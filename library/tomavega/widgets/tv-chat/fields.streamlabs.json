@@ -7,7 +7,7 @@
   "chat_title": {
     "type": "textfield",
     "label": "Titre",
-    "value": "LE SALON",
+    "value": "LE TCHAT",
     "group": "Tchat"
   },
   "chat_subtitle": {
@@ -79,13 +79,23 @@
   "ignored_users": {
     "type": "textfield",
     "label": "Pseudos ignorés (séparés par des virgules)",
-    "value": "StreamElements, Nightbot",
+    "value": "StreamElements, Nightbot, WizeBot",
     "group": "Messages"
   },
   "test_message": {
     "type": "button",
     "label": "Message d'essai",
     "value": "Envoyer un message d'essai",
+    "group": "Essai"
+  },
+  "diagnostic": {
+    "type": "dropdown",
+    "label": "Diagnostic (affiche les messages reçus, pour OBS)",
+    "value": "no",
+    "options": {
+      "no": "Désactivé",
+      "yes": "Activé"
+    },
     "group": "Essai"
   }
 }

@@ -10,8 +10,8 @@ const DEFAULTS = {
   "detail_text": "Pour [qui]. Merci !",
   "alert_color": "#64FF2D",
   "major": "yes",
-  "card_width": 490,
-  "name_size": 46,
+  "card_width": 440,
+  "name_size": 40,
   "wire_enabled": "yes",
   "fragments_enabled": "yes"
 };
@@ -89,8 +89,8 @@ function applySettings(raw){
   if (Array.isArray(raw)) raw = Object.fromEntries(raw.filter(field => field?.name).map(field => [field.name, field.value]));
   SETTINGS = { ...DEFAULTS, ...(raw || {}) };
   const style = ALERT_ROOT.style;
-  style.setProperty("--card-width", clamp(num(SETTINGS.card_width) || 490, 240, 900) + "px");
-  style.setProperty("--name-size", clamp(num(SETTINGS.name_size) || 40, 16, 90) + "px");
+  style.setProperty("--card-width", clamp(num(SETTINGS.card_width) || 440, 240, 900) + "px");
+  style.setProperty("--name-size", clamp(num(SETTINGS.name_size) || 35.5, 16, 90) + "px");
   const card = byId("alert");
   if (card){
     card.style.setProperty("--alert-color", color(SETTINGS.alert_color, DEFAULTS.alert_color));
@@ -138,7 +138,7 @@ function addFragments(card, count){
     piece.className = "alert-fragment";
     piece.setAttribute("aria-hidden", "true");
     const angle = Math.random() * Math.PI * 2;
-    const distance = 90 + Math.random() * 130;
+    const distance = 75 + Math.random() * 100;
     piece.style.setProperty("--x", Math.cos(angle) * distance + "px");
     piece.style.setProperty("--y", Math.sin(angle) * distance * 0.4 + "px");
     piece.style.setProperty("--r", angle + "rad");
@@ -172,7 +172,7 @@ function showAlert(){
   setPerson(byId("alertPerson"), readVar("sender") || readVar("name") || "Anonyme");
   byId("alertDetail").textContent = fill(SETTINGS.detail_text, values);
   if (SETTINGS.wire_enabled !== "no") addWire(card);
-  if (SETTINGS.fragments_enabled !== "no") addFragments(card, SETTINGS.major === "yes" ? 22 : 12);
+  if (SETTINGS.fragments_enabled !== "no") addFragments(card, SETTINGS.major === "yes" ? 12 : 7);
 
   // L'alerte est retirée au bout de sa durée : la sortie se termine juste avant
   const exitAt = Math.max(0, alertDurationMs() - OUT_MS - 100);

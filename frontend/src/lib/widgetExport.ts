@@ -84,7 +84,9 @@ export interface AlertboxExportCode extends ExportableWidget {
 const ALERTBOX_VARIATION_HINTS: Partial<Record<AlertboxAlertType, string>> = {
   resub: "variation de la Subscriber alert, condition : 2 mois cumulés ou plus",
   gift: "variation de la Subscriber alert, condition : sub offert (gift)",
-  community: "variation de la Subscriber alert, condition : community gift"
+  // Un seul code, qui affiche le nombre de subs offerts : s'il y a plusieurs
+  // paliers (au moins 2, 5, 10…), le même code va dans chacun
+  community: "variation(s) « Community gifts » de la Subscriber alert : coller ce même code dans chaque palier (au moins 2, 5, 10…)"
 };
 
 const ALERTBOX_README_INTRO: Record<Platform, string[]> = {

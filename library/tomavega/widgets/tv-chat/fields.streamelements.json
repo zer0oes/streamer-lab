@@ -85,5 +85,15 @@
     "label": "Message d'essai",
     "value": "Envoyer un message d'essai",
     "group": "Essai"
+  },
+  "diagnostic": {
+    "type": "dropdown",
+    "label": "Diagnostic (affiche les messages reçus, pour OBS)",
+    "value": "no",
+    "options": {
+      "no": "Désactivé",
+      "yes": "Activé"
+    },
+    "group": "Essai"
   }
 }

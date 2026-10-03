@@ -35,7 +35,7 @@
   "card_width": {
     "type": "number",
     "label": "Largeur de l'alerte (px)",
-    "value": 490,
+    "value": 440,
     "min": 240,
     "max": 900,
     "step": 10,
@@ -44,10 +44,10 @@
   "name_size": {
     "type": "number",
     "label": "Taille du pseudo (px)",
-    "value": 40,
+    "value": 35.5,
     "min": 16,
     "max": 90,
-    "step": 1,
+    "step": 0.5,
     "group": "Style"
   },
   "wire_enabled": {

@@ -281,11 +281,16 @@ function parseAuthReturn(text){
   return /^[\w-]{20,}$/.test(value) ? { code: value } : { error: "invalid" };
 }
 
+// Promesse SE_API qui peut ne jamais répondre : on n'attend pas plus de ms
+function withTimeout(promise, ms){
+  return Promise.race([Promise.resolve(promise), new Promise((resolve) => setTimeout(() => resolve(undefined), ms))]);
+}
+
 // Refresh token gardé par StreamElements (si le champ n'a pas été enregistré)
 async function loadStoredToken(){
   if (SETTINGS.spotify_refresh_token || !SETTINGS.spotify_client_id) return;
   try {
-    const saved = await window.SE_API?.store?.get?.(SPOTIFY_STORE_KEY);
+    const saved = await withTimeout(window.SE_API?.store?.get?.(SPOTIFY_STORE_KEY), 1500);
     if (saved && saved.clientId === SETTINGS.spotify_client_id && saved.refreshToken) SETTINGS.spotify_refresh_token = String(saved.refreshToken);
   } catch (_){}
 }
@@ -316,16 +321,17 @@ async function exchangeAuthCode(code){
 // Retourne true si le token a été rempli dans le champ 5 automatiquement
 async function saveRefreshToken(token){
   SETTINGS.spotify_refresh_token = token;
-  try { await window.SE_API?.store?.set?.(SPOTIFY_STORE_KEY, { clientId: SETTINGS.spotify_client_id, refreshToken: token }); } catch (_){}
+  try { await withTimeout(window.SE_API?.store?.set?.(SPOTIFY_STORE_KEY, { clientId: SETTINGS.spotify_client_id, refreshToken: token }), 1500); } catch (_){}
   const filled = setFieldValue("spotify_refresh_token", token);
   if (filled) setFieldValue("spotify_auth_return", "");
   return filled;
 }
 
-// Guide affiché dans l'éditeur StreamElements (et dans Streamlabs, qui ne
-// distingue pas l'éditeur du live) tant que la connexion n'est pas terminée
+// Guide affiché tant que la connexion n'est pas terminée, sans dépendre de
+// la détection de l'éditeur (peu fiable) : sans identifiants complets, le
+// widget n'a de toute façon rien à montrer
 function setupVisible(){
-  return EDITOR_MODE || Boolean(window.__localWidgetLabStreamlabsBridge);
+  return true;
 }
 
 function setupBox(){
@@ -431,7 +437,7 @@ async function boot(fieldData){
 
 window.addEventListener("onWidgetLoad", async (obj) => {
   try {
-    EDITOR_MODE = Boolean((await window.SE_API?.getOverlayStatus?.())?.isEditorMode);
+    EDITOR_MODE = Boolean((await withTimeout(window.SE_API?.getOverlayStatus?.(), 1500))?.isEditorMode);
   } catch (_){
     EDITOR_MODE = false;
   }

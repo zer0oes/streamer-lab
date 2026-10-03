@@ -86,6 +86,23 @@
           "spotify_auth_return": ""
         }
       }
+    },
+    {
+      "id": "item-murkj9le",
+      "hidden": false,
+      "locked": false,
+      "collapsed": false,
+      "type": "alert",
+      "widgetId": "tv-alerts",
+      "x": 360,
+      "y": 38,
+      "w": 700,
+      "h": 340,
+      "z": 5,
+      "name": "Alertes",
+      "props": {
+        "fieldData": {}
+      }
     }
   ],
   "guides": {
@@ -95,5 +112,5 @@
   "sourcePlatform": null,
   "sourceOverlayId": null,
   "createdAt": 1790972901450,
-  "updatedAt": 1790981746053
+  "updatedAt": 1790982158162
 }
