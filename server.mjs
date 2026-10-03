@@ -29,7 +29,14 @@ import {
   signSessionCookie
 } from "./lib/auth.mjs";
 import { store } from "./lib/db.mjs";
-import { decryptIntegrationToken, disconnectIntegration, maskIntegration, saveManualToken } from "./lib/integrations.mjs";
+import {
+  decryptIntegrationToken,
+  disconnectIntegration,
+  maskIntegration,
+  maskStreamElementsChannel,
+  saveManualToken,
+  saveStreamElementsChannel
+} from "./lib/integrations.mjs";
 import { saveContactMessage } from "./lib/contact.mjs";
 import { deleteLocalMedia, listLocalMedia, resolveLocalMediaPath, saveLocalMedia, MAX_MEDIA_BYTES, MEDIA_URL_PREFIX } from "./lib/media.mjs";
 import {
@@ -693,22 +700,62 @@ const server = createServer(async (request, response) => {
       if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
 
       const credentials = resolveStreamElementsCredentials(auth);
-      if (!credentials) return sendJson(response, 404, { error: "StreamElements non connecte" });
+      const channels = await listStreamElementsChannels(auth.user.id, credentials);
+      if (!channels.length) return sendJson(response, 404, { error: "StreamElements non connecte" });
 
-      return sendJson(response, 200, { channels: await listStreamElementsChannels(credentials), defaultChannelId: credentials.channelId });
+      return sendJson(response, 200, { channels, defaultChannelId: credentials?.channelId ?? channels[0].id });
+    }
+
+    // Ajout d'une chaine supplementaire avec son propre jeton (Chaine >
+    // JWT Token, ou Overlay Token, dans le dashboard StreamElements de cette
+    // chaine) : pour une chaine que le compte connecte ne gere pas cote
+    // StreamElements. Le jeton est verifie (salon + lecture des overlays)
+    // avant d'etre enregistre chiffre.
+    if (request.method === "POST" && url.pathname === "/api/integrations/streamelements/channels") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
+
+      const body = await readRequestJson(request);
+      const token = typeof body.token === "string" ? body.token.trim() : "";
+      if (!token) return sendJson(response, 400, { error: "Token requis" });
+      if (!["jwt", "apikey"].includes(body.tokenType)) return sendJson(response, 400, { error: "tokenType invalide" });
+
+      try {
+        const channel = await fetchStreamElementsChannel(token, body.tokenType);
+        const channelId = channel?._id || channel?.id;
+        if (typeof channelId !== "string" || !channelId) throw new Error("salon introuvable pour ce jeton");
+        await fetchStreamElementsOverlays(token, channelId, body.tokenType);
+        const saved = saveStreamElementsChannel({
+          userId: auth.user.id,
+          channelId,
+          channelName: channel.displayName || channel.username || null,
+          provider: typeof channel.provider === "string" ? channel.provider : null,
+          token,
+          tokenType: body.tokenType
+        }, store);
+        return sendJson(response, 200, { channel: saved });
+      } catch (error) {
+        return sendJson(response, 400, { error: `Jeton StreamElements refuse : ${error.message}` });
+      }
+    }
+
+    if (request.method === "DELETE" && url.pathname === "/api/integrations/streamelements/channels") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
+
+      const channelId = url.searchParams.get("channelId");
+      if (!channelId) return sendJson(response, 400, { error: "channelId manquant" });
+      return sendJson(response, 200, { deleted: store.deleteStreamElementsChannel(auth.user.id, channelId), channelId });
     }
 
     if (request.method === "GET" && url.pathname === "/api/integrations/streamelements/overlays") {
       const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
       if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
 
-      const credentials = resolveStreamElementsCredentials(auth);
-      if (!credentials) return sendJson(response, 404, { error: "StreamElements non connecte" });
-
       try {
-        const { token, tokenType } = credentials;
-        const channelId = await resolveStreamElementsChannelId(credentials, url.searchParams.get("channelId"));
-        if (!channelId) return sendJson(response, 403, { error: "Chaine StreamElements non accessible avec ce compte" });
+        const channelCredentials = await resolveStreamElementsChannelCredentials(auth, url.searchParams.get("channelId"));
+        if (!channelCredentials) return sendJson(response, 403, { error: "Chaine StreamElements non accessible avec ce compte" });
+        const { token, tokenType, channelId } = channelCredentials;
         const overlays = await fetchStreamElementsOverlays(token, channelId, tokenType);
         return sendJson(response, 200, {
           overlays: overlays.map((summary) => ({
@@ -727,18 +774,15 @@ const server = createServer(async (request, response) => {
       const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
       if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
 
-      const credentials = resolveStreamElementsCredentials(auth);
-      if (!credentials) return sendJson(response, 404, { error: "StreamElements non connecte" });
-
       const body = await readRequestJson(request);
       if (typeof body.overlayId !== "string" || !body.overlayId) {
         return sendJson(response, 400, { error: "overlayId manquant" });
       }
 
       try {
-        const { token, tokenType } = credentials;
-        const channelId = await resolveStreamElementsChannelId(credentials, body.channelId);
-        if (!channelId) return sendJson(response, 403, { error: "Chaine StreamElements non accessible avec ce compte" });
+        const channelCredentials = await resolveStreamElementsChannelCredentials(auth, body.channelId);
+        if (!channelCredentials) return sendJson(response, 403, { error: "Chaine StreamElements non accessible avec ce compte" });
+        const { token, tokenType, channelId } = channelCredentials;
         const detail = await fetchStreamElementsOverlay(token, channelId, body.overlayId, tokenType);
         const overlayName = detail.name || "Overlay StreamElements";
         const canvas = { width: detail.settings?.width, height: detail.settings?.height };
@@ -1281,27 +1325,46 @@ function resolveStreamElementsCredentials(auth) {
 }
 
 // Chaine du token toujours en tete, puis les autres chaines accessibles au
-// compte. Un token qui ne peut pas lire /users/current (apikey de chaine,
-// OAuth2 sans le scope adequat) se limite a sa propre chaine, comme avant.
-async function listStreamElementsChannels({ token, tokenType, channelId }) {
-  let channels = [];
-  try {
-    channels = await fetchStreamElementsUserChannels(token, tokenType);
-  } catch {
-    // Repli silencieux sur la seule chaine du token.
+// compte, puis les chaines ajoutees a la main avec leur propre jeton. Un
+// token qui ne peut pas lire /users/current (apikey de chaine, OAuth2 sans le
+// scope adequat) se limite a sa propre chaine, comme avant.
+async function listStreamElementsChannels(userId, credentials) {
+  const channels = [];
+  if (credentials) {
+    let managed = [];
+    try {
+      managed = await fetchStreamElementsUserChannels(credentials.token, credentials.tokenType);
+    } catch {
+      // Repli sur la seule chaine du token (+ les chaines ajoutees a la main).
+    }
+    const own = managed.find((channel) => channel.id === credentials.channelId) || { id: credentials.channelId, name: "Ma chaîne", provider: null, role: "owner" };
+    channels.push({ ...own, source: "account" }, ...managed.filter((channel) => channel.id !== credentials.channelId).map((channel) => ({ ...channel, source: "account" })));
   }
-  const own = channels.find((channel) => channel.id === channelId) || { id: channelId, name: "Ma chaîne", provider: null, role: "owner" };
-  return [own, ...channels.filter((channel) => channel.id !== channelId)];
+  for (const row of store.listStreamElementsChannels(userId)) {
+    if (!channels.some((channel) => channel.id === row.channel_id)) channels.push(maskStreamElementsChannel(row));
+  }
+  return channels;
 }
 
-// Chaine demandee par le client, uniquement si elle fait partie des chaines
-// accessibles au compte (null sinon) ; absente = chaine du token.
-async function resolveStreamElementsChannelId(credentials, requestedChannelId) {
-  if (typeof requestedChannelId !== "string" || !requestedChannelId || requestedChannelId === credentials.channelId) {
-    return credentials.channelId;
-  }
-  const channels = await listStreamElementsChannels(credentials);
-  return channels.some((channel) => channel.id === requestedChannelId) ? requestedChannelId : null;
+// Jeton + id de salon a utiliser pour la chaine demandee : celui d'une chaine
+// ajoutee a la main en priorite (son propre jeton), sinon celui du compte
+// connecte si la chaine fait partie de celles qu'il gere. Sans chaine
+// demandee : la chaine du compte connecte, a defaut la premiere ajoutee.
+// null si la chaine n'est accessible par aucun jeton.
+async function resolveStreamElementsChannelCredentials(auth, requestedChannelId) {
+  const credentials = resolveStreamElementsCredentials(auth);
+  const requested = typeof requestedChannelId === "string" && requestedChannelId ? requestedChannelId : null;
+  if (!requested && credentials) return credentials;
+  if (requested && credentials && requested === credentials.channelId) return credentials;
+
+  const extra = requested
+    ? store.getStreamElementsChannel(auth.user.id, requested)
+    : store.listStreamElementsChannels(auth.user.id)[0] ?? null;
+  if (extra) return { token: decryptIntegrationToken(extra), tokenType: extra.token_type, channelId: extra.channel_id };
+
+  if (!requested || !credentials) return null;
+  const channels = await listStreamElementsChannels(auth.user.id, credentials);
+  return channels.some((channel) => channel.id === requested && channel.source === "account") ? { ...credentials, channelId: requested } : null;
 }
 
 const PLACEHOLDER_LABELS = {

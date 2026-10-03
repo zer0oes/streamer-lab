@@ -138,3 +138,23 @@ test("supprimer un utilisateur supprime en cascade ses sessions et integrations"
   assert.equal(store.getSessionWithUser(session.id), null);
   assert.equal(store.getIntegration(user.id, "streamlabs"), null);
 });
+
+test("streamelements_channels : une chaine par (user_id, channel_id), jeton remplace en place, isolee par utilisateur", () => {
+  const store = freshDb();
+  const userA = store.upsertUserFromTwitch({ twitchId: "a", twitchLogin: "a", displayName: "A", avatarUrl: null });
+  const userB = store.upsertUserFromTwitch({ twitchId: "b", twitchLogin: "b", displayName: "B", avatarUrl: null });
+  const base = { channelId: "tomavega", channelName: "TomaVega", provider: "twitch", tokenIv: "iv", tokenAuthTag: "tag", tokenType: "jwt" };
+
+  store.upsertStreamElementsChannel({ ...base, userId: userA.id, tokenCiphertext: "c1" });
+  store.upsertStreamElementsChannel({ ...base, userId: userA.id, tokenCiphertext: "c2", tokenType: "apikey" });
+  store.upsertStreamElementsChannel({ ...base, userId: userB.id, tokenCiphertext: "autre" });
+
+  assert.equal(store.listStreamElementsChannels(userA.id).length, 1);
+  const row = store.getStreamElementsChannel(userA.id, "tomavega");
+  assert.equal(row.token_ciphertext, "c2");
+  assert.equal(row.token_type, "apikey");
+
+  assert.equal(store.deleteStreamElementsChannel(userA.id, "tomavega"), true);
+  assert.equal(store.getStreamElementsChannel(userA.id, "tomavega"), null);
+  assert.ok(store.getStreamElementsChannel(userB.id, "tomavega"), "la chaine de userB doit rester intacte");
+});

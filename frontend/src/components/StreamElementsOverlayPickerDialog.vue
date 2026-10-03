@@ -1,15 +1,19 @@
 <script setup lang="ts">
 // Port du sélecteur "Importer un overlay" (openStreamElementsOverlayPicker,
-// public/app.js) : liste les overlays du compte StreamElements connecté,
-// import au clic sur une ligne. L'API/le modèle de données (sourcePlatform,
+// public/app.js) : liste les overlays d'une chaîne StreamElements (celle du
+// compte connecté, une chaîne qu'il gère, ou une chaîne ajoutée avec son
+// propre jeton), import au clic sur une ligne. L'API/le modèle de données (sourcePlatform,
 // badge sur OverlayPreviewThumb, repères non éditables côté éditeur overlay)
 // existaient déjà côté Vue ; seul ce déclencheur manquait.
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import {
+  addStreamElementsChannel,
   listStreamElementsChannels,
   listStreamElementsOverlays,
   importStreamElementsOverlay,
+  removeStreamElementsChannel,
   type StreamElementsChannel,
+  type StreamElementsChannelTokenType,
   type StreamElementsOverlaySummary
 } from "../api/streamelements";
 import { useLibraryStore } from "../stores/library";
@@ -35,6 +39,14 @@ const importingId = ref("");
 const channels = ref<StreamElementsChannel[]>([]);
 const channelId = ref("");
 const projectId = ref("");
+// Ajout d'une chaîne que le compte connecté ne gère pas côté StreamElements :
+// on colle le JWT (ou l'Overlay Token) de cette chaîne, le serveur le vérifie.
+const addingChannel = ref(false);
+const newChannelToken = ref("");
+const newChannelTokenType = ref<StreamElementsChannelTokenType>("jwt");
+const savingChannel = ref(false);
+const channelError = ref("");
+const selectedChannel = computed(() => channels.value.find((channel) => channel.id === channelId.value) ?? null);
 
 function close(): void {
   dialogEl.value?.close();
@@ -65,26 +77,63 @@ async function loadOverlays(): Promise<void> {
   }
 }
 
+async function refreshChannels(): Promise<void> {
+  try {
+    const result = await listStreamElementsChannels();
+    channels.value = result.channels;
+    if (!channels.value.some((channel) => channel.id === channelId.value)) channelId.value = result.defaultChannelId;
+  } catch {
+    // Chaînes indisponibles : on liste quand même celle du compte connecté
+    // (le serveur la prend par défaut sans channelId).
+  }
+}
+
 async function open(): Promise<void> {
   dialogEl.value?.showModal();
-  if (!channels.value.length) {
-    try {
-      const result = await listStreamElementsChannels();
-      channels.value = result.channels;
-      channelId.value = result.defaultChannelId;
-    } catch {
-      // Chaînes indisponibles : on liste quand même celle du compte connecté
-      // (le serveur la prend par défaut sans channelId).
-    }
-  }
+  if (!channels.value.length) await refreshChannels();
   await loadOverlays();
+}
+
+async function saveChannel(): Promise<void> {
+  const token = newChannelToken.value.trim();
+  if (!token) return;
+  savingChannel.value = true;
+  channelError.value = "";
+  try {
+    const channel = await addStreamElementsChannel(token, newChannelTokenType.value);
+    newChannelToken.value = "";
+    addingChannel.value = false;
+    await refreshChannels();
+    channelId.value = channel.id;
+    showToast(`Chaîne ${channel.name} ajoutée`);
+    await loadOverlays();
+  } catch (err) {
+    channelError.value = err instanceof ApiError ? err.message : "Erreur inattendue";
+  } finally {
+    savingChannel.value = false;
+  }
+}
+
+async function removeChannel(): Promise<void> {
+  const channel = selectedChannel.value;
+  if (!channel || channel.source !== "token") return;
+  try {
+    await removeStreamElementsChannel(channel.id);
+    channelId.value = "";
+    await refreshChannels();
+    showToast(`Chaîne ${channel.name} retirée`);
+    await loadOverlays();
+  } catch (err) {
+    showToast(`Suppression impossible : ${err instanceof ApiError ? err.message : "Erreur inattendue"}`);
+  }
 }
 
 defineExpose({ open });
 
 function channelLabel(channel: StreamElementsChannel): string {
   const provider = channel.provider ? ` · ${channel.provider.charAt(0).toUpperCase()}${channel.provider.slice(1)}` : "";
-  return `${channel.name}${provider}${channel.role && channel.role !== "owner" ? ` (${channel.role})` : ""}`;
+  const suffix = channel.source === "token" ? " (jeton ajouté)" : channel.role && channel.role !== "owner" ? ` (${channel.role})` : "";
+  return `${channel.name}${provider}${suffix}`;
 }
 
 async function pick(overlay: StreamElementsOverlaySummary): Promise<void> {
@@ -121,12 +170,52 @@ async function pick(overlay: StreamElementsOverlaySummary): Promise<void> {
         </button>
       </header>
       <div class="widget-settings__body">
-        <label v-if="channels.length > 1" class="field">
-          <span class="field__label">Chaîne</span>
-          <select v-model="channelId" @change="loadOverlays">
-            <option v-for="channel in channels" :key="channel.id" :value="channel.id">{{ channelLabel(channel) }}</option>
-          </select>
-        </label>
+        <div class="field__row">
+          <label class="field">
+            <span class="field__label">Chaîne</span>
+            <select v-model="channelId" :disabled="!channels.length" @change="loadOverlays">
+              <option v-for="channel in channels" :key="channel.id" :value="channel.id">{{ channelLabel(channel) }}</option>
+            </select>
+          </label>
+          <div class="field field--action">
+            <span class="field__label" aria-hidden="true">&nbsp;</span>
+            <button
+              v-if="selectedChannel?.source === 'token'"
+              type="button"
+              class="button is-danger"
+              title="Oublier le jeton de cette chaîne"
+              @click="removeChannel"
+            >
+              Retirer
+            </button>
+            <button v-else type="button" class="button" @click="addingChannel = !addingChannel">
+              {{ addingChannel ? "Annuler" : "Ajouter une chaîne" }}
+            </button>
+          </div>
+        </div>
+        <form v-if="addingChannel" @submit.prevent="saveChannel">
+          <p class="widget-settings__hint">
+            Pour une chaîne que ce compte ne gère pas sur StreamElements : passe sur cette chaîne dans StreamElements, ouvre Compte ›
+            Chaînes › « Afficher les secrets » et colle son JWT Token (ou son Overlay Token).
+          </p>
+          <div class="field__row">
+            <label class="field field--small">
+              <span class="field__label">Type</span>
+              <select v-model="newChannelTokenType">
+                <option value="jwt">JWT</option>
+                <option value="apikey">Overlay</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field__label">Jeton de la chaîne</span>
+              <input v-model="newChannelToken" type="password" autocomplete="off" spellcheck="false" />
+            </label>
+          </div>
+          <p v-if="channelError" class="widget-settings__message is-error" role="status">{{ channelError }}</p>
+          <button type="submit" class="button button--primary button--wide" :disabled="savingChannel || !newChannelToken.trim()">
+            {{ savingChannel ? "Vérification…" : "Ajouter la chaîne" }}
+          </button>
+        </form>
         <label class="field">
           <span class="field__label">Importer dans le projet</span>
           <select v-model="projectId">
