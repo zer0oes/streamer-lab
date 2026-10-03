@@ -5,6 +5,7 @@ import {
   astroToLabEvents,
   chatMessageToWidgetData,
   convertOverlayWidget,
+  fetchStreamElementsUserChannels,
   parseEnv
 } from "../lib/streamelements.mjs";
 
@@ -109,4 +110,56 @@ test("convertOverlayWidget mappe les types natifs connus vers un sourceType lisi
   assert.equal(convertOverlayWidget({ type: "se-widget-group", css: {} }).sourceType, "group");
   assert.equal(convertOverlayWidget({ type: "se-widget-alert-box", css: {} }).sourceType, "alert-box");
   assert.equal(convertOverlayWidget({ type: "unknown-widget", css: {} }).sourceType, "native");
+});
+
+test("convertOverlayWidget fusionne valeurs par defaut des champs et valeurs reglees sur StreamElements", () => {
+  const result = convertOverlayWidget({
+    css: {},
+    variables: {
+      html: "<div></div>",
+      css: "div{}",
+      js: "1;",
+      fields: JSON.stringify({ color: { type: "colorpicker", value: "#000000" }, size: { type: "number", value: 12 } }),
+      fieldData: { color: "#ff0000" }
+    }
+  });
+  assert.deepEqual(result.fieldData, { color: "#ff0000", size: 12 });
+});
+
+test("convertOverlayWidget joint la premiere image/video d'un widget natif comme apercu", () => {
+  const image = convertOverlayWidget({ type: "image", css: {}, variables: { url: "https://cdn.streamelements.com/uploads/logo.png" } });
+  assert.deepEqual(image.media, { type: "image", url: "https://cdn.streamelements.com/uploads/logo.png" });
+  const video = convertOverlayWidget({ type: "video", css: {}, variables: { video: "https://cdn.example.com/loop.webm" } });
+  assert.deepEqual(video.media, { type: "video", url: "https://cdn.example.com/loop.webm" });
+  assert.equal(convertOverlayWidget({ type: "unknown-widget", css: {} }).media, null);
+  // Une Alert Box reference les medias de ses alertes, pas son propre visuel.
+  assert.equal(convertOverlayWidget({ type: "se-widget-alert-box", css: {}, variables: { image: "https://cdn.example.com/a.gif" } }).media, null);
+});
+
+test("fetchStreamElementsUserChannels liste les chaines du compte et celles qu'il gere", async () => {
+  let requested;
+  const fetchImpl = async (url, options) => {
+    requested = { url, authorization: options.headers.Authorization };
+    return {
+      ok: true,
+      json: async () => ({
+        channels: [
+          { _id: "own", username: "zer0oes", displayName: "zer0oes", provider: "twitch", role: "owner" },
+          { _id: "managed", username: "tomavega", displayName: "TomaVega", provider: "twitch", role: "administrator" },
+          { username: "sans-id" }
+        ]
+      })
+    };
+  };
+  const channels = await fetchStreamElementsUserChannels("jeton", "jwt", fetchImpl);
+  assert.equal(requested.url, "https://api.streamelements.com/kappa/v2/users/current");
+  assert.equal(requested.authorization, "bearer jeton");
+  assert.deepEqual(channels, [
+    { id: "own", name: "zer0oes", provider: "twitch", role: "owner" },
+    { id: "managed", name: "TomaVega", provider: "twitch", role: "administrator" }
+  ]);
+});
+
+test("fetchStreamElementsUserChannels echoue proprement si l'API refuse", async () => {
+  await assert.rejects(fetchStreamElementsUserChannels("jeton", "apikey", async () => ({ ok: false, status: 401 })), /401/);
 });

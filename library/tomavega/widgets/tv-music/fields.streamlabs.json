@@ -20,6 +20,28 @@
     },
     "group": "Musique"
   },
+  "music_source": {
+    "type": "dropdown",
+    "label": "Source de la musique",
+    "value": "lastfm",
+    "options": {
+      "lastfm": "Last.fm (simple, recommandé)",
+      "spotify": "Spotify (app développeur, Premium)"
+    },
+    "group": "Source"
+  },
+  "lastfm_user": {
+    "type": "textfield",
+    "label": "Nom d'utilisateur Last.fm",
+    "value": "",
+    "group": "Last.fm"
+  },
+  "lastfm_api_key": {
+    "type": "textfield",
+    "label": "Clé API Last.fm (étapes dans l'aperçu)",
+    "value": "",
+    "group": "Last.fm"
+  },
   "spotify_client_id": {
     "type": "textfield",
     "label": "1. Client ID (étapes dans l'aperçu)",

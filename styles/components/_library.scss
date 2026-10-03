@@ -520,6 +520,53 @@
   }
 }
 
+// Glissement horizontal entre deux pages des colonnes du dashboard
+// (DashboardLibraryColumn.vue). Le conteneur coupe uniquement l'axe X pour
+// que la page sortante/entrante ne déborde pas sur la colonne voisine, avec
+// une petite marge pour ne pas rogner les contours de focus des cartouches.
+.library-pager {
+  overflow-x: clip;
+  overflow-clip-margin: 4px;
+}
+
+.library-page-next-enter-active,
+.library-page-prev-enter-active {
+  transition: transform var(--duration-slower) cubic-bezier(.22, .61, .36, 1), opacity var(--duration-slower) ease;
+}
+
+.library-page-next-leave-active,
+.library-page-prev-leave-active {
+  transition: transform var(--duration-base) ease-in, opacity var(--duration-base) ease-in;
+}
+
+.library-page-next-enter-from,
+.library-page-prev-leave-to {
+  opacity: 0;
+  transform: translateX(32px);
+}
+
+.library-page-next-leave-to,
+.library-page-prev-enter-from {
+  opacity: 0;
+  transform: translateX(-32px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library-page-next-enter-active,
+  .library-page-prev-enter-active,
+  .library-page-next-leave-active,
+  .library-page-prev-leave-active {
+    transition: opacity var(--duration-fast) linear;
+  }
+
+  .library-page-next-enter-from,
+  .library-page-prev-enter-from,
+  .library-page-next-leave-to,
+  .library-page-prev-leave-to {
+    transform: none;
+  }
+}
+
 @keyframes widget-library-enter {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }

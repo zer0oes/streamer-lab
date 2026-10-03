@@ -2,7 +2,9 @@
 import { computed, ref } from "vue";
 import { useMediaStore } from "../stores/media";
 import { useDashboardLibraryStore, DASHBOARD_MEDIA_PAGE_SIZE } from "../stores/dashboardLibrary";
+import { useLibraryStore } from "../stores/library";
 import { paginate } from "../lib/libraryFilter";
+import { filterMediaUsedByOverlays } from "../lib/projectMedia";
 import { useToast } from "../composables/useToast";
 
 interface DisplayItem {
@@ -11,6 +13,7 @@ interface DisplayItem {
   url: string;
   name: string;
   id?: string;
+  overlayName?: string | null;
 }
 
 // Deux instances de ce composant existent (panneau Médias complet de la
@@ -19,6 +22,7 @@ interface DisplayItem {
 const props = withDefaults(defineProps<{ paginated?: boolean }>(), { paginated: false });
 
 const mediaStore = useMediaStore();
+const libraryStore = useLibraryStore();
 const dashboardLibrary = useDashboardLibraryStore();
 const { showToast } = useToast();
 const emit = defineEmits<{ preview: [item: DisplayItem] }>();
@@ -32,11 +36,22 @@ const allItems = computed<DisplayItem[]>(() => [
     source: "streamelements" as const,
     type: media.type,
     url: media.url,
-    name: media.overlayName ? `Depuis l'overlay "${media.overlayName}"` : media.url
+    name: media.overlayName ? `Depuis l'overlay "${media.overlayName}"` : media.url,
+    overlayName: media.overlayName
   }))
 ]);
 
-const pagination = computed(() => paginate(allItems.value, dashboardLibrary.mediaPage, DASHBOARD_MEDIA_PAGE_SIZE));
+// Dashboard seulement : un projet sélectionné (clic sur sa carte, ou menu
+// "Filtrer par projet") ne montre que les médias utilisés par ses overlays,
+// comme les colonnes overlays/widgets/alertes voisines.
+const projectFilterActive = computed(() => props.paginated && Boolean(dashboardLibrary.projectFilterId));
+const visibleItems = computed<DisplayItem[]>(() =>
+  projectFilterActive.value
+    ? filterMediaUsedByOverlays(allItems.value, libraryStore.entriesForProject(dashboardLibrary.projectFilterId).overlays)
+    : allItems.value
+);
+
+const pagination = computed(() => paginate(visibleItems.value, dashboardLibrary.mediaPage, DASHBOARD_MEDIA_PAGE_SIZE));
 const items = computed<DisplayItem[]>(() => (props.paginated ? pagination.value.pageEntries : allItems.value));
 
 async function handleFiles(files: FileList | null): Promise<void> {
@@ -97,7 +112,9 @@ function openPreview(item: DisplayItem, event: Event): void {
       <input ref="fileInput" type="file" accept="image/*,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/ogg,audio/wav,audio/mp4" multiple hidden @change="onFileInputChange" />
     </label>
 
-    <p v-if="!items.length" class="media-library__empty">Aucun média pour l’instant.</p>
+    <p v-if="!items.length" class="media-library__empty">
+      {{ projectFilterActive ? "Aucun média utilisé par les overlays de ce projet." : "Aucun média pour l’instant." }}
+    </p>
 
     <div v-for="item in items" :key="item.id ?? item.url" class="media-library__item-wrap">
       <div

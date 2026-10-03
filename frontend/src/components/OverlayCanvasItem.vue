@@ -125,6 +125,22 @@ function alertboxOption(b: NonNullable<typeof bundle.value>) {
   return { config: b.alertbox, codes };
 }
 
+// Repère importé de StreamElements : rendu en lecture seule de l'élément
+// d'origine quand l'import a pu le récupérer (code d'un Custom Widget avec
+// ses valeurs réglées en ligne, ou image/vidéo d'un widget natif) — sinon
+// simple cadre gris. Cf. normalizePlaceholderPreview (lib/overlays.mjs).
+type PlaceholderPreview =
+  | { kind: "code"; html: string; css: string; js: string; fieldData: Record<string, unknown> }
+  | { kind: "image" | "video"; src: string };
+
+const placeholderPreview = computed(() => (props.item.type === "placeholder" ? (props.item.props?.preview as PlaceholderPreview | null | undefined) || null : null));
+
+const placeholderSrcdoc = computed(() => {
+  const preview = placeholderPreview.value;
+  if (preview?.kind !== "code") return "";
+  return buildWidgetSrcdoc(preview, preview.fieldData, { platform: PLATFORM_STREAM_ELEMENTS, transparent: true });
+});
+
 const widgetSrcdoc = computed(() => {
   if (!bundle.value) return "<!doctype html><body></body>";
   return buildWidgetSrcdoc(bundle.value, previewFieldData.value, {
@@ -142,6 +158,8 @@ const widgetSrcdoc = computed(() => {
 // (cf. useAppState.ts) — sans quoi un widget qui affiche "dernier
 // follower/sub/tip" n'a jamais rien à montrer (session envoyée vide).
 async function onWidgetFrameLoad(event: Event): Promise<void> {
+  const preview = placeholderPreview.value;
+  const fieldData = preview?.kind === "code" ? preview.fieldData : widgetFieldData.value;
   await loadAppState();
   const frame = event.target as HTMLIFrameElement;
   const rawSession = toRaw(appState.value?.session) || {};
@@ -157,7 +175,7 @@ async function onWidgetFrameLoad(event: Event): Promise<void> {
         recents: buildRecents(rawSession),
         currency: DEFAULT_CURRENCY,
         channel: rawChannel,
-        fieldData: structuredClone(widgetFieldData.value)
+        fieldData: structuredClone(toRaw(fieldData))
       }
     },
     "*"
@@ -261,9 +279,23 @@ defineExpose({ beginTextEdit });
     <span v-else-if="item.type === 'icon'" class="material-symbols-sharp overlay-item__icon-glyph" aria-hidden="true" :style="iconGlyphStyle">{{ iconProps.name }}</span>
     <div v-else-if="item.type === 'shape'" class="overlay-item__shape" :style="shapeStyle"></div>
     <div v-else-if="item.type === 'group'" class="overlay-item__group-frame"></div>
-    <div v-else-if="item.type === 'placeholder'" class="overlay-item__placeholder-frame">
-      <span class="material-symbols-sharp" aria-hidden="true">widgets</span>
-      <span class="overlay-item__placeholder-hint">{{ label }}</span>
+    <div v-else-if="item.type === 'placeholder'" class="overlay-item__placeholder-frame" :class="{ 'has-preview': placeholderPreview }">
+      <iframe
+        v-if="placeholderPreview?.kind === 'code'"
+        class="overlay-item__frame"
+        sandbox="allow-scripts"
+        allow="autoplay"
+        scrolling="no"
+        :title="label"
+        :srcdoc="placeholderSrcdoc"
+        @load="onWidgetFrameLoad"
+      ></iframe>
+      <img v-else-if="placeholderPreview?.kind === 'image'" class="overlay-item__image" :src="placeholderPreview.src" alt="" />
+      <video v-else-if="placeholderPreview?.kind === 'video'" class="overlay-item__video" :src="placeholderPreview.src" autoplay loop muted playsinline></video>
+      <template v-else>
+        <span class="material-symbols-sharp" aria-hidden="true">widgets</span>
+        <span class="overlay-item__placeholder-hint">{{ label }}</span>
+      </template>
     </div>
 
     <div v-for="position in ['nw', 'ne', 'sw', 'se']" :key="position" class="overlay-item__handle" :class="`overlay-item__handle--${position}`" :data-handle="position"></div>

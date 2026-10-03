@@ -158,6 +158,13 @@ Le statut passe à `connected` dès que la plateforme simulée sélectionnée en
 
 > Le Socket API Streamlabs utilise le protocole socket.io v2 ; ne pas mettre à jour la dépendance `socket.io-client` vers une version majeure supérieure sans vérifier la compatibilité.
 
+## Widget TV - Music (Last.fm ou Spotify)
+
+`library/tomavega/widgets/tv-music/` a un champ **Source** :
+
+- **Last.fm** (par défaut, le plus simple pour un autre streamer) : créer un compte gratuit sur last.fm et y connecter Spotify (Paramètres → Applications, Premium inutile), puis renseigner le **nom d’utilisateur Last.fm** et une **clé API Last.fm** gratuite ([last.fm/api/account/create](https://www.last.fm/api/account/create), seule l’« API key » sert). L’aperçu du widget affiche les étapes restantes et les erreurs de réglage (clé invalide, utilisateur introuvable, écoutes masquées dans la confidentialité Last.fm). Limites : quelques secondes de décalage, pause détectée plus lentement, pochette parfois absente.
+- **Spotify** : même fonctionnement que le Music player ci-dessous. Depuis février 2026, une app Spotify en mode développement est limitée à 5 utilisateurs et son créateur doit avoir Spotify Premium.
+
 ## Widget Music player (Spotify)
 
 Les widgets `library/zer0oes/widgets/music-player/` et `library/tomavega/widgets/tv-music/` affichent le morceau en cours de lecture via la Web API Spotify, interrogée directement depuis le widget. Ils ont besoin de trois champs : **Client ID**, **Client Secret** et **Refresh token**. Aucune commande n’est nécessaire.

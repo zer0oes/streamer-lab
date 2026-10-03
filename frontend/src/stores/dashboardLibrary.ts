@@ -40,6 +40,7 @@ export const useDashboardLibraryStore = defineStore("dashboardLibrary", () => {
     page.overlay = 0;
     page.widget = 0;
     page.alert = 0;
+    mediaPage.value = 0;
   }
 
   function setSearchTerm(term: string): void {

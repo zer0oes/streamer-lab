@@ -704,6 +704,15 @@ $ruler-size: 20px;
     border-radius: var(--radius-4);
     background: color-mix(in srgb, var(--text-secondary) 8%, transparent);
     color: var(--text-secondary);
+
+    // Rendu réel de l'élément d'origine (Custom Widget, image, vidéo) : plus
+    // de fond gris qui le voilerait, seul le liseré pointillé rappelle que
+    // l'élément reste un repère non éditable.
+    &.has-preview {
+      overflow: hidden;
+      background: transparent;
+      border-color: color-mix(in srgb, var(--text-secondary) 30%, transparent);
+    }
   }
 
   &__placeholder-hint {

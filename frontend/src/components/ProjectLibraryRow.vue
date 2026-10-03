@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import type { Project } from "../api/types";
 import { useLibraryStore } from "../stores/library";
 import { useProjectsStore } from "../stores/projects";
+import { useDashboardLibraryStore } from "../stores/dashboardLibrary";
 import { useLibraryDrag } from "../composables/useLibraryDrag";
 import { useClickOutside } from "../composables/useClickOutside";
 import { useToast } from "../composables/useToast";
@@ -12,6 +13,7 @@ const props = defineProps<{ entry: Project }>();
 
 const libraryStore = useLibraryStore();
 const projectsStore = useProjectsStore();
+const dashboardLibrary = useDashboardLibraryStore();
 const { showToast } = useToast();
 const { handleDrop } = useLibraryDrag();
 const isDropTarget = ref(false);
@@ -28,6 +30,16 @@ function onDrop(event: DragEvent): void {
 
 function openEdit(): void {
   projectDialog.value?.openEdit(props.entry);
+}
+
+// Clic sur la carte : n'affiche plus que le contenu de ce projet dans tout le
+// dashboard (overlays, widgets, alertes, médias) — même filtre que le menu
+// "Filtrer par projet" de la barre de recherche. Re-cliquer le retire. La
+// modification du projet reste accessible via le menu ⋮.
+const isSelected = computed(() => dashboardLibrary.projectFilterId === props.entry.id);
+
+function toggleSelection(): void {
+  dashboardLibrary.setProjectFilter(isSelected.value ? "" : props.entry.id);
 }
 
 const menuOpen = ref(false);
@@ -73,7 +85,14 @@ async function remove(): Promise<void> {
 
 <template>
   <div class="widget-library__row" :class="{ 'is-drop-target': isDropTarget }" @dragover="onDragOver" @dragleave="isDropTarget = false" @drop="onDrop">
-    <button type="button" class="widget-library__item" @click="openEdit">
+    <button
+      type="button"
+      class="widget-library__item"
+      :class="{ 'is-active': isSelected }"
+      :aria-pressed="isSelected"
+      :title="isSelected ? 'Afficher tous les projets' : `Afficher uniquement le contenu de ${entry.name}`"
+      @click="toggleSelection"
+    >
       <span class="widget-library__icon">
         <span class="material-symbols-sharp" aria-hidden="true">{{ entry.icon }}</span>
       </span>

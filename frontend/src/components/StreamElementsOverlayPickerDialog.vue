@@ -5,7 +5,13 @@
 // badge sur OverlayPreviewThumb, repères non éditables côté éditeur overlay)
 // existaient déjà côté Vue ; seul ce déclencheur manquait.
 import { ref } from "vue";
-import { listStreamElementsOverlays, importStreamElementsOverlay, type StreamElementsOverlaySummary } from "../api/streamelements";
+import {
+  listStreamElementsChannels,
+  listStreamElementsOverlays,
+  importStreamElementsOverlay,
+  type StreamElementsChannel,
+  type StreamElementsOverlaySummary
+} from "../api/streamelements";
 import { useLibraryStore } from "../stores/library";
 import { useProjectsStore } from "../stores/projects";
 import { useOverlayEditorStore } from "../stores/overlayEditor";
@@ -24,6 +30,11 @@ const overlays = ref<StreamElementsOverlaySummary[]>([]);
 const loading = ref(false);
 const error = ref("");
 const importingId = ref("");
+// Chaînes StreamElements accessibles au compte connecté : la sienne en tête,
+// puis celles qu'il gère (cf. /api/integrations/streamelements/channels).
+const channels = ref<StreamElementsChannel[]>([]);
+const channelId = ref("");
+const projectId = ref("");
 
 function close(): void {
   dialogEl.value?.close();
@@ -31,13 +42,22 @@ function close(): void {
 
 const { onMousedown, onClick } = useDialogBackdropClose(dialogEl, close);
 
-async function open(): Promise<void> {
-  dialogEl.value?.showModal();
+// Projet de destination proposé : celui qui porte le nom de la chaîne
+// (chaîne TomaVega → projet TomaVega), sinon le premier projet. Un réimport
+// ignore ce choix : l'overlay reste dans son projet d'origine (cf. server.mjs).
+function suggestProject(): void {
+  const channelName = channels.value.find((channel) => channel.id === channelId.value)?.name.trim().toLowerCase();
+  const match = projectsStore.projects.find((project) => project.name.trim().toLowerCase() === channelName);
+  projectId.value = (match ?? projectsStore.projects[0])?.id ?? "";
+}
+
+async function loadOverlays(): Promise<void> {
   loading.value = true;
   error.value = "";
   overlays.value = [];
+  suggestProject();
   try {
-    overlays.value = await listStreamElementsOverlays();
+    overlays.value = await listStreamElementsOverlays(channelId.value || undefined);
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "Erreur inattendue";
   } finally {
@@ -45,21 +65,36 @@ async function open(): Promise<void> {
   }
 }
 
+async function open(): Promise<void> {
+  dialogEl.value?.showModal();
+  if (!channels.value.length) {
+    try {
+      const result = await listStreamElementsChannels();
+      channels.value = result.channels;
+      channelId.value = result.defaultChannelId;
+    } catch {
+      // Chaînes indisponibles : on liste quand même celle du compte connecté
+      // (le serveur la prend par défaut sans channelId).
+    }
+  }
+  await loadOverlays();
+}
+
 defineExpose({ open });
 
+function channelLabel(channel: StreamElementsChannel): string {
+  const provider = channel.provider ? ` · ${channel.provider.charAt(0).toUpperCase()}${channel.provider.slice(1)}` : "";
+  return `${channel.name}${provider}${channel.role && channel.role !== "owner" ? ` (${channel.role})` : ""}`;
+}
+
 async function pick(overlay: StreamElementsOverlaySummary): Promise<void> {
-  // Même choix que l'ancien "+ Ajouter" (LibraryGroupSection.addNew) : pas de
-  // sélecteur de projet dans ce dialogue, le premier projet sert de défaut —
-  // un réimport d'un overlay déjà importé ignore de toute façon ce projet
-  // (cf. server.mjs : il retourne dans son projet d'origine).
-  const defaultProjectId = projectsStore.projects[0]?.id;
-  if (!defaultProjectId) {
+  if (!projectId.value) {
     showToast("Crée d’abord un projet pour y importer un overlay.");
     return;
   }
   importingId.value = overlay.id;
   try {
-    const result = await importStreamElementsOverlay(overlay.id, defaultProjectId);
+    const result = await importStreamElementsOverlay(overlay.id, projectId.value, channelId.value || undefined);
     close();
     await libraryStore.refreshOverlays();
     showToast(`Overlay ${result.updated ? "mis à jour" : "importé"} · ${result.placeholders} élément(s) en repère non éditable`);
@@ -86,6 +121,18 @@ async function pick(overlay: StreamElementsOverlaySummary): Promise<void> {
         </button>
       </header>
       <div class="widget-settings__body">
+        <label v-if="channels.length > 1" class="field">
+          <span class="field__label">Chaîne</span>
+          <select v-model="channelId" @change="loadOverlays">
+            <option v-for="channel in channels" :key="channel.id" :value="channel.id">{{ channelLabel(channel) }}</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="field__label">Importer dans le projet</span>
+          <select v-model="projectId">
+            <option v-for="project in projectsStore.projects" :key="project.id" :value="project.id">{{ project.name }}</option>
+          </select>
+        </label>
         <div class="widget-library" aria-label="Overlays StreamElements disponibles">
           <p v-if="loading" class="widget-library__empty">Chargement…</p>
           <p v-else-if="error" class="widget-library__empty">Erreur : {{ error }}</p>

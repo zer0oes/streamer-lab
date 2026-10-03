@@ -61,9 +61,12 @@
 })();
 
 // TV - Music : emplacement « LE SON » de TomaVega-animation.html, qui affiche
-// le morceau en cours sur Spotify (pochette, titre, artiste). Logique Spotify
-// reprise de zer0oes - Music player. Aucun morceau fictif : seul le bouton
-// « Morceau d'essai » en affiche un, à la demande.
+// le morceau en cours (pochette, titre, artiste). Deux sources au choix :
+// - Last.fm (par défaut) : nom d'utilisateur + clé API gratuite, Spotify étant
+//   relié au compte Last.fm (Paramètres → Applications). Aucune app Spotify ;
+// - Spotify : app développeur (5 utilisateurs, Premium requis depuis 2026),
+//   logique reprise de zer0oes - Music player.
+// Aucun morceau fictif : seul le bouton « Morceau d'essai » en affiche un.
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
 const SPOTIFY_PLAYER_URL = "https://api.spotify.com/v1/me/player/currently-playing?additional_types=track,episode";
 
@@ -92,6 +95,9 @@ function normalizeFields(raw){
   raw = raw || {};
   return {
     music_title: String(raw.music_title ?? "LE SON"),
+    music_source: raw.music_source === "spotify" ? "spotify" : "lastfm",
+    lastfm_user: String(raw.lastfm_user ?? "").trim(),
+    lastfm_api_key: String(raw.lastfm_api_key ?? "").trim(),
     spotify_client_id: String(raw.spotify_client_id ?? "").trim(),
     spotify_client_secret: String(raw.spotify_client_secret ?? "").trim(),
     spotify_refresh_token: String(raw.spotify_refresh_token ?? "").trim(),
@@ -208,6 +214,117 @@ async function fetchNowPlaying(retried){
   return { playback: parsePlayback(await res.json().catch(() => null)) };
 }
 
+// ------------------------------------
+// Last.fm : dernier morceau scrobblé, « en cours » si Last.fm le signale
+// (attribut nowplaying). Spotify envoie le morceau à Last.fm dès son début.
+// ------------------------------------
+const LASTFM_API_URL = "https://ws.audioscrobbler.com/2.0/";
+// Image grise que Last.fm renvoie quand il n'a pas de pochette
+const LASTFM_NO_COVER = "2a96cbd8b46e442fc41c2b86b821562f";
+
+function lastfmError(code, message){
+  const errors = {
+    6: "Utilisateur Last.fm introuvable : vérifie le nom d'utilisateur.",
+    10: "Clé API Last.fm invalide : vérifie la clé copiée (« API key », pas le « Shared secret »).",
+    17: "Ce compte Last.fm cache ses écoutes : dans Paramètres → Confidentialité, décoche « Masquer l'écoute en temps réel ».",
+    26: "Clé API Last.fm suspendue : crée-en une nouvelle."
+  };
+  const error = new Error(errors[code] || "Last.fm : " + (message || "erreur " + code));
+  // Erreurs de réglage : affichées dans le guide, nouvel essai dans 60 s
+  error.setup = Boolean(errors[code]);
+  error.fatal = error.setup;
+  return error;
+}
+
+function parseLastfm(data){
+  const tracks = data?.recenttracks?.track;
+  const track = Array.isArray(tracks) ? tracks[0] : tracks;
+  if (!track || track["@attr"]?.nowplaying !== "true") return null;
+  const artist = track.artist?.["#text"] || track.artist?.name || "";
+  const images = Array.isArray(track.image) ? track.image : [];
+  const cover = ["large", "extralarge", "medium"]
+    .map((size) => images.find((image) => image.size === size)?.["#text"] || "")
+    .find((url) => url && !url.includes(LASTFM_NO_COVER)) || "";
+  return { id: artist + " — " + (track.name || ""), title: track.name || "", artist, cover, isPlaying: true };
+}
+
+async function fetchLastfmNowPlaying(){
+  const url = LASTFM_API_URL + "?" + new URLSearchParams({
+    method: "user.getrecenttracks",
+    user: SETTINGS.lastfm_user,
+    api_key: SETTINGS.lastfm_api_key,
+    format: "json",
+    limit: "1"
+  });
+  const res = await fetch(url);
+  const data = await res.json().catch(() => ({}));
+  if (data?.error) {
+    if (data.error === 29) return { playback: NOW, retryAfter: 60 };
+    throw lastfmError(data.error, data.message);
+  }
+  if (!res.ok) throw new Error("Last.fm : HTTP " + res.status);
+  return { playback: parseLastfm(data) };
+}
+
+// Pochette de secours : Last.fm renvoie souvent son image grise par défaut.
+// On cherche alors le titre sur iTunes (gratuit, sans clé), en vérifiant que
+// l'artiste correspond pour éviter une mauvaise image, puis sur la fiche
+// Last.fm du morceau (pochette de l'album). iTunes refuse les pages sans
+// origine, comme les aperçus isolés du labo : la fiche Last.fm prend alors le
+// relais. Une seule recherche par morceau.
+const coverCache = new Map();
+
+function sameArtist(a, b){
+  const clean = (value) => String(value || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
+  const x = clean(a);
+  const y = clean(b);
+  return Boolean(x && y && (x.includes(y) || y.includes(x)));
+}
+
+async function findFallbackCover(playback){
+  if (coverCache.has(playback.id)) return coverCache.get(playback.id);
+  let cover = "";
+  try {
+    const url = "https://itunes.apple.com/search?" + new URLSearchParams({ term: playback.artist + " " + playback.title, entity: "song", limit: "5" });
+    const data = await (await fetch(url)).json();
+    const match = (data?.results || []).find((result) => sameArtist(result.artistName, playback.artist));
+    if (match?.artworkUrl100) cover = match.artworkUrl100.replace(/\/\d+x\d+bb\./, "/200x200bb.");
+  } catch (_){}
+  if (!cover && SETTINGS.lastfm_api_key){
+    try {
+      const url = LASTFM_API_URL + "?" + new URLSearchParams({ method: "track.getInfo", artist: playback.artist, track: playback.title, api_key: SETTINGS.lastfm_api_key, format: "json", autocorrect: "1" });
+      const images = (await (await fetch(url)).json())?.track?.album?.image || [];
+      cover = ["large", "extralarge", "medium"]
+        .map((size) => images.find((image) => image.size === size)?.["#text"] || "")
+        .find((src) => src && !src.includes(LASTFM_NO_COVER)) || "";
+    } catch (_){}
+  }
+  coverCache.set(playback.id, cover);
+  return cover;
+}
+
+async function completeCover(playback, id){
+  if (!playback || playback.cover) return;
+  const cover = await findFallbackCover(playback);
+  if (!cover || id !== bootId) return;
+  playback.cover = cover;
+  if (NOW && NOW.id === playback.id) setCover(cover);
+}
+
+// Guide Last.fm : seulement les étapes encore à faire
+function renderLastfmSetup(errorMessage){
+  const lines = [];
+  if (errorMessage) lines.push({ text: errorMessage, className: "spotify-setup-error" });
+  if (!SETTINGS.lastfm_user){
+    lines.push("1. Crée un compte gratuit sur last.fm, puis dans Paramètres → Applications, connecte Spotify (Premium pas nécessaire).");
+    lines.push("2. Écris ton nom d'utilisateur Last.fm dans le champ « Nom d'utilisateur Last.fm ».");
+  }
+  if (!SETTINGS.lastfm_api_key){
+    lines.push("3. Crée une clé API gratuite sur last.fm/api/account/create (nom et description au choix) et colle l'« API key » dans le champ « Clé API Last.fm ».");
+  }
+  renderSetup(lines, "Connecter Last.fm");
+}
+
 function schedulePoll(seconds, id){
   clearTimeout(pollTimer);
   pollTimer = setTimeout(() => poll(id), seconds * 1000);
@@ -216,17 +333,24 @@ function schedulePoll(seconds, id){
 async function poll(id){
   if (id !== bootId) return;
   try {
-    const result = await fetchNowPlaying(false);
+    const lastfm = SETTINGS.music_source === "lastfm";
+    const result = lastfm ? await fetchLastfmNowPlaying() : await fetchNowPlaying(false);
     if (id !== bootId) return;
+    if (lastfm) hideSetup();
     setState("");
+    // Pochette déjà trouvée pour ce morceau (le poll suivant renvoie l'image grise)
+    if (result.playback && !result.playback.cover && coverCache.get(result.playback.id)) result.playback.cover = coverCache.get(result.playback.id);
     NOW = result.playback;
     render();
+    if (lastfm) completeCover(NOW, id);
     schedulePoll(result.retryAfter || SETTINGS.poll_interval, id);
   } catch (error){
     if (id !== bootId) return;
     console.warn("[TV - Music]", error.message);
-    // Message visible dans l'éditeur seulement ; en live, le panneau reste sobre
-    if (EDITOR_MODE) setState(error.message);
+    // Erreur de réglage Last.fm : expliquée dans le guide. Sinon, message
+    // visible dans l'éditeur seulement ; en live, le panneau reste sobre
+    if (error.setup) renderLastfmSetup(error.message);
+    else if (EDITOR_MODE) setState(error.message);
     NOW = null;
     render();
     schedulePoll(error.fatal ? 60 : Math.max(SETTINGS.poll_interval, 10), id);
@@ -356,10 +480,10 @@ function setupLine(box, text, className){
   box.append(p);
 }
 
-function renderSetup(lines){
+function renderSetup(lines, title){
   const box = setupBox();
   box.replaceChildren();
-  setupLine(box, "Connecter Spotify", "spotify-setup-title");
+  setupLine(box, title || "Connecter Spotify", "spotify-setup-title");
   for (const line of lines) if (line) setupLine(box, line.text || line, line.className);
 }
 
@@ -431,6 +555,15 @@ async function boot(fieldData){
   document.getElementById("musicTitle").textContent = SETTINGS.music_title;
   NOW = null;
   render();
+  if (SETTINGS.music_source === "lastfm"){
+    if (!SETTINGS.lastfm_user || !SETTINGS.lastfm_api_key){
+      renderLastfmSetup();
+      return;
+    }
+    hideSetup();
+    poll(id);
+    return;
+  }
   if (await runSpotifySetup(id)) return;
   poll(id);
 }

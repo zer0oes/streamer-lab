@@ -28,7 +28,7 @@ const projectsStore = useProjectsStore();
           title="Projets"
           :entries="projectsStore.projects"
           empty-message="Aucun projet pour l’instant."
-          hint="Glisse un overlay, un widget ou une alerte sur un projet pour l’y déplacer."
+          hint="Clique sur un projet pour n’afficher que son contenu. Glisse un overlay, un widget ou une alerte sur un projet pour l’y déplacer."
         />
 
         <DashboardLibraryColumn

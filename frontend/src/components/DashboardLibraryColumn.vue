@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import type { LibraryEntry, OverlayEntry, Project } from "../api/types";
 import { useDashboardLibraryStore, DASHBOARD_PAGE_SIZE, type LibraryScope } from "../stores/dashboardLibrary";
 import { filterBySearch, paginate, sortEntries } from "../lib/libraryFilter";
@@ -33,6 +33,17 @@ const filtered = computed(() => {
 
 const pagination = computed(() => paginate(filtered.value, dashboardLibrary.page[props.scope], DASHBOARD_PAGE_SIZE[props.scope]));
 
+// Sens du glissement entre deux pages : "suivante" fait sortir la page
+// courante par la gauche, "précédente" par la droite. Le watch (flush "pre"
+// par défaut) met à jour le nom avant le rendu qui déclenche la <Transition>.
+const slideDirection = ref<"next" | "prev">("next");
+watch(
+  () => pagination.value.page,
+  (page, previous) => {
+    slideDirection.value = page < previous ? "prev" : "next";
+  }
+);
+
 const emptyMessageResolved = computed(() =>
   dashboardLibrary.searchTerm.trim() ? `Aucun résultat pour « ${dashboardLibrary.searchTerm.trim()} ».` : props.emptyMessage
 );
@@ -55,20 +66,27 @@ const gridClass = computed(() => (props.scope === "overlay" || props.scope === "
       </div>
     </div>
     <p v-if="hint" class="dashboard-view__projects-hint">{{ hint }}</p>
-    <div class="widget-library" :class="gridClass">
-      <template v-if="scope === 'overlay'">
-        <div v-for="entry in pagination.pageEntries" :key="entry.id" class="overlay-preview-card">
-          <OverlayPreviewThumb :entry="(entry as OverlayEntry)" />
-          <LibraryRow kind="overlay" :entry="(entry as OverlayEntry)" show-meta />
+    <!-- Clé = numéro de page : seul un changement de page rejoue le
+    glissement (une recherche ou un tri qui reste sur la même page ne
+    l'anime pas). -->
+    <div class="library-pager">
+      <Transition :name="`library-page-${slideDirection}`" mode="out-in">
+        <div :key="pagination.page" class="widget-library" :class="gridClass">
+          <template v-if="scope === 'overlay'">
+            <div v-for="entry in pagination.pageEntries" :key="entry.id" class="overlay-preview-card">
+              <OverlayPreviewThumb :entry="(entry as OverlayEntry)" />
+              <LibraryRow kind="overlay" :entry="(entry as OverlayEntry)" show-meta />
+            </div>
+          </template>
+          <template v-else-if="scope === 'project'">
+            <ProjectLibraryRow v-for="entry in pagination.pageEntries" :key="entry.id" :entry="(entry as Project)" />
+          </template>
+          <template v-else>
+            <LibraryRow v-for="entry in pagination.pageEntries" :key="entry.id" :kind="rowKind" :entry="(entry as LibraryEntry)" show-meta />
+          </template>
+          <p v-if="!pagination.pageEntries.length" class="widget-library__empty">{{ emptyMessageResolved }}</p>
         </div>
-      </template>
-      <template v-else-if="scope === 'project'">
-        <ProjectLibraryRow v-for="entry in pagination.pageEntries" :key="entry.id" :entry="(entry as Project)" />
-      </template>
-      <template v-else>
-        <LibraryRow v-for="entry in pagination.pageEntries" :key="entry.id" :kind="rowKind" :entry="(entry as LibraryEntry)" show-meta />
-      </template>
-      <p v-if="!pagination.pageEntries.length" class="widget-library__empty">{{ emptyMessageResolved }}</p>
+      </Transition>
     </div>
     <div class="library-pagination" :hidden="pagination.pageCount <= 1">
       <button

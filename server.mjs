@@ -11,6 +11,7 @@ import {
   buildStreamElementsAuthorizeUrl,
   exchangeStreamElementsCode,
   fetchStreamElementsChannel,
+  fetchStreamElementsUserChannels,
   fetchStreamElementsOverlays,
   fetchStreamElementsOverlay,
   extractMediaFromOverlay,
@@ -685,6 +686,18 @@ const server = createServer(async (request, response) => {
       }
     }
 
+    // Chaines dont on peut importer les overlays : celle du token + celles que
+    // le compte gere (cf. listStreamElementsChannels).
+    if (request.method === "GET" && url.pathname === "/api/integrations/streamelements/channels") {
+      const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
+      if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
+
+      const credentials = resolveStreamElementsCredentials(auth);
+      if (!credentials) return sendJson(response, 404, { error: "StreamElements non connecte" });
+
+      return sendJson(response, 200, { channels: await listStreamElementsChannels(credentials), defaultChannelId: credentials.channelId });
+    }
+
     if (request.method === "GET" && url.pathname === "/api/integrations/streamelements/overlays") {
       const auth = requireSession({ cookieHeader: request.headers.cookie, secret: config.sessionSecret, store });
       if (!auth) return sendJson(response, 401, { error: "Non authentifie" });
@@ -693,7 +706,9 @@ const server = createServer(async (request, response) => {
       if (!credentials) return sendJson(response, 404, { error: "StreamElements non connecte" });
 
       try {
-        const { token, tokenType, channelId } = credentials;
+        const { token, tokenType } = credentials;
+        const channelId = await resolveStreamElementsChannelId(credentials, url.searchParams.get("channelId"));
+        if (!channelId) return sendJson(response, 403, { error: "Chaine StreamElements non accessible avec ce compte" });
         const overlays = await fetchStreamElementsOverlays(token, channelId, tokenType);
         return sendJson(response, 200, {
           overlays: overlays.map((summary) => ({
@@ -721,7 +736,9 @@ const server = createServer(async (request, response) => {
       }
 
       try {
-        const { token, tokenType, channelId } = credentials;
+        const { token, tokenType } = credentials;
+        const channelId = await resolveStreamElementsChannelId(credentials, body.channelId);
+        if (!channelId) return sendJson(response, 403, { error: "Chaine StreamElements non accessible avec ce compte" });
         const detail = await fetchStreamElementsOverlay(token, channelId, body.overlayId, tokenType);
         const overlayName = detail.name || "Overlay StreamElements";
         const canvas = { width: detail.settings?.width, height: detail.settings?.height };
@@ -765,20 +782,31 @@ const server = createServer(async (request, response) => {
         // overlay StreamElements est reproduit uniquement comme mise en page
         // (position/taille de chaque element), tous en reperes non editables
         // - y compris les anciens Custom Widgets - pour eviter les doublons
-        // dans la bibliotheque a chaque import/reimport.
+        // dans la bibliotheque a chaque import/reimport. Chaque repere garde
+        // en revanche de quoi etre rendu visuellement dans l'apercu (code et
+        // valeurs d'un Custom Widget, ou image/video d'un widget natif), en
+        // lecture seule : cf. normalizePlaceholderPreview (lib/overlays.mjs).
         const items = detail.widgets?.map((rawWidget, index) => {
           const converted = convertOverlayWidget(rawWidget);
           const sourceType = converted.kind === "custom" ? "native" : converted.sourceType;
+          const preview = converted.kind === "custom"
+            ? { kind: "code", html: converted.html, css: converted.css, js: converted.js, fieldData: converted.fieldData }
+            : converted.media ? { kind: converted.media.type, src: converted.media.url } : null;
           return {
             id: `se-placeholder-${index + 1}-${randomUUID().slice(0, 8)}`,
             type: "placeholder",
             name: placeholderLabel(sourceType, converted.name),
             x: converted.x, y: converted.y, w: converted.w, h: converted.h, z: converted.z,
-            props: { sourceType }
+            props: { sourceType, preview }
           };
         }) || [];
 
-        const savedOverlay = await replaceOverlayItems(projectId, overlay.id, items);
+        // Comme PUT /api/overlay/items : les valeurs sensibles des widgets
+        // importes (cles API, tokens...) vont dans data/secrets.json, jamais
+        // dans library/ suivi par git. Remplace aussi ceux d'un import precedent.
+        const { items: cleanedItems, secrets } = splitOverlaySecrets(items);
+        await secretsStore.setOverlaySecrets(overlay.id, secrets);
+        const savedOverlay = await replaceOverlayItems(projectId, overlay.id, cleanedItems);
         return sendJson(response, 201, { overlay: { ...savedOverlay, projectId }, placeholders: items.length, updated: Boolean(alreadyImported) });
       } catch (error) {
         return sendJson(response, 502, { error: `Import de l'overlay StreamElements impossible : ${error.message}` });
@@ -1250,6 +1278,30 @@ function resolveStreamElementsCredentials(auth) {
     return { token: config.token, tokenType, channelId: config.channelId };
   }
   return null;
+}
+
+// Chaine du token toujours en tete, puis les autres chaines accessibles au
+// compte. Un token qui ne peut pas lire /users/current (apikey de chaine,
+// OAuth2 sans le scope adequat) se limite a sa propre chaine, comme avant.
+async function listStreamElementsChannels({ token, tokenType, channelId }) {
+  let channels = [];
+  try {
+    channels = await fetchStreamElementsUserChannels(token, tokenType);
+  } catch {
+    // Repli silencieux sur la seule chaine du token.
+  }
+  const own = channels.find((channel) => channel.id === channelId) || { id: channelId, name: "Ma chaîne", provider: null, role: "owner" };
+  return [own, ...channels.filter((channel) => channel.id !== channelId)];
+}
+
+// Chaine demandee par le client, uniquement si elle fait partie des chaines
+// accessibles au compte (null sinon) ; absente = chaine du token.
+async function resolveStreamElementsChannelId(credentials, requestedChannelId) {
+  if (typeof requestedChannelId !== "string" || !requestedChannelId || requestedChannelId === credentials.channelId) {
+    return credentials.channelId;
+  }
+  const channels = await listStreamElementsChannels(credentials);
+  return channels.some((channel) => channel.id === requestedChannelId) ? requestedChannelId : null;
 }
 
 const PLACEHOLDER_LABELS = {

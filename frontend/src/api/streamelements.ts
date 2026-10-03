@@ -14,12 +14,26 @@ export interface StreamElementsOverlayImportResult {
   updated: boolean;
 }
 
-export function listStreamElementsOverlays(): Promise<StreamElementsOverlaySummary[]> {
-  return apiGet<{ overlays: StreamElementsOverlaySummary[] }>("/api/integrations/streamelements/overlays").then(
+// Chaîne StreamElements dont on peut importer les overlays : celle du compte
+// connecté, ou une chaîne qu'il gère (rôle administrator, editor...).
+export interface StreamElementsChannel {
+  id: string;
+  name: string;
+  provider: string | null;
+  role: string | null;
+}
+
+export function listStreamElementsChannels(): Promise<{ channels: StreamElementsChannel[]; defaultChannelId: string }> {
+  return apiGet<{ channels: StreamElementsChannel[]; defaultChannelId: string }>("/api/integrations/streamelements/channels");
+}
+
+export function listStreamElementsOverlays(channelId?: string): Promise<StreamElementsOverlaySummary[]> {
+  const query = channelId ? `?channelId=${encodeURIComponent(channelId)}` : "";
+  return apiGet<{ overlays: StreamElementsOverlaySummary[] }>(`/api/integrations/streamelements/overlays${query}`).then(
     (body) => body.overlays
   );
 }
 
-export function importStreamElementsOverlay(overlayId: string, projectId: string): Promise<StreamElementsOverlayImportResult> {
-  return apiPost<StreamElementsOverlayImportResult>("/api/integrations/streamelements/overlays/import", { overlayId, projectId });
+export function importStreamElementsOverlay(overlayId: string, projectId: string, channelId?: string): Promise<StreamElementsOverlayImportResult> {
+  return apiPost<StreamElementsOverlayImportResult>("/api/integrations/streamelements/overlays/import", { overlayId, projectId, channelId });
 }

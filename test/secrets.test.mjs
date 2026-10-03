@@ -77,3 +77,20 @@ test("aucun fichier suivi par git ne contient de clé API", () => {
     "Des secrets sont versionnés : lancer le serveur (migration vers data/secrets.json) ou retirer la valeur."
   );
 });
+
+test("splitOverlaySecrets / mergeOverlaySecrets couvrent l'apercu d'un repere importe", () => {
+  const placeholder = {
+    id: "se-placeholder-1",
+    type: "placeholder",
+    props: { sourceType: "native", preview: { kind: "code", html: "", css: "", js: "", fieldData: { spotify_client_secret: "valeur-sensible-123", color: "#fff" } } }
+  };
+  const { items: cleaned, secrets } = splitOverlaySecrets([placeholder]);
+  assert.deepEqual(cleaned[0].props.preview.fieldData, { color: "#fff" });
+  assert.equal(cleaned[0].props.preview.kind, "code");
+  assert.deepEqual(secrets, { "se-placeholder-1": { spotify_client_secret: "valeur-sensible-123" } });
+  assert.deepEqual(mergeOverlaySecrets(cleaned, secrets)[0].props.preview.fieldData, { color: "#fff", spotify_client_secret: "valeur-sensible-123" });
+  // Repere sans apercu : rien a nettoyer ni a reinjecter.
+  const bare = { id: "p2", type: "placeholder", props: { sourceType: "video", preview: null } };
+  assert.deepEqual(splitOverlaySecrets([bare]).items[0], bare);
+  assert.deepEqual(mergeOverlaySecrets([bare], { p2: { token: "x" } })[0], bare);
+});
